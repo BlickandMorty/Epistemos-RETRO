@@ -101,7 +101,7 @@ impl Database {
                  created_at, updated_at
                  FROM pages WHERE id = ?1",
                 params![id.to_string()],
-                |row| Ok(row_to_page(row)),
+                row_to_page,
             )
             .optional()?
             .ok_or(StorageError::PageNotFound(id))
@@ -128,7 +128,7 @@ impl Database {
              FROM pages ORDER BY updated_at DESC",
         )?;
         let pages = stmt
-            .query_map([], |row| Ok(row_to_page(row)))?
+            .query_map([], row_to_page)?
             .collect::<Result<Vec<_>, _>>()?;
         Ok(pages)
     }
@@ -271,7 +271,7 @@ impl Database {
              FROM blocks WHERE page_id = ?1 ORDER BY \"order\"",
         )?;
         let blocks = stmt
-            .query_map(params![page_id.to_string()], |row| Ok(row_to_block(row)))?
+            .query_map(params![page_id.to_string()], row_to_block)?
             .collect::<Result<Vec<_>, _>>()?;
         Ok(blocks)
     }
@@ -353,7 +353,7 @@ impl Database {
                 "SELECT id, title, chat_type, page_context_id, created_at, updated_at
                  FROM chats WHERE id = ?1",
                 params![id.to_string()],
-                |row| Ok(row_to_chat(row)),
+                row_to_chat,
             )
             .optional()?
             .ok_or_else(|| StorageError::ChatNotFound(id.to_string()))
@@ -365,7 +365,7 @@ impl Database {
              FROM chats ORDER BY updated_at DESC",
         )?;
         let chats = stmt
-            .query_map([], |row| Ok(row_to_chat(row)))?
+            .query_map([], row_to_chat)?
             .collect::<Result<Vec<_>, _>>()?;
         Ok(chats)
     }
@@ -401,7 +401,7 @@ impl Database {
              FROM pages WHERE title LIKE ?1 ESCAPE '\\' COLLATE NOCASE ORDER BY updated_at DESC LIMIT 10",
         )?;
         let pages = stmt
-            .query_map(params![pattern], |row| Ok(row_to_page(row)))?
+            .query_map(params![pattern], row_to_page)?
             .collect::<Result<Vec<_>, _>>()?;
         Ok(pages)
     }
@@ -434,7 +434,7 @@ impl Database {
              FROM messages WHERE chat_id = ?1 ORDER BY created_at",
         )?;
         let msgs = stmt
-            .query_map(params![chat_id.to_string()], |row| Ok(row_to_message(row)))?
+            .query_map(params![chat_id.to_string()], row_to_message)?
             .collect::<Result<Vec<_>, _>>()?;
         Ok(msgs)
     }
@@ -520,7 +520,7 @@ impl Database {
              is_manual, created_at FROM graph_nodes",
         )?;
         let nodes = stmt
-            .query_map([], |row| Ok(row_to_graph_node(row)))?
+            .query_map([], row_to_graph_node)?
             .collect::<Result<Vec<_>, _>>()?;
         Ok(nodes)
     }
@@ -573,7 +573,7 @@ impl Database {
              metadata_json, is_manual, created_at FROM graph_edges",
         )?;
         let edges = stmt
-            .query_map([], |row| Ok(row_to_graph_edge(row)))?
+            .query_map([], row_to_graph_edge)?
             .collect::<Result<Vec<_>, _>>()?;
         Ok(edges)
     }
@@ -607,7 +607,7 @@ impl Database {
                 "SELECT id, name, emoji, sort_order, is_collection, parent_folder_id, created_at
                  FROM folders WHERE id = ?1",
                 params![id.to_string()],
-                |row| Ok(row_to_folder(row)),
+                row_to_folder,
             )
             .optional()?
             .ok_or_else(|| StorageError::FolderNotFound(id.to_string()))
@@ -619,7 +619,7 @@ impl Database {
              FROM folders ORDER BY sort_order, name",
         )?;
         let folders = stmt
-            .query_map([], |row| Ok(row_to_folder(row)))?
+            .query_map([], row_to_folder)?
             .collect::<Result<Vec<_>, _>>()?;
         Ok(folders)
     }
@@ -674,7 +674,7 @@ impl Database {
              FROM page_versions WHERE page_id = ?1 ORDER BY timestamp DESC",
         )?;
         let versions = stmt
-            .query_map(params![page_id.to_string()], |row| Ok(row_to_page_version(row)))?
+            .query_map(params![page_id.to_string()], row_to_page_version)?
             .collect::<Result<Vec<_>, _>>()?;
         Ok(versions)
     }
@@ -780,7 +780,7 @@ impl Database {
             .query_map(params![sanitized, limit as i64], |row| {
                 let pid: String = row.get(0)?;
                 Ok(SearchResult {
-                    page_id: pid.parse().expect("valid page id in search index"),
+                    page_id: parse_id(&pid)?,
                     title: row.get(1)?,
                     snippet: row.get(2)?,
                     score: row.get::<_, f64>(3)?.abs(), // BM25 returns negative (lower = better)
@@ -852,145 +852,160 @@ fn sanitize_fts5_query(query: &str) -> String {
 // Row → struct mappers
 // ──────────────────────────────────────────────
 
-fn row_to_page(row: &rusqlite::Row<'_>) -> Page {
-    let id_str: String = row.get_unwrap(0);
-    let tags_json: String = row.get_unwrap(5);
-    let parent_str: Option<String> = row.get_unwrap(21);
-    let folder_str: Option<String> = row.get_unwrap(22);
-    Page {
-        id: id_str.parse().expect("valid page id in db"),
-        title: row.get_unwrap(1),
-        summary: row.get_unwrap(2),
-        emoji: row.get_unwrap(3),
-        research_stage: row.get_unwrap(4),
+/// Parse a string column into a typed ID, converting parse errors into
+/// rusqlite errors so they propagate through query_map instead of panicking.
+fn parse_id<T: std::str::FromStr>(s: &str) -> Result<T, rusqlite::Error>
+where
+    T::Err: std::error::Error + Send + Sync + 'static,
+{
+    s.parse().map_err(|e: T::Err| {
+        rusqlite::Error::FromSqlConversionFailure(
+            0,
+            rusqlite::types::Type::Text,
+            Box::new(e),
+        )
+    })
+}
+
+fn row_to_page(row: &rusqlite::Row<'_>) -> Result<Page, rusqlite::Error> {
+    let id_str: String = row.get(0)?;
+    let tags_json: String = row.get(5)?;
+    let parent_str: Option<String> = row.get(21)?;
+    let folder_str: Option<String> = row.get(22)?;
+    Ok(Page {
+        id: parse_id(&id_str)?,
+        title: row.get(1)?,
+        summary: row.get(2)?,
+        emoji: row.get(3)?,
+        research_stage: row.get(4)?,
         tags: serde_json::from_str(&tags_json).unwrap_or_default(),
-        word_count: row.get_unwrap(6),
-        is_pinned: row.get_unwrap(7),
-        is_archived: row.get_unwrap(8),
-        is_favorite: row.get_unwrap(9),
-        is_journal: row.get_unwrap(10),
-        is_locked: row.get_unwrap(11),
-        sort_order: row.get_unwrap(12),
-        journal_date: row.get_unwrap(13),
-        front_matter_data: row.get_unwrap(14),
-        ideas_data: row.get_unwrap(15),
-        needs_vault_sync: row.get_unwrap(16),
-        last_synced_body_hash: row.get_unwrap(17),
-        last_synced_at: row.get_unwrap(18),
-        file_path: row.get_unwrap(19),
-        subfolder: row.get_unwrap(20),
+        word_count: row.get(6)?,
+        is_pinned: row.get(7)?,
+        is_archived: row.get(8)?,
+        is_favorite: row.get(9)?,
+        is_journal: row.get(10)?,
+        is_locked: row.get(11)?,
+        sort_order: row.get(12)?,
+        journal_date: row.get(13)?,
+        front_matter_data: row.get(14)?,
+        ideas_data: row.get(15)?,
+        needs_vault_sync: row.get(16)?,
+        last_synced_body_hash: row.get(17)?,
+        last_synced_at: row.get(18)?,
+        file_path: row.get(19)?,
+        subfolder: row.get(20)?,
         parent_page_id: parent_str.and_then(|s| s.parse().ok()),
         folder_id: folder_str.and_then(|s| s.parse().ok()),
-        template_id: row.get_unwrap(23),
-        created_at: row.get_unwrap(24),
-        updated_at: row.get_unwrap(25),
-    }
+        template_id: row.get(23)?,
+        created_at: row.get(24)?,
+        updated_at: row.get(25)?,
+    })
 }
 
-fn row_to_folder(row: &rusqlite::Row<'_>) -> Folder {
-    let id_str: String = row.get_unwrap(0);
-    let parent_str: Option<String> = row.get_unwrap(5);
-    Folder {
-        id: id_str.parse().expect("valid folder id in db"),
-        name: row.get_unwrap(1),
-        emoji: row.get_unwrap(2),
-        sort_order: row.get_unwrap(3),
-        is_collection: row.get_unwrap(4),
+fn row_to_folder(row: &rusqlite::Row<'_>) -> Result<Folder, rusqlite::Error> {
+    let id_str: String = row.get(0)?;
+    let parent_str: Option<String> = row.get(5)?;
+    Ok(Folder {
+        id: parse_id(&id_str)?,
+        name: row.get(1)?,
+        emoji: row.get(2)?,
+        sort_order: row.get(3)?,
+        is_collection: row.get(4)?,
         parent_folder_id: parent_str.and_then(|s| s.parse().ok()),
-        created_at: row.get_unwrap(6),
-    }
+        created_at: row.get(6)?,
+    })
 }
 
-fn row_to_page_version(row: &rusqlite::Row<'_>) -> PageVersion {
-    let page_str: String = row.get_unwrap(1);
-    PageVersion {
-        id: row.get_unwrap(0),
-        page_id: page_str.parse().expect("valid page id in db"),
-        hash: row.get_unwrap(2),
-        parent_hash: row.get_unwrap(3),
-        timestamp: row.get_unwrap(4),
-        changes_summary: row.get_unwrap(5),
-    }
+fn row_to_page_version(row: &rusqlite::Row<'_>) -> Result<PageVersion, rusqlite::Error> {
+    let page_str: String = row.get(1)?;
+    Ok(PageVersion {
+        id: row.get(0)?,
+        page_id: parse_id(&page_str)?,
+        hash: row.get(2)?,
+        parent_hash: row.get(3)?,
+        timestamp: row.get(4)?,
+        changes_summary: row.get(5)?,
+    })
 }
 
-fn row_to_block(row: &rusqlite::Row<'_>) -> Block {
-    let id_str: String = row.get_unwrap(0);
-    let page_str: String = row.get_unwrap(1);
-    let parent_str: Option<String> = row.get_unwrap(2);
-    Block {
-        id: id_str.parse().expect("valid block id in db"),
-        page_id: page_str.parse().expect("valid page id in db"),
+fn row_to_block(row: &rusqlite::Row<'_>) -> Result<Block, rusqlite::Error> {
+    let id_str: String = row.get(0)?;
+    let page_str: String = row.get(1)?;
+    let parent_str: Option<String> = row.get(2)?;
+    Ok(Block {
+        id: parse_id(&id_str)?,
+        page_id: parse_id(&page_str)?,
         parent_block_id: parent_str.and_then(|s| s.parse().ok()),
-        order: row.get_unwrap(3),
-        depth: row.get_unwrap(4),
-        content: row.get_unwrap(5),
-        is_collapsed: row.get_unwrap(6),
-        created_at: row.get_unwrap(7),
-        updated_at: row.get_unwrap(8),
-    }
+        order: row.get(3)?,
+        depth: row.get(4)?,
+        content: row.get(5)?,
+        is_collapsed: row.get(6)?,
+        created_at: row.get(7)?,
+        updated_at: row.get(8)?,
+    })
 }
 
-fn row_to_chat(row: &rusqlite::Row<'_>) -> Chat {
-    let id_str: String = row.get_unwrap(0);
-    let ctx_str: Option<String> = row.get_unwrap(3);
-    Chat {
-        id: id_str.parse().expect("valid chat id in db"),
-        title: row.get_unwrap(1),
-        chat_type: row.get_unwrap(2),
+fn row_to_chat(row: &rusqlite::Row<'_>) -> Result<Chat, rusqlite::Error> {
+    let id_str: String = row.get(0)?;
+    let ctx_str: Option<String> = row.get(3)?;
+    Ok(Chat {
+        id: parse_id(&id_str)?,
+        title: row.get(1)?,
+        chat_type: row.get(2)?,
         page_context_id: ctx_str.and_then(|s| s.parse().ok()),
-        created_at: row.get_unwrap(4),
-        updated_at: row.get_unwrap(5),
-    }
+        created_at: row.get(4)?,
+        updated_at: row.get(5)?,
+    })
 }
 
-fn row_to_message(row: &rusqlite::Row<'_>) -> Message {
-    let id_str: String = row.get_unwrap(0);
-    let chat_str: String = row.get_unwrap(1);
-    Message {
-        id: id_str.parse().expect("valid message id in db"),
-        chat_id: chat_str.parse().expect("valid chat id in db"),
-        role: row.get_unwrap(2),
-        content: row.get_unwrap(3),
-        dual_message_data: row.get_unwrap(4),
-        truth_assessment_data: row.get_unwrap(5),
-        confidence_score: row.get_unwrap(6),
-        evidence_grade: row.get_unwrap(7),
-        inference_mode: row.get_unwrap(8),
-        is_streaming: row.get_unwrap(9),
-        created_at: row.get_unwrap(10),
-    }
+fn row_to_message(row: &rusqlite::Row<'_>) -> Result<Message, rusqlite::Error> {
+    let id_str: String = row.get(0)?;
+    let chat_str: String = row.get(1)?;
+    Ok(Message {
+        id: parse_id(&id_str)?,
+        chat_id: parse_id(&chat_str)?,
+        role: row.get(2)?,
+        content: row.get(3)?,
+        dual_message_data: row.get(4)?,
+        truth_assessment_data: row.get(5)?,
+        confidence_score: row.get(6)?,
+        evidence_grade: row.get(7)?,
+        inference_mode: row.get(8)?,
+        is_streaming: row.get(9)?,
+        created_at: row.get(10)?,
+    })
 }
 
-fn row_to_graph_node(row: &rusqlite::Row<'_>) -> GraphNode {
-    let id_str: String = row.get_unwrap(0);
-    let type_int: i32 = row.get_unwrap(1);
-    GraphNode {
-        id: id_str.parse().expect("valid graph node id in db"),
+fn row_to_graph_node(row: &rusqlite::Row<'_>) -> Result<GraphNode, rusqlite::Error> {
+    let id_str: String = row.get(0)?;
+    let type_int: i32 = row.get(1)?;
+    Ok(GraphNode {
+        id: parse_id(&id_str)?,
         node_type: GraphNodeType::from_i32(type_int),
-        label: row.get_unwrap(2),
-        source_id: row.get_unwrap(3),
-        weight: row.get_unwrap(4),
-        metadata_json: row.get_unwrap(5),
-        is_manual: row.get_unwrap(6),
-        created_at: row.get_unwrap(7),
-    }
+        label: row.get(2)?,
+        source_id: row.get(3)?,
+        weight: row.get(4)?,
+        metadata_json: row.get(5)?,
+        is_manual: row.get(6)?,
+        created_at: row.get(7)?,
+    })
 }
 
-fn row_to_graph_edge(row: &rusqlite::Row<'_>) -> GraphEdge {
-    let id_str: String = row.get_unwrap(0);
-    let src_str: String = row.get_unwrap(1);
-    let tgt_str: String = row.get_unwrap(2);
-    let type_int: i32 = row.get_unwrap(3);
-    GraphEdge {
-        id: id_str.parse().expect("valid graph edge id in db"),
-        source_node_id: src_str.parse().expect("valid source node id in db"),
-        target_node_id: tgt_str.parse().expect("valid target node id in db"),
+fn row_to_graph_edge(row: &rusqlite::Row<'_>) -> Result<GraphEdge, rusqlite::Error> {
+    let id_str: String = row.get(0)?;
+    let src_str: String = row.get(1)?;
+    let tgt_str: String = row.get(2)?;
+    let type_int: i32 = row.get(3)?;
+    Ok(GraphEdge {
+        id: parse_id(&id_str)?,
+        source_node_id: parse_id(&src_str)?,
+        target_node_id: parse_id(&tgt_str)?,
         edge_type: GraphEdgeType::from_i32(type_int),
-        weight: row.get_unwrap(4),
-        metadata_json: row.get_unwrap(5),
-        is_manual: row.get_unwrap(6),
-        created_at: row.get_unwrap(7),
-    }
+        weight: row.get(4)?,
+        metadata_json: row.get(5)?,
+        is_manual: row.get(6)?,
+        created_at: row.get(7)?,
+    })
 }
 
 // ──────────────────────────────────────────────

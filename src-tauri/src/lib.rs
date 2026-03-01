@@ -100,9 +100,10 @@ pub fn run() {
                 .expect("failed to open database");
             let state = AppState::new(db);
 
-            // Pre-load graph store from DB for fast search
+            // Pre-load graph store from DB for fast search.
+            // If this fails, graph search/semantic features degrade but the app still works.
             if let Err(e) = state.reload_graph() {
-                eprintln!("Warning: failed to pre-load graph: {e}");
+                eprintln!("[WARN][startup] failed to pre-load graph — search will be degraded: {e}");
             }
 
             app.manage(state.clone());
@@ -111,7 +112,7 @@ pub fn run() {
             // routing works immediately. 3s timeout per service, non-blocking.
             tokio::spawn(async move {
                 if let Err(e) = system::probe_and_cache_services(&state).await {
-                    eprintln!("[startup] failed to probe local services: {e}");
+                    eprintln!("[WARN][startup] failed to probe local AI services — triage routing may default to cloud: {e}");
                 }
             });
 

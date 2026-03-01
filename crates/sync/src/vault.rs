@@ -211,7 +211,7 @@ fn import_file_incremental(
     // Guard: skip files larger than MAX_IMPORT_FILE_SIZE to prevent OOM
     let file_size = std::fs::metadata(file_path)?.len();
     if file_size > MAX_IMPORT_FILE_SIZE {
-        eprintln!("[vault] skipping oversized file ({file_size} bytes): {file_path_str}");
+        eprintln!("[WARN][vault] skipping oversized file ({file_size} bytes, limit {MAX_IMPORT_FILE_SIZE}): {file_path_str}");
         return Ok(ImportAction::Skipped);
     }
     let content = std::fs::read_to_string(file_path)?;
@@ -351,13 +351,13 @@ fn collect_md_files_recursive(
         // Canonicalize to resolve symlinks, then verify path stays within vault
         let canonical = match path.canonicalize() {
             Ok(p) => p,
-            Err(_) => continue, // skip broken symlinks
+            Err(e) => {
+                eprintln!("[WARN][vault] skipping non-canonical path (broken symlink?): {} — {e}", path.display());
+                continue;
+            }
         };
         if !canonical.starts_with(vault_root) {
-            eprintln!(
-                "[vault] skipping path outside vault root: {}",
-                path.display()
-            );
+            eprintln!("[WARN][vault] skipping path outside vault root (path traversal blocked): {}", path.display());
             continue;
         }
 

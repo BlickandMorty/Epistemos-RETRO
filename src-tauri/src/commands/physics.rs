@@ -65,7 +65,7 @@ pub async fn start_physics(app: AppHandle, state: State<'_, AppState>) -> Result
             // Single lock acquisition per frame — apply input + step + extract FPS data.
             let (frame, fps_data) = {
                 let Ok(mut world) = physics.lock() else {
-                    eprintln!("[physics] lock poisoned — stopping simulation");
+                    eprintln!("[WARN][physics] lock poisoned — stopping simulation");
                     running.store(false, Ordering::Relaxed);
                     break;
                 };

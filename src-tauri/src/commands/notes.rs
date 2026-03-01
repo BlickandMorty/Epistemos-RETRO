@@ -33,11 +33,18 @@ pub async fn list_pages(state: State<'_, AppState>) -> Result<Vec<Page>, AppErro
 pub async fn update_page(state: State<'_, AppState>, page: Page) -> Result<(), AppError> {
     let db = state.lock_db()?;
     db.update_page(&page)?;
-    // Sync FTS5 index with updated title/tags — don't fail the save on index error
-    if let Ok(body) = db.load_body(page.id) {
-        let tags = page.tags.join(", ");
-        if let Err(e) = db.upsert_search_index(page.id, &page.title, &body, &tags) {
-            eprintln!("[notes] search index update failed for {}: {e}", page.id);
+    // Sync FTS5 index with updated title/tags.
+    // Best-effort: don't fail the save on index error, but log loudly.
+    // If this fails, search results will be stale until next rebuild_search_index().
+    match db.load_body(page.id) {
+        Ok(body) => {
+            let tags = page.tags.join(", ");
+            if let Err(e) = db.upsert_search_index(page.id, &page.title, &body, &tags) {
+                eprintln!("[WARN][notes] search index update failed for {} — search may be stale: {e}", page.id);
+            }
+        }
+        Err(e) => {
+            eprintln!("[WARN][notes] could not load body for index sync of {} — search may be stale: {e}", page.id);
         }
     }
     Ok(())
@@ -49,7 +56,7 @@ pub async fn delete_page(state: State<'_, AppState>, page_id: String) -> Result<
     let id: PageId = page_id.parse().map_err(|e| AppError::Internal(format!("{e}")))?;
     let db = state.lock_db()?;
     if let Err(e) = db.delete_search_index(id) {
-        eprintln!("[notes] search index delete failed for {id}: {e}");
+        eprintln!("[WARN][notes] search index delete failed for {id} — orphaned index entry: {e}");
     }
     db.delete_page(id)?;
     Ok(())
@@ -70,23 +77,30 @@ pub async fn save_body(state: State<'_, AppState>, page_id: String, content: Str
     let db = state.lock_db()?;
     db.save_body(id, &content)?;
 
-    // Update word count on page metadata
+    // Update word count on page metadata (best-effort — don't fail the save)
     let word_count = content.split_whitespace().count() as i32;
     if let Err(e) = db.update_word_count(id, word_count) {
-        eprintln!("[notes] word count update failed for {id}: {e}");
+        eprintln!("[WARN][notes] word count update failed for {id}: {e}");
     }
 
-    // Sync FTS5 search index with updated content
-    if let Ok(page) = db.get_page(id) {
-        let tags = page.tags.join(", ");
-        if let Err(e) = db.upsert_search_index(id, &page.title, &content, &tags) {
-            eprintln!("[notes] search index update failed for {id}: {e}");
+    // Sync FTS5 search index with updated content.
+    // Best-effort: stale index is rebuilt on next rebuild_search_index() call.
+    match db.get_page(id) {
+        Ok(page) => {
+            let tags = page.tags.join(", ");
+            if let Err(e) = db.upsert_search_index(id, &page.title, &content, &tags) {
+                eprintln!("[WARN][notes] search index update failed for {id} — search may be stale: {e}");
+            }
+        }
+        Err(e) => {
+            eprintln!("[WARN][notes] could not load page for index sync of {id}: {e}");
         }
     }
 
-    // Reconcile blocks from markdown (keeps SDBlock entities in sync)
+    // Reconcile blocks from markdown (keeps block entities in sync).
+    // Best-effort: block structure will be stale until next save.
     if let Err(e) = sync::block_reconciler::reconcile(&db, id, &content) {
-        eprintln!("[notes] block reconciliation failed for {id}: {e}");
+        eprintln!("[WARN][notes] block reconciliation failed for {id} — block structure may be stale: {e}");
     }
 
     Ok(())

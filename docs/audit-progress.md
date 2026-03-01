@@ -2,11 +2,11 @@
 Last updated: 2026-03-01
 
 ## Current Position
-Phase: Gap Closure Complete | Status: MONITORING
+Phase: Deep Hardening Complete | Status: READY FOR PHASE 5 (FPS EXPLORE MODE)
 
 ## Session Stats
-Tests before: 323 | Tests after: 360 | New tests: 37
-Fixes this session: 21 commits | Deferred: 0
+Tests before: 323 | Tests after: 368 | New tests: 45
+Fixes this session: 24 commits | Deferred: 0
 
 ## Audit Bible
 Source: `docs/plans/2026-03-01-unified-gap-report.md` (all 15 items already fixed)
@@ -61,10 +61,25 @@ Pivoted to: Deep scan for new issues in graph/physics/LLM/storage subsystems
 - [x] 39: Wire SOAR event handler + teaching stones notifications (commit 1e4cd25)
 - [x] 40: Wire chat-title-update + chat-stream-replace + note-ai-stream (commit 1e4cd25)
 
-## Remaining TODOs (Phase 5 — Bevy/wgpu, not wiring gaps)
+## Completed — Deep Hardening (Items 41-43)
 
-- [ ] Physics frame → graph canvas component (requires Bevy rendering layer)
-- [ ] FPS HUD overlay (requires 3D mode UI)
+- [x] 41: UTF-8 safe truncation in chat_context.rs (commit cdf073f)
+- [x] 42: Enrichment progress events for Pass 2 + Pass 3 (commit cdf073f)
+- [x] 43: Graph robustness — regex caching, vec pre-alloc, edge metadata_json (commit f68c057)
+
+## Phase 5 — FPS Explore Mode (NEXT)
+
+Backend (COMPLETE):
+- [x] FPS physics: N-body gravity, thrusters, stabilization (ui-physics/fps_mode.rs)
+- [x] Player state: yaw/pitch, mouse look, input mapping (ui-physics/fps_player.rs)
+- [x] Seamless Graph ↔ FPS transition (world.rs: toggle_fps_mode)
+- [x] Tauri commands: toggle_fps_mode, fps_input, start_physics (physics.rs)
+- [x] Events: physics-frame + fps-frame emitted at 90Hz
+
+Frontend (TODO):
+- [ ] Bevy/wgpu 3D rendering layer (graph-render crate)
+- [ ] FPS HUD overlay (React component consuming fps-frame events)
+- [ ] Graph canvas component (React component consuming physics-frame events)
 
 ## macOS vs Retro Parity Assessment
 

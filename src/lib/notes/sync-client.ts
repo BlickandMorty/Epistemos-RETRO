@@ -11,11 +11,11 @@ export async function loadVaultsFromDb(): Promise<Vault[]> {
   return [];
 }
 
-export async function loadVaultDataFromDb(_vaultId: string): Promise<{ pages: unknown[]; blocks: unknown[]; books: unknown[]; concepts: unknown[]; pageLinks: unknown[] }> {
+export async function loadVaultDataFromDb(_vaultId: string): Promise<{ pages: never[]; blocks: never[]; books: never[]; concepts: never[]; pageLinks: never[] }> {
   return { pages: [], blocks: [], books: [], concepts: [], pageLinks: [] };
 }
 
-export async function syncVaultToServer(_vaultId: string): Promise<void> {
+export async function syncVaultToServer(_vaultId: string, ..._args: unknown[]): Promise<void> {
   // no-op until Phase 2
 }
 

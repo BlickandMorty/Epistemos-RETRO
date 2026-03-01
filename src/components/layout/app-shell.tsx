@@ -20,8 +20,10 @@ import { readString } from '@/lib/storage-versioning';
 
 // Stable selector: derives a boolean "any thread streaming" from the threadIsStreaming map.
 // Avoids subscribing to the entire object (which would re-render on every thread state change).
-const selectAnyThreadStreaming = (s: { threadIsStreaming: Record<string, boolean> }) =>
-  Object.values(s.threadIsStreaming).some(Boolean);
+const selectAnyThreadStreaming = (s: { threadIsStreaming: Record<string, boolean> }) => {
+  for (const k in s.threadIsStreaming) if (s.threadIsStreaming[k]) return true;
+  return false;
+};
 
 // Safe localStorage helper — never throws (delegates to versioned wrapper)
 function ls(key: string): string | null {
@@ -30,7 +32,7 @@ function ls(key: string): string | null {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { isDark, isOled, isCosmic, isSunny, isThematic, mounted: themeMounted } = useIsDark();
-  const { setTheme, theme } = useTheme();
+  const { setTheme } = useTheme();
   const { pathname } = useLocation();
   const chatMessages = usePFCStore((s) => s.messages);
   const chatMinimized = usePFCStore((s) => s.chatMinimized);

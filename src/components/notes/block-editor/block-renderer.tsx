@@ -45,7 +45,7 @@ function PageLinkPopup({
   position,
   isDark,
   onSelect,
-  onClose,
+  onClose: _onClose,
   selectedIndex,
 }: {
   query: string;
@@ -245,7 +245,7 @@ export const BlockItem = memo(function BlockItem({
   onFocus,
   pageId,
   blockIndex,
-  totalBlocks,
+  totalBlocks: _totalBlocks,
   onNavigate,
   onDragStart,
   onDragOver,
@@ -286,9 +286,9 @@ export const BlockItem = memo(function BlockItem({
 
   // Slash command state
   const [slashOpen, setSlashOpen] = useState(false);
-  const [slashQuery, setSlashQuery] = useState('');
-  const [slashPos, setSlashPos] = useState({ top: 0, left: 0 });
-  const [slashIdx, setSlashIdx] = useState(0);
+  const [slashQuery, _setSlashQuery] = useState('');
+  const [slashPos, _setSlashPos] = useState({ top: 0, left: 0 });
+  const [slashIdx, _setSlashIdx] = useState(0);
   const slashStartRef = useRef<number>(-1);
 
   // [[ page link popup state
@@ -435,7 +435,6 @@ export const BlockItem = memo(function BlockItem({
 
     // Detect [[ being typed — open page link popup
     if (!bracketOpen) {
-      const text = contentRef.current.textContent ?? '';
       const sel = window.getSelection();
       if (sel && sel.rangeCount > 0) {
         const range = sel.getRangeAt(0);

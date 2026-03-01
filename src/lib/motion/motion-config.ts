@@ -117,14 +117,14 @@ export const variants = {
 } as const;
 
 // ── Stagger Orchestration ──
-const stagger = {
+export const stagger = {
   fast:     { staggerChildren: 0.03 },
   standard: { staggerChildren: 0.06 },
   slow:     { staggerChildren: 0.12 },
 } as const;
 
 // ── Layout Transition Presets ──
-const layout = {
+export const layout = {
   /** Smooth block reorder */
   block: { duration: 0.25, ease: M3_EASE },
   /** Tab underline / shared layout */
@@ -132,7 +132,7 @@ const layout = {
 } as const;
 
 // ── Reduced Motion ──
-const reducedMotion = {
+export const reducedMotion = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { duration: 0.15 } },
   exit: { opacity: 0, transition: { duration: 0.1 } },

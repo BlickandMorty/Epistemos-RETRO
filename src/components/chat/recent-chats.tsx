@@ -48,7 +48,7 @@ interface RecentChatsProps {
   onShowAll?: (allChats: ChatEntry[]) => void;
 }
 
-function RecentChatsBase({ isDark, isOled, onShowAll }: RecentChatsProps) {
+function RecentChatsBase({ isDark, isOled: _isOled, onShowAll }: RecentChatsProps) {
   const navigate = useNavigate();
   const [allChats, setAllChats] = useState<ChatEntry[]>([]);
   const [loading, setLoading] = useState(true);

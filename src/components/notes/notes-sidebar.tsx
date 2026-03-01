@@ -40,10 +40,9 @@ const GraphView = lazy(() =>
 /*  Constants & Easing                                                  */
 /* ------------------------------------------------------------------ */
 
-import { ease, spring as motionSpring } from '@/lib/motion/motion-config';
+import { ease } from '@/lib/motion/motion-config';
 
 const CUPERTINO = ease.emphasized;
-const SPRING = motionSpring.bouncy;
 
 /* ------------------------------------------------------------------ */
 /*  Theme                                                               */
@@ -560,7 +559,7 @@ interface PagesViewProps {
 }
 
 function PagesView({
-  c, pinnedPages, favoritePages, recentPages, booksWithPages, standalonePages,
+  c, pinnedPages, favoritePages, recentPages: _recentPages, booksWithPages, standalonePages,
   expandedBooks, activePageId, renamingId, renameValue,
   onToggleBook, onSelectPage, onDelete, onToggleFavorite, onTogglePin,
   onStartRename, onRenameChange, onCommitRename, onMovePageToBook, onNewPageInBook,

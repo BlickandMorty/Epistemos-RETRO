@@ -33,7 +33,7 @@ export interface SignalHistoryEntry {
   riskScore: number;
 }
 
-const MAX_SIGNAL_HISTORY = 50;
+// const MAX_SIGNAL_HISTORY = 50;
 
 // ---------------------------------------------------------------------------
 // State interface
@@ -101,7 +101,7 @@ export interface PipelineSliceActions {
 // Slice creator
 // ---------------------------------------------------------------------------
 
-export const createPipelineSlice = (set: PFCSet, get: PFCGet) => ({
+export const createPipelineSlice = (set: PFCSet, _get: PFCGet) => ({
   // --- initial state ---
   pipelineStages: freshPipeline(),
   activeStage: null as PipelineStage | null,

@@ -48,7 +48,7 @@ export interface ControlsSliceActions {
 // Slice creator
 // ---------------------------------------------------------------------------
 
-export const createControlsSlice = (set: PFCSet, get: PFCGet) => ({
+export const createControlsSlice = (set: PFCSet, _get: PFCGet) => ({
   // --- initial state ---
   liveControlsOpen: false,
   controls: { ...defaultControls },

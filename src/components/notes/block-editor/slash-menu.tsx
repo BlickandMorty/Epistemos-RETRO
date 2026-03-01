@@ -47,7 +47,7 @@ export function SlashMenu({
   position,
   isDark,
   onSelect,
-  onClose,
+  onClose: _onClose,
   selectedIndex,
 }: {
   query: string;

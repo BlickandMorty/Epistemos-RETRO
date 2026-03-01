@@ -727,7 +727,8 @@ export const createNotesSlice = (set: PFCSet, get: PFCGet) => ({
     // Find the best sibling to move cursor to (previous first, then next)
     let nextEditId: string | null = null;
     if (s.editingBlockId && toDelete.has(s.editingBlockId)) {
-      const pageBlocks = s.noteBlocks.filter((b: NoteBlock) => b.pageId === block.pageId && !toDelete.has(b.id));
+      // Remaining page blocks (for cursor placement after delete)
+      // const pageBlocks = s.noteBlocks.filter((b: NoteBlock) => b.pageId === block.pageId && !toDelete.has(b.id));
       const deletedIdx = s.noteBlocks.findIndex((b: NoteBlock) => b.id === blockId);
       // Find closest preceding sibling that's not being deleted
       let prevBlock: NoteBlock | null = null;
@@ -1743,7 +1744,7 @@ function debouncedSave(get: PFCGet) {
 // ── One-time localStorage → SQLite migration ──
 // Reads all vault data from localStorage and pushes to SQLite via API.
 // Non-blocking — runs in background after loadVaultIndex completes.
-async function triggerMigration(vaults: Vault[], get: PFCGet) {
+async function triggerMigration(vaults: Vault[], _get: PFCGet) {
   try {
     const migrationPayload: Array<{
       vault: Vault;

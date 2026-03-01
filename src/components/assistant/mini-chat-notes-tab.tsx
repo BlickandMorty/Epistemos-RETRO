@@ -84,7 +84,7 @@ function getLearnProgress(session: LearningSession | null): number {
    Notes Tab — Ask AI + Learn
    ═══════════════════════════════════════════════════════════════════ */
 
-export function NotesTabContent({ isDark, glassBorder, textPrimary, textSecondary, btnHover }: NotesTabContentProps) {
+export function NotesTabContent({ isDark, glassBorder, textPrimary, textSecondary }: NotesTabContentProps) {
   const [notesMode, setNotesMode] = useState<'ask' | 'learn'>('ask');
   const [inputVal, setInputVal] = useState('');
   const [copied, setCopied] = useState(false);
@@ -107,7 +107,7 @@ export function NotesTabContent({ isDark, glassBorder, textPrimary, textSecondar
   // Learn actions — stubbed (will come from Rust backend)
   const learningSession = null as any;
   const learningStreamText = '';
-  const startLearningSession = () => {};
+  const startLearningSession = (_depth: string, _passes: number) => {};
   const pauseLearningSession = () => {};
   const resumeLearningSession = () => {};
   const stopLearningSession = () => {};

@@ -271,7 +271,7 @@ export function ChatTabContent({ isDark, glassBorder, textPrimary, textSecondary
             textSecondary={textSecondary}
             btnHover={btnHover}
             onSaveToNotes={saveToNotes}
-            onSaveForLater={(content) => {
+            onSaveForLater={(_content) => {
               addToast({ type: 'success', message: 'Bookmarked for later' });
             }}
           />
@@ -343,7 +343,7 @@ export function ChatTabContent({ isDark, glassBorder, textPrimary, textSecondary
    Empty state — shows recent main-chat sessions from DB
    ═══════════════════════════════════════════════════════════════════ */
 
-function EmptyStateWithRecent({ isDark, textPrimary, textSecondary, btnHover }: {
+function EmptyStateWithRecent({ textPrimary, textSecondary, btnHover }: {
   isDark: boolean; textPrimary: string; textSecondary: string; btnHover: string;
 }) {
   const loadChatIntoThread = usePFCStore((s) => s.loadChatIntoThread);
@@ -369,7 +369,7 @@ function EmptyStateWithRecent({ isDark, textPrimary, textSecondary, btnHover }: 
       if (!rawMessages) return;
 
       // Convert ChatMessage[] → AssistantMessage[] for the mini-chat thread
-      const messages = (rawMessages as Array<{ role: string; text: string; timestamp: number }>).map((m: any) => ({
+      const messages = (rawMessages as unknown as Array<{ role: string; text: string; timestamp: number }>).map((m: { role: string; text: string; timestamp: number }) => ({
         role: (m.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
         content: m.text || '',
         timestamp: m.timestamp || Date.now(),
@@ -495,7 +495,7 @@ const MessageBubble = memo(function MessageBubble({ msg, isDark, textPrimary, te
   );
 });
 
-function ActionButton({ icon: Icon, label, isDark, textSecondary, btnHover, onClick }: {
+function ActionButton({ icon: Icon, label, isDark, textSecondary, onClick }: {
   icon: LucideIcon; label: string; isDark: boolean; textSecondary: string; btnHover: string; onClick: () => void;
 }) {
   return (

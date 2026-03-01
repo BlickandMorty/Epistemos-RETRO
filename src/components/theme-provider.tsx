@@ -4,7 +4,7 @@ import { ThemeContext, useThemeProvider } from '@/hooks/use-theme';
 interface ThemeProviderProps {
   children: React.ReactNode;
   defaultTheme?: string;
-  themes?: string[];
+  themes?: readonly string[];
   attribute?: string;
 }
 

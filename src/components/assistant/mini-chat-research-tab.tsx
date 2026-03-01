@@ -99,7 +99,7 @@ const RESEARCH_ACTIONS: ResearchAction[] = [
    Research Tab — Button-based research actions
    ═══════════════════════════════════════════════════════════════════ */
 
-export function ResearchTabContent({ isDark, glassBorder, textPrimary, textSecondary, btnHover }: ResearchTabContentProps) {
+export function ResearchTabContent({ isDark, glassBorder, textPrimary, textSecondary }: ResearchTabContentProps) {
   const { sendQuery, abort } = useAssistantStream();
   const streamText = usePFCStore((s) => s.threadStreamingText[s.activeThreadId] || '');
   const isStreaming = usePFCStore((s) => s.threadIsStreaming[s.activeThreadId] || false);

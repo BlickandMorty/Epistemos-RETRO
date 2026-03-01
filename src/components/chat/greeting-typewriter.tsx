@@ -36,7 +36,7 @@ function pickRandom<T>(arr: readonly T[], exclude?: T): T {
   return pick;
 }
 
-export function GreetingTypewriter({ isDark, isSunny }: { isDark: boolean; isSunny?: boolean }) {
+export function GreetingTypewriter({ isDark }: { isDark: boolean; isSunny?: boolean }) {
   const [displayText, setDisplayText] = useState('');
   const mountTimeRef = useRef(Date.now());
   const stateRef = useRef({

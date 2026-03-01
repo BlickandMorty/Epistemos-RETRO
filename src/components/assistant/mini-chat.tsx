@@ -43,8 +43,9 @@ import { ResearchTabContent } from './mini-chat-research-tab';
 
 /* ─── Constants ─── */
 
-const DEFAULT_W = 280;
-const DEFAULT_H = 440;
+// Defaults (currently using MIN_W/MIN_H as actual sizes)
+// const DEFAULT_W = 280;
+// const DEFAULT_H = 440;
 const MIN_W = 360;
 const MIN_H = 300;
 import { spring as motionSpring } from '@/lib/motion/motion-config';

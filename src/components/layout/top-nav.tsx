@@ -89,7 +89,7 @@ function bubbleColor(isActive: boolean, isDark: boolean, disabled?: boolean, isO
 }
 
 /** Active icon color — white on light mode (pitch black nav bar), accent on dark themes */
-function activeIconColor(isDark: boolean, isOled?: boolean, isSunny?: boolean, isCosmic?: boolean) {
+function activeIconColor(isDark: boolean, _isOled?: boolean, isSunny?: boolean, isCosmic?: boolean) {
   if (isSunny) return 'var(--pfc-accent)';
   if (isCosmic) return '#8B9FD4';
   // Light mode: white icons on pitch black nav bar

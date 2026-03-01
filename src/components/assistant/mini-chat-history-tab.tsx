@@ -62,7 +62,7 @@ export function HistoryTabContent({ isDark, textPrimary, textSecondary, btnHover
       const { commands } = await import('@/lib/bindings');
       const rawMessages = await commands.getMessages(chatId);
       if (!rawMessages) return;
-      const messages = (rawMessages as Array<{ role: string; text: string; timestamp: number }>).map((m: any) => ({
+      const messages = (rawMessages as unknown as Array<{ role: string; text: string; timestamp: number }>).map((m: { role: string; text: string; timestamp: number }) => ({
         role: (m.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
         content: m.text || '',
         timestamp: m.timestamp || Date.now(),

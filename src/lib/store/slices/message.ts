@@ -5,24 +5,13 @@ import type {
   EvidenceGrade,
   FileAttachment,
   TruthAssessment,
-  StageResult,
-  StageStatus,
 } from '@/lib/types';
-import { STAGES, STAGE_LABELS } from '@/lib/constants';
 import type { PFCSet, PFCGet } from '../use-pfc-store';
 import { emit } from '../events';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-function freshPipeline(): StageResult[] {
-  return STAGES.map((s) => ({
-    stage: s,
-    status: 'idle' as StageStatus,
-    summary: STAGE_LABELS[s],
-  }));
-}
 
 function nextMsgId(): string {
   return `msg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -84,7 +73,7 @@ export interface MessageSliceActions {
 // Slice creator
 // ---------------------------------------------------------------------------
 
-export const createMessageSlice = (set: PFCSet, get: PFCGet) => ({
+export const createMessageSlice = (set: PFCSet, _get: PFCGet) => ({
   // --- initial state ---
   messages: [] as ChatMessage[],
   streamingText: '',

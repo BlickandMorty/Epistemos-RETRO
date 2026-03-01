@@ -19,7 +19,7 @@ import {
 import { useIsDark } from '@/hooks/use-is-dark';
 import { ConceptMiniMap } from '../viz/concept-mini-map';
 import { SteeringFeedback } from './steering-feedback';
-import { useSteeringStore } from '@/lib/store/use-steering-store';
+// import { useSteeringStore } from '@/lib/store/use-steering-store';
 
 import { spring } from '@/lib/motion/motion-config';
 
@@ -31,9 +31,7 @@ interface MessageProps {
 }
 
 const selectShowTruthBot = (s: { showTruthBot: boolean }) => s.showTruthBot;
-const selectInferenceMode = (s: { inferenceMode: string }) => s.inferenceMode;
-const selectLatestSynthesisKeyId = (s: { latestSynthesisKeyId: string | null }) => s.latestSynthesisKeyId;
-const selectSteeringExemplars = (s: { memory?: { exemplars?: Array<{ key: { timestamp: number; id: string } }> } }) => s.memory?.exemplars ?? [];
+// const selectInferenceMode = (s: { inferenceMode: string }) => s.inferenceMode;
 
 /**
  * Build a full markdown export including summary, research analysis,
@@ -131,9 +129,6 @@ function buildFullExport(
 
 function MessageInner({ message }: MessageProps) {
   const showTruthBot = usePFCStore(selectShowTruthBot);
-  const inferenceMode = usePFCStore(selectInferenceMode);
-  const latestSynthesisKeyId = useSteeringStore(selectLatestSynthesisKeyId);
-  const exemplars = useSteeringStore(selectSteeringExemplars);
   const { isDark, isSunny } = useIsDark();
   const navigate = useNavigate();
   const isUser = message.role === 'user';
@@ -142,12 +137,8 @@ function MessageInner({ message }: MessageProps) {
   const [copied, setCopied] = useState(false);
   const copyTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
 
-  const messageSynthesisKeyId = useMemo(() => {
-    if (isUser || message.confidence === undefined) return null;
-    return exemplars.find(
-      ex => Math.abs(ex.key.timestamp - message.timestamp) < 5000,
-    )?.key.id ?? latestSynthesisKeyId;
-  }, [isUser, message.confidence, message.timestamp, exemplars, latestSynthesisKeyId]);
+  // Steering synthesis key — will be wired when backend steering is connected
+  const messageSynthesisKeyId: string | null = null;
 
   // ── Defensive defaults for potentially missing fields ──
   const safeText = message.text ?? '';
@@ -629,7 +620,7 @@ function MessageInner({ message }: MessageProps) {
                           </div>
 
                           {/* Layman structured breakdown (reflection, arbitration) */}
-                          <MessageLayman layman={safeDualMessage!.laymanSummary} />
+                          {safeDualMessage?.laymanSummary && <MessageLayman layman={safeDualMessage.laymanSummary} />}
 
                           {/* Concepts */}
                           {message.concepts && message.concepts.length > 0 && (

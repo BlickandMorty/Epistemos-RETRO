@@ -7,7 +7,10 @@ export interface LearningSession {
   steps: LearningStep[];
   currentStep: number;
   isComplete: boolean;
-  status: 'active' | 'paused' | 'complete';
+  status: 'active' | 'paused' | 'complete' | 'completed';
+  totalInsights?: number;
+  totalPagesCreated?: number;
+  totalBlocksCreated?: number;
   createdAt: number;
 }
 
@@ -15,9 +18,9 @@ export interface LearningStep {
   id: string;
   title: string;
   type: 'clarify' | 'frameworks' | 'empirical';
-  status: 'pending' | 'active' | 'complete' | 'skipped';
+  status: 'pending' | 'active' | 'complete' | 'completed' | 'skipped' | 'running';
   prompt: string;
   response?: string;
   score?: number;
-  insights?: string[];
+  insights: string[];
 }

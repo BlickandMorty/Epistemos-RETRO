@@ -118,6 +118,7 @@ export function ThematicWallpaper({ blurred = false }: { blurred?: boolean }) {
   const dustRef = useRef<DustMote[]>(createDustMotes());
   const shootingRef = useRef<ShootingStar[]>([]);
   const sizeRef = useRef({ w: 0, h: 0 });
+  const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
   const rafRef = useRef<number>(0);
   const lastFrameRef = useRef(0);
   const activeRef = useRef(true); // guards RAF after unmount + tab hidden
@@ -139,7 +140,8 @@ export function ThematicWallpaper({ blurred = false }: { blurred?: boolean }) {
     const dt = (now - lastFrameRef.current) / 1000; // delta in seconds
     lastFrameRef.current = now;
 
-    const ctx = canvas.getContext('2d', { alpha: true });
+    if (!ctxRef.current) ctxRef.current = canvas.getContext('2d', { alpha: true });
+    const ctx = ctxRef.current;
     if (!ctx) {
       rafRef.current = requestAnimationFrame(drawParticles);
       return;
@@ -280,8 +282,9 @@ export function ThematicWallpaper({ blurred = false }: { blurred?: boolean }) {
       sizeRef.current = { w: width, h: height };
       canvas.width = Math.round(width * dpr);
       canvas.height = Math.round(height * dpr);
-      const ctx = canvas.getContext('2d');
-      if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      // Recache context after resize (canvas resize invalidates existing context)
+      ctxRef.current = canvas.getContext('2d', { alpha: true });
+      if (ctxRef.current) ctxRef.current.setTransform(dpr, 0, 0, dpr, 0, 0);
     });
     ro.observe(canvas);
 

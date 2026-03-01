@@ -70,65 +70,69 @@ export function MessageResearch({ dualMessage }: MessageResearchProps) {
       </div>
 
       {/* Reflection collapsible */}
-      <Collapsible open={reflectionOpen} onOpenChange={setReflectionOpen}>
-        <CollapsibleTrigger
-          style={{ fontSize: 'var(--type-body-sm)' }}
-          className="flex items-center gap-2 font-medium text-muted-foreground hover:text-foreground transition-colors w-full"
-        >
-          <ChevronDownIcon className={cn('h-3 w-3 transition-transform', reflectionOpen && 'rotate-180')} />
-          Reflection ({reflection.selfCriticalQuestions.length} questions, {reflection.adjustments.length} adjustments)
-        </CollapsibleTrigger>
-        <CollapsibleContent className="mt-2 space-y-2 pl-5">
-          {reflection.selfCriticalQuestions.map((q, i) => (
-            <p key={i} style={{ fontSize: 'var(--type-body-sm)' }} className="text-muted-foreground italic leading-relaxed">{q}</p>
-          ))}
-          {reflection.adjustments.length > 0 && (
-            <div className="mt-1">
-              <p style={{ fontSize: 'var(--type-tag)' }} className="font-medium uppercase tracking-wider text-pfc-yellow mb-1">Adjustments</p>
-              {reflection.adjustments.map((a, i) => (
-                <p key={i} style={{ fontSize: 'var(--type-body-sm)' }} className="text-pfc-yellow/80 leading-relaxed">{a}</p>
-              ))}
-            </div>
-          )}
-          <p style={{ fontSize: 'var(--type-body-sm)' }} className="text-muted-foreground leading-relaxed">
-            <span className="font-medium">Least defensible:</span> {reflection.leastDefensibleClaim}
-          </p>
-        </CollapsibleContent>
-      </Collapsible>
+      {reflection && (
+        <Collapsible open={reflectionOpen} onOpenChange={setReflectionOpen}>
+          <CollapsibleTrigger
+            style={{ fontSize: 'var(--type-body-sm)' }}
+            className="flex items-center gap-2 font-medium text-muted-foreground hover:text-foreground transition-colors w-full"
+          >
+            <ChevronDownIcon className={cn('h-3 w-3 transition-transform', reflectionOpen && 'rotate-180')} />
+            Reflection ({reflection.selfCriticalQuestions.length} questions, {reflection.adjustments.length} adjustments)
+          </CollapsibleTrigger>
+          <CollapsibleContent className="mt-2 space-y-2 pl-5">
+            {reflection.selfCriticalQuestions.map((q, i) => (
+              <p key={i} style={{ fontSize: 'var(--type-body-sm)' }} className="text-muted-foreground italic leading-relaxed">{q}</p>
+            ))}
+            {reflection.adjustments.length > 0 && (
+              <div className="mt-1">
+                <p style={{ fontSize: 'var(--type-tag)' }} className="font-medium uppercase tracking-wider text-pfc-yellow mb-1">Adjustments</p>
+                {reflection.adjustments.map((a, i) => (
+                  <p key={i} style={{ fontSize: 'var(--type-body-sm)' }} className="text-pfc-yellow/80 leading-relaxed">{a}</p>
+                ))}
+              </div>
+            )}
+            <p style={{ fontSize: 'var(--type-body-sm)' }} className="text-muted-foreground leading-relaxed">
+              <span className="font-medium">Least defensible:</span> {reflection.leastDefensibleClaim}
+            </p>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
 
       {/* Arbitration collapsible */}
-      <Collapsible open={arbitrationOpen} onOpenChange={setArbitrationOpen}>
-        <CollapsibleTrigger
-          style={{ fontSize: 'var(--type-body-sm)' }}
-          className="flex items-center gap-2 font-medium text-muted-foreground hover:text-foreground transition-colors w-full"
-        >
-          <ChevronDownIcon className={cn('h-3 w-3 transition-transform', arbitrationOpen && 'rotate-180')} />
-          Arbitration ({arbitration.consensus ? 'Consensus' : 'Split'} — {arbitration.votes.length} engines)
-        </CollapsibleTrigger>
-        <CollapsibleContent className="mt-2 space-y-1.5 pl-5">
-          {arbitration.votes.map((vote, i) => (
-            <div key={i} style={{ fontSize: 'var(--type-body-sm)' }} className="flex items-center gap-2">
-              <span className={cn(
-                'w-1.5 h-1.5 rounded-full',
-                vote.position === 'supports' ? 'bg-pfc-green' :
-                vote.position === 'opposes' ? 'bg-pfc-red' : 'bg-muted-foreground'
-              )} />
-              <span style={{ fontSize: 'var(--type-label-sm)' }} className="font-mono text-muted-foreground">{vote.engine}</span>
-              <span
-                style={{ fontSize: 'var(--type-label-sm)' }}
-                className={cn(
-                  vote.position === 'supports' ? 'text-pfc-green' :
-                  vote.position === 'opposes' ? 'text-pfc-red' : 'text-muted-foreground'
-                )}
-              >
-                {vote.position}
-              </span>
-              <span style={{ fontSize: 'var(--type-label-sm)' }} className="text-muted-foreground/50">({(vote.confidence * 100).toFixed(0)}%)</span>
-            </div>
-          ))}
-          <p style={{ fontSize: 'var(--type-body-sm)' }} className="text-muted-foreground mt-1 leading-relaxed">{arbitration.resolution}</p>
-        </CollapsibleContent>
-      </Collapsible>
+      {arbitration && (
+        <Collapsible open={arbitrationOpen} onOpenChange={setArbitrationOpen}>
+          <CollapsibleTrigger
+            style={{ fontSize: 'var(--type-body-sm)' }}
+            className="flex items-center gap-2 font-medium text-muted-foreground hover:text-foreground transition-colors w-full"
+          >
+            <ChevronDownIcon className={cn('h-3 w-3 transition-transform', arbitrationOpen && 'rotate-180')} />
+            Arbitration ({arbitration.consensus ? 'Consensus' : 'Split'} — {arbitration.votes.length} engines)
+          </CollapsibleTrigger>
+          <CollapsibleContent className="mt-2 space-y-1.5 pl-5">
+            {arbitration.votes.map((vote, i) => (
+              <div key={i} style={{ fontSize: 'var(--type-body-sm)' }} className="flex items-center gap-2">
+                <span className={cn(
+                  'w-1.5 h-1.5 rounded-full',
+                  vote.position === 'supports' ? 'bg-pfc-green' :
+                  vote.position === 'opposes' ? 'bg-pfc-red' : 'bg-muted-foreground'
+                )} />
+                <span style={{ fontSize: 'var(--type-label-sm)' }} className="font-mono text-muted-foreground">{vote.engine}</span>
+                <span
+                  style={{ fontSize: 'var(--type-label-sm)' }}
+                  className={cn(
+                    vote.position === 'supports' ? 'text-pfc-green' :
+                    vote.position === 'opposes' ? 'text-pfc-red' : 'text-muted-foreground'
+                  )}
+                >
+                  {vote.position}
+                </span>
+                <span style={{ fontSize: 'var(--type-label-sm)' }} className="text-muted-foreground/50">({(vote.confidence * 100).toFixed(0)}%)</span>
+              </div>
+            ))}
+            <p style={{ fontSize: 'var(--type-body-sm)' }} className="text-muted-foreground mt-1 leading-relaxed">{arbitration.resolution}</p>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
     </div>
   );
 }

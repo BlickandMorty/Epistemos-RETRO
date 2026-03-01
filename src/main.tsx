@@ -2,6 +2,7 @@ import React, { lazy, Suspense, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from '@/components/theme-provider';
+import { THEME_LIST } from '@/hooks/use-theme';
 import { AppShell } from '@/components/layout/app-shell';
 import { setupTauriListeners } from '@/lib/tauri-bridge';
 import '@/styles/globals.css';
@@ -54,7 +55,7 @@ function App() {
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <BrowserRouter>
-      <ThemeProvider defaultTheme="dark" themes={['light', 'dark', 'oled', 'cosmic', 'sunny', 'sunset']}>
+      <ThemeProvider defaultTheme="dark" themes={THEME_LIST}>
         <App />
       </ThemeProvider>
     </BrowserRouter>

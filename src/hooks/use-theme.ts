@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, createContext, useContext } from 'react';
+import { readString, writeString } from '@/lib/storage-versioning';
 
 // ═══════════════════════════════════════════════════════════════════
 // Custom theme system — replaces next-themes for Vite/Tauri
@@ -11,11 +12,13 @@ import { useState, useEffect, useCallback, useRef, createContext, useContext } f
 
 const STORAGE_KEY = 'theme';
 
+export const THEME_LIST = ['light', 'dark', 'oled', 'cosmic', 'sunny', 'sunset'] as const;
+
 export interface ThemeContextValue {
   theme: string;
   resolvedTheme: string;
   setTheme: (theme: string) => void;
-  themes: string[];
+  themes: readonly string[];
 }
 
 export const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
@@ -25,24 +28,14 @@ function resolveSystemTheme(): 'light' | 'dark' {
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
-function getStoredTheme(defaultTheme: string): string {
-  if (typeof window === 'undefined') return defaultTheme;
-  try {
-    return localStorage.getItem(STORAGE_KEY) || defaultTheme;
-  } catch {
-    return defaultTheme;
-  }
-}
-
-function applyTheme(theme: string, attribute: string) {
+function applyTheme(theme: string, attribute: string, themes: readonly string[]) {
   const resolved = theme === 'system' ? resolveSystemTheme() : theme;
   const root = document.documentElement;
 
   if (attribute === 'class') {
-    // Remove all theme classes, add the current one
     root.className = root.className
       .split(' ')
-      .filter((c) => !['light', 'dark', 'oled', 'cosmic', 'sunny', 'sunset'].includes(c))
+      .filter((c) => !themes.includes(c))
       .concat(resolved)
       .join(' ')
       .trim();
@@ -55,38 +48,30 @@ function applyTheme(theme: string, attribute: string) {
 
 export function useThemeProvider(
   defaultTheme = 'dark',
-  themes = ['light', 'dark', 'oled', 'cosmic', 'sunny', 'sunset'],
+  themes: readonly string[] = THEME_LIST,
   attribute = 'class',
 ): ThemeContextValue {
-  const [theme, setThemeState] = useState(() => getStoredTheme(defaultTheme));
-  const themeRef = useRef(theme); // stable ref for event handlers
+  const [theme, setThemeState] = useState(() => readString(STORAGE_KEY) ?? defaultTheme);
+  const themeRef = useRef(theme);
+  const themesRef = useRef(themes);
   const [resolvedTheme, setResolvedTheme] = useState(() => {
-    const t = getStoredTheme(defaultTheme);
+    const t = readString(STORAGE_KEY) ?? defaultTheme;
     return t === 'system' ? resolveSystemTheme() : t;
   });
 
   const setTheme = useCallback(
     (newTheme: string) => {
       setThemeState(newTheme);
-      try {
-        localStorage.setItem(STORAGE_KEY, newTheme);
-      } catch {
-        // Quota exceeded or private browsing
-      }
-      const resolved = applyTheme(newTheme, attribute);
-      setResolvedTheme(resolved);
-
-      // Dispatch storage event for cross-tab sync
-      // (storage events only fire in *other* tabs, so we also dispatch a custom event for same-tab listeners)
+      writeString(STORAGE_KEY, newTheme);
       window.dispatchEvent(new CustomEvent('theme-change', { detail: newTheme }));
     },
-    [attribute],
+    [],
   );
 
-  // Apply theme on mount and changes
+  // Apply theme on mount and changes — single source of DOM application
   useEffect(() => {
     themeRef.current = theme;
-    const resolved = applyTheme(theme, attribute);
+    const resolved = applyTheme(theme, attribute, themesRef.current);
     setResolvedTheme(resolved);
   }, [theme, attribute]);
 
@@ -95,20 +80,20 @@ export function useThemeProvider(
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
     const handleChange = () => {
       if (themeRef.current === 'system') {
-        const resolved = applyTheme('system', attribute);
+        const resolved = applyTheme('system', attribute, themesRef.current);
         setResolvedTheme(resolved);
       }
     };
     mq.addEventListener('change', handleChange);
     return () => mq.removeEventListener('change', handleChange);
-  }, [attribute]); // themeRef is stable — no listener churn on theme change
+  }, [attribute]);
 
   // Cross-tab sync via storage events
   useEffect(() => {
     const handleStorage = (e: StorageEvent) => {
       if (e.key === STORAGE_KEY && e.newValue) {
         setThemeState(e.newValue);
-        const resolved = applyTheme(e.newValue, attribute);
+        const resolved = applyTheme(e.newValue, attribute, themesRef.current);
         setResolvedTheme(resolved);
       }
     };
@@ -116,7 +101,7 @@ export function useThemeProvider(
     return () => window.removeEventListener('storage', handleStorage);
   }, [attribute]);
 
-  return { theme, resolvedTheme, setTheme, themes };
+  return { theme, resolvedTheme, setTheme, themes: themes as readonly string[] };
 }
 
 export function useTheme(): ThemeContextValue {

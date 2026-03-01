@@ -37,7 +37,7 @@ export function GlassBubbleButton({
   children,
   onClick,
   active = false,
-  color = 'neutral',
+  color: _color = 'neutral',
   size = 'md',
   fullWidth = false,
   className,

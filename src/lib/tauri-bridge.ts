@@ -189,6 +189,10 @@ function mapTruthAssessment(raw: EnrichedPayload['truth_assessment']): TruthAsse
 // Idempotence guard — prevents duplicate listeners from React StrictMode double-mount
 let setupPromise: Promise<UnlistenFn> | null = null;
 
+export function resetTauriBridge() {
+  setupPromise = null;
+}
+
 export async function setupTauriListeners(): Promise<UnlistenFn> {
   if (setupPromise) return setupPromise;
   setupPromise = _setupTauriListeners();
@@ -196,198 +200,109 @@ export async function setupTauriListeners(): Promise<UnlistenFn> {
 }
 
 async function _setupTauriListeners(): Promise<UnlistenFn> {
-  const unlisteners: UnlistenFn[] = [];
+  const thisPromise = setupPromise;
 
-  // ── Chat streaming (Pass 1 text deltas) ──
-  unlisteners.push(
-    await listen<StreamChunk>('chat-stream', (event) => {
+  // All listeners are independent — register in parallel (batch IPC per CLAUDE.md)
+  const unlisteners = await Promise.all([
+    listen<StreamChunk>('chat-stream', (event) => {
       const store = usePFCStore.getState();
       const { text, done } = event.payload;
+      if (done) store.stopStreaming();
+      else if (text) store.appendStreamingText(text);
+    }),
 
-      if (done) {
-        store.stopStreaming();
-      } else if (text) {
-        store.appendStreamingText(text);
-      }
-    })
-  );
-
-  // ── Pipeline stage progress ──
-  // Uses advanceStage() from pipeline slice
-  unlisteners.push(
-    await listen<PipelineStageEvent>('pipeline://stage', (event) => {
+    listen<PipelineStageEvent>('pipeline://stage', (event) => {
       const { stage, status } = event.payload;
-      const store = usePFCStore.getState();
       const stageStatus = (status === 'Completed' || status === 'completed')
-        ? 'complete' as const
-        : 'active' as const;
-      store.advanceStage(stage as never, { status: stageStatus });
-    })
-  );
+        ? 'complete' as const : 'active' as const;
+      usePFCStore.getState().advanceStage(stage as never, { status: stageStatus });
+    }),
 
-  // ── Signal updates ──
-  // Uses applySignalUpdate() which handles all signal fields
-  unlisteners.push(
-    await listen<SignalPayload>('pipeline://signals', (event) => {
+    listen<SignalPayload>('pipeline://signals', (event) => {
       const s = event.payload;
       usePFCStore.getState().applySignalUpdate({
-        confidence: s.confidence,
-        entropy: s.entropy,
-        dissonance: s.dissonance,
-        healthScore: s.health_score,
-        riskScore: s.risk_score,
-        focusDepth: s.focus_depth,
-        temperatureScale: s.temperature_scale,
+        confidence: s.confidence, entropy: s.entropy, dissonance: s.dissonance,
+        healthScore: s.health_score, riskScore: s.risk_score,
+        focusDepth: s.focus_depth, temperatureScale: s.temperature_scale,
         activeConcepts: s.concepts,
       });
-    })
-  );
+    }),
 
-  // ── Deliberation (thinking tokens) ──
-  // Uses appendReasoningText() from message slice
-  unlisteners.push(
-    await listen<StreamChunk>('pipeline://deliberation', (event) => {
-      if (event.payload.text) {
-        usePFCStore.getState().appendReasoningText(event.payload.text);
-      }
-    })
-  );
+    listen<StreamChunk>('pipeline://deliberation', (event) => {
+      if (event.payload.text) usePFCStore.getState().appendReasoningText(event.payload.text);
+    }),
 
-  // ── Concepts extracted ──
-  // Uses updateConcepts() from pipeline slice (concepts, chord=1, harmony=0)
-  unlisteners.push(
-    await listen<string[]>('pipeline://concepts', (event) => {
+    listen<string[]>('pipeline://concepts', (event) => {
       usePFCStore.getState().updateConcepts(event.payload, 1, 0);
-    })
-  );
+    }),
 
-  // ── Enrichment complete (Pass 2+3 results) ──
-  unlisteners.push(
-    await listen<EnrichedPayload>('pipeline://enriched', (event) => {
+    listen<EnrichedPayload>('pipeline://enriched', (event) => {
       const store = usePFCStore.getState();
       const data = event.payload;
-
-      // Map Rust snake_case to our camelCase types
       const dualMessage = mapDualMessage(data.dual_message);
       const truthAssessment = mapTruthAssessment(data.truth_assessment);
       const confidence = truthAssessment.overallTruthLikelihood;
-
-      // Derive evidence grade from confidence
-      const grade = confidence >= 0.8 ? 'A'
-        : confidence >= 0.65 ? 'B'
-        : confidence >= 0.5 ? 'C'
-        : confidence >= 0.3 ? 'D'
-        : 'F';
-
+      const grade = confidence >= 0.8 ? 'A' : confidence >= 0.65 ? 'B'
+        : confidence >= 0.5 ? 'C' : confidence >= 0.3 ? 'D' : 'F';
       store.completeProcessing(dualMessage, confidence, grade, 'research', truthAssessment);
-    })
-  );
+    }),
 
-  // ── Pipeline errors ──
-  unlisteners.push(
-    await listen<string>('pipeline://error', (event) => {
-      usePFCStore.getState().addToast({
-        message: event.payload,
-        type: 'error',
-      });
-    })
-  );
+    listen<string>('pipeline://error', (event) => {
+      usePFCStore.getState().addToast({ message: event.payload, type: 'error' });
+    }),
 
-  // ── Physics frame (graph positions at 90Hz) ──
-  // Graph renderer will consume this when Bevy/wgpu surface is integrated.
-  unlisteners.push(
-    await listen<PhysicsFrame>('physics-frame', (_event) => {
-      // TODO: feed positions into graph canvas component
-    })
-  );
+    listen<PhysicsFrame>('physics-frame', () => { /* Phase 5: feed positions into graph */ }),
 
-  // ── FPS exploration mode frame (player HUD data) ──
-  unlisteners.push(
-    await listen<FpsFrame>('fps-frame', (_event) => {
-      // TODO: update FPS HUD (speedometer, proximity label, stabilization indicator)
-    })
-  );
+    listen<FpsFrame>('fps-frame', () => { /* Phase 5: update FPS HUD */ }),
 
-  // ── SOAR events (teaching stones, probe results) ──
-  unlisteners.push(
-    await listen<unknown>('pipeline://soar', (event) => {
+    listen<unknown>('pipeline://soar', (event) => {
       const store = usePFCStore.getState();
       const data = event.payload as Record<string, unknown>;
-
-      // ProbeComplete — notify user if at learning edge
       if (data.ProbeComplete) {
-        const probe = data.ProbeComplete as { at_edge: boolean; reason?: string };
-        if (probe.at_edge) {
-          store.addToast({ message: 'SOAR: Knowledge edge detected — teaching stones available', type: 'info' });
-        }
+        const probe = data.ProbeComplete as { at_edge: boolean };
+        if (probe.at_edge) store.addToast({ message: 'SOAR: Knowledge edge detected', type: 'info' });
       }
-
-      // StonePresented — could be rendered in a dedicated SOAR panel
       if (data.StonePresented) {
         const stone = data.StonePresented as { index: number; stone: { name: string } };
         store.addToast({ message: `SOAR Stone ${stone.index + 1}: ${stone.stone.name}`, type: 'info' });
       }
-    })
-  );
+    }),
 
-  // ── Chat title update (auto-generated from first exchange) ──
-  unlisteners.push(
-    await listen<{ chat_id: string; title: string }>('chat-title-update', (event) => {
+    listen<{ chat_id: string; title: string }>('chat-title-update', (event) => {
       const store = usePFCStore.getState();
       const { chat_id, title } = event.payload;
-      // Update thread title in the store if the method exists
       if ('updateThreadTitle' in store && typeof store.updateThreadTitle === 'function') {
         (store as Record<string, unknown> & { updateThreadTitle: (id: string, t: string) => void }).updateThreadTitle(chat_id, title);
       }
-    })
-  );
+    }),
 
-  // ── Chat stream replace (vault actions stripped from response) ──
-  unlisteners.push(
-    await listen<StreamChunk>('chat-stream-replace', (event) => {
+    listen<StreamChunk>('chat-stream-replace', (event) => {
       const store = usePFCStore.getState();
       if (event.payload.text) {
         store.clearStreamingText();
         store.appendStreamingText(event.payload.text);
       }
-    })
-  );
+    }),
 
-  // ── Note AI streaming (from generate_note_ai command) ──
-  unlisteners.push(
-    await listen<{ page_id: string; text: string; done: boolean; error?: boolean }>(
-      'note-ai-stream',
-      (event) => {
+    listen<{ page_id: string; text: string; done: boolean; error?: boolean }>(
+      'note-ai-stream', (event) => {
         const store = usePFCStore.getState();
         const { text, done, error } = event.payload;
-        if (error) {
-          store.addToast({ message: text, type: 'error' });
-        }
-        if (done) {
-          store.stopNoteAIGeneration();
-        } else if (text) {
-          store.appendNoteAIText(text);
-        }
+        if (error) store.addToast({ message: text, type: 'error' });
+        if (done) store.stopNoteAIGeneration();
+        else if (text) store.appendNoteAIText(text);
       }
-    )
-  );
+    ),
 
-  // ── Entity extraction progress ──
-  unlisteners.push(
-    await listen<ExtractionProgress>('extraction://progress', (event) => {
+    listen<ExtractionProgress>('extraction://progress', (event) => {
       const { phase, current, total } = event.payload;
-      usePFCStore.getState().addToast({
-        message: `${phase}: ${current}/${total}`,
-        type: 'info',
-      });
-    })
-  );
+      usePFCStore.getState().addToast({ message: `${phase}: ${current}/${total}`, type: 'info' });
+    }),
+  ]);
 
-  // Return combined cleanup function
   return () => {
-    for (const unlisten of unlisteners) {
-      unlisten();
-    }
-    setupPromise = null; // Allow re-setup after full cleanup
+    for (const unlisten of unlisteners) unlisten();
+    // Only reset if we're still the active setup (avoid TOCTOU with StrictMode)
+    if (setupPromise === thisPromise) setupPromise = null;
   };
 }

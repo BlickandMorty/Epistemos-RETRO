@@ -48,7 +48,7 @@ export interface PortalSliceActions {
 // Slice creator
 // ---------------------------------------------------------------------------
 
-export const createPortalSlice = (set: PFCSet, get: PFCGet) => ({
+export const createPortalSlice = (set: PFCSet, _get: PFCGet) => ({
   // --- initial state ---
   portalStack: [] as PortalViewData[],
   showPortal: false,

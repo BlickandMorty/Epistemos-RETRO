@@ -21,7 +21,7 @@ import {
   LightbulbIcon,
 } from 'lucide-react';
 import { getInferenceModeFeatures } from '@/lib/types';
-type RerouteInstruction = { type: 'focus' | 'explore' | 'adversarial' | 'bayesian' | 'synthesis' | 'meta' | 'minimize' };
+type RerouteInstruction = { type: 'focus' | 'explore' | 'adversarial' | 'bayesian' | 'synthesis' | 'meta' | 'minimize' | 'challenge' | 'synthesize' | 'simplify' };
 
 const REROUTE_OPTIONS: { type: RerouteInstruction['type']; label: string; icon: typeof FocusIcon; desc: string }[] = [
   { type: 'focus', label: 'Focus', icon: FocusIcon, desc: 'Narrow down on key evidence' },

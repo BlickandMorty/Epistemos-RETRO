@@ -19,7 +19,7 @@ export interface ToastSliceActions {
 let _toastId = 0;
 const _toastTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
-export const createToastSlice = (set: PFCSet, get: PFCGet) => ({
+export const createToastSlice = (set: PFCSet, _get: PFCGet) => ({
   toasts: [] as Toast[],
 
   addToast: (toast: Omit<Toast, 'id'>) => {

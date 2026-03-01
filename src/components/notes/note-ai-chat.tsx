@@ -333,13 +333,14 @@ export function NoteAIChat({ pageId, activeBlockId, isOpen, onClose, charPos }: 
   // ── Controlled vs internal expansion ──
   const [internalExpanded, setInternalExpanded] = useState(false);
   const isExpanded = isOpen ?? internalExpanded;
-  const setIsExpanded = onClose
+  // Expansion setter — used by child components when wired
+  void (onClose
     ? (v: boolean | ((prev: boolean) => boolean)) => {
         const next = typeof v === 'function' ? v(isExpanded) : v;
         if (!next && onClose) onClose();
         else setInternalExpanded(next);
       }
-    : setInternalExpanded;
+    : setInternalExpanded);
   const [inputValue, setInputValue] = useState('');
   const [copied, setCopied] = useState(false);
   const [hasResponse, setHasResponse] = useState(false);
@@ -365,7 +366,7 @@ export function NoteAIChat({ pageId, activeBlockId, isOpen, onClose, charPos }: 
   const learningSession = null as any;
   const learningStreamText = '';
   const learningAutoRun = false;
-  const startLearningSession = () => {};
+  const startLearningSession = (_depth: string, _passes: number) => {};
   const pauseLearningSession = () => {};
   const resumeLearningSession = () => {};
   const stopLearningSession = () => {};
@@ -1271,7 +1272,7 @@ function LearnStepIcon({ status, isDark }: { status: StepStatus; isDark: boolean
 function ActionButton({
   children,
   onClick,
-  isDark,
+  isDark: _isDark,
   inputBg,
   inputBorder,
   hoverBg,

@@ -278,7 +278,7 @@ export function Chat({ mode = 'landing' }: { mode?: 'landing' | 'conversation' }
   const apiKey = usePFCStore((s) => s.apiKey);
   const ollamaAvailable = usePFCStore((s) => s.ollamaAvailable);
   const chatMinimized = usePFCStore((s) => s.chatMinimized);
-  const setChatMinimized = usePFCStore((s) => s.setChatMinimized);
+  // const setChatMinimized = usePFCStore((s) => s.setChatMinimized);
   const clearMessages = usePFCStore((s) => s.clearMessages);
   const currentChatId = usePFCStore((s) => s.currentChatId);
   const { sendQuery, abort, pause, resume } = useChatStream();

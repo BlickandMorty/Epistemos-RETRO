@@ -14,11 +14,14 @@ interface SteeringConfig {
 interface SteeringStats {
   totalExemplars: number;
   positiveRate: number;
+  positiveCount: number;
+  negativeCount: number;
 }
 
 interface SteeringBias {
   steeringStrength: number;
   direction: number;
+  steeringSource: string;
 }
 
 interface SteeringDisplayState {
@@ -41,7 +44,7 @@ interface SteeringDisplayState {
   rateMessage: (synthesisKeyId: string, rating: number) => void;
 }
 
-export const useSteeringStore = create<SteeringDisplayState>((set, get) => ({
+export const useSteeringStore = create<SteeringDisplayState>((set, _get) => ({
   enabled: true,
   masterStrength: 0.5,
   steeringStrength: 0,
@@ -49,8 +52,8 @@ export const useSteeringStore = create<SteeringDisplayState>((set, get) => ({
 
   // Structured accessors — computed from raw state
   config: { enabled: true, masterStrength: 0.5 },
-  stats: { totalExemplars: 0, positiveRate: 0 },
-  currentBias: { steeringStrength: 0, direction: 0 },
+  stats: { totalExemplars: 0, positiveRate: 0, positiveCount: 0, negativeCount: 0 },
+  currentBias: { steeringStrength: 0, direction: 0, steeringSource: 'none' },
 
   toggleSteering: () => set((s) => {
     const enabled = !s.enabled;

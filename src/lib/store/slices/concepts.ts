@@ -19,7 +19,7 @@ export interface QueryConceptEntry {
   concepts: string[];
 }
 
-const MAX_CONCEPT_HISTORY = 100;
+// const MAX_CONCEPT_HISTORY = 100;
 
 // ---------------------------------------------------------------------------
 // State interface

@@ -32,10 +32,14 @@ export function useChatStream() {
     }
   }, []);
 
-  const abort = useCallback(() => {
+  const abort = useCallback(async () => {
     isStreamingRef.current = false;
     usePFCStore.getState().stopStreaming();
-    // TODO: invoke Rust abort command when implemented
+    try {
+      await commands.cancelQuery();
+    } catch {
+      // Best effort — if cancel fails, streaming already stopped on frontend
+    }
   }, []);
 
   const pause = useCallback(() => {

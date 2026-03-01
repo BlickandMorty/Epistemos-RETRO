@@ -40,9 +40,13 @@ export function useAssistantStream() {
     }
   }, []);
 
-  const abort = useCallback(() => {
+  const abort = useCallback(async () => {
     isStreamingRef.current = false;
-    // TODO: invoke Rust abort command when implemented
+    try {
+      await commands.cancelQuery();
+    } catch {
+      // Best effort
+    }
   }, []);
 
   return { sendQuery, abort };

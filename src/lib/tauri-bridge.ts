@@ -64,6 +64,126 @@ interface ExtractionProgress {
   total: number;
 }
 
+// ── Rust → TypeScript enrichment mapping ─────────────────────────
+
+/** Raw payload shape from Rust (snake_case, mirrors EnrichedData) */
+interface EnrichedPayload {
+  dual_message: {
+    raw_analysis: string;
+    epistemic_tags: { data: number; model: number; uncertain: number; conflict: number };
+    layman_summary?: {
+      what_was_tried: { label: string; content: string };
+      what_is_likely_true: { label: string; content: string };
+      confidence_explanation: { label: string; content: string };
+      what_could_change: { label: string; content: string };
+      who_should_trust: { label: string; content: string };
+    };
+    reflection?: {
+      self_critical_questions: string[];
+      adjustments: string[];
+      least_defensible_claim: string;
+      precision_vs_evidence_check: string;
+    };
+    arbitration?: {
+      consensus: boolean;
+      votes: Array<{ engine: string; position: string; reasoning: string; confidence: number }>;
+      disagreements: string[];
+      resolution: string;
+    };
+  };
+  truth_assessment: {
+    signal_interpretation: string;
+    overall_truth_likelihood: number;
+    weaknesses: string[];
+    improvements: string[];
+    blind_spots: string[];
+    confidence_calibration: string;
+    data_vs_model_balance: string;
+    recommended_actions: string[];
+  };
+}
+
+import type { DualMessage, TruthAssessment, LaymanSummary, ReflectionResult, ArbitrationResult } from '@/lib/types';
+
+function mapDualMessage(raw: EnrichedPayload['dual_message']): DualMessage {
+  const tags = raw.epistemic_tags;
+
+  // Build inline uncertainty tags from raw analysis text
+  const uncertaintyTags: Array<{ tag: string; claim: string }> = [];
+  for (const tagName of ['DATA', 'MODEL', 'UNCERTAIN', 'CONFLICT'] as const) {
+    const count = tags[tagName.toLowerCase() as keyof typeof tags];
+    for (let i = 0; i < count; i++) {
+      uncertaintyTags.push({ tag: tagName, claim: '' });
+    }
+  }
+
+  let laymanSummary: LaymanSummary | undefined;
+  if (raw.layman_summary) {
+    const ls = raw.layman_summary;
+    laymanSummary = {
+      whatWasTried: ls.what_was_tried.content,
+      whatIsLikelyTrue: ls.what_is_likely_true.content,
+      confidenceExplanation: ls.confidence_explanation.content,
+      whatCouldChange: ls.what_could_change.content,
+      whoShouldTrust: ls.who_should_trust.content,
+      sectionLabels: {
+        whatWasTried: ls.what_was_tried.label,
+        whatIsLikelyTrue: ls.what_is_likely_true.label,
+        confidenceExplanation: ls.confidence_explanation.label,
+        whatCouldChange: ls.what_could_change.label,
+        whoShouldTrust: ls.who_should_trust.label,
+      },
+    };
+  }
+
+  let reflection: ReflectionResult | undefined;
+  if (raw.reflection) {
+    reflection = {
+      selfCriticalQuestions: raw.reflection.self_critical_questions,
+      adjustments: raw.reflection.adjustments,
+      leastDefensibleClaim: raw.reflection.least_defensible_claim,
+      precisionVsEvidenceCheck: raw.reflection.precision_vs_evidence_check,
+    };
+  }
+
+  let arbitration: ArbitrationResult | undefined;
+  if (raw.arbitration) {
+    arbitration = {
+      consensus: raw.arbitration.consensus,
+      votes: raw.arbitration.votes.map((v) => ({
+        engine: v.engine,
+        position: v.position as 'supports' | 'opposes' | 'neutral',
+        reasoning: v.reasoning,
+        confidence: v.confidence,
+      })),
+      disagreements: raw.arbitration.disagreements,
+      resolution: raw.arbitration.resolution,
+    };
+  }
+
+  return {
+    rawAnalysis: raw.raw_analysis,
+    epistemicTags: tags,
+    laymanSummary,
+    reflection,
+    arbitration,
+    uncertaintyTags,
+  };
+}
+
+function mapTruthAssessment(raw: EnrichedPayload['truth_assessment']): TruthAssessment {
+  return {
+    signalInterpretation: raw.signal_interpretation,
+    overallTruthLikelihood: raw.overall_truth_likelihood,
+    weaknesses: raw.weaknesses,
+    improvements: raw.improvements,
+    blindSpots: raw.blind_spots,
+    confidenceCalibration: raw.confidence_calibration,
+    dataVsModelBalance: raw.data_vs_model_balance,
+    recommendedActions: raw.recommended_actions,
+  };
+}
+
 // ── Listener Setup ────────────────────────────────────────────────
 
 export async function setupTauriListeners(): Promise<UnlistenFn> {
@@ -133,13 +253,24 @@ export async function setupTauriListeners(): Promise<UnlistenFn> {
   );
 
   // ── Enrichment complete (Pass 2+3 results) ──
-  // Enrichment data is persisted to DB by Rust. This event signals the
-  // UI to refresh — full parsing will be added when the enrichment panel
-  // component is wired up.
   unlisteners.push(
-    await listen<unknown>('pipeline://enriched', (_event) => {
-      // TODO: parse enrichment payload and call finalizeMessage()
-      // with dualMessage, truthAssessment, confidence, grade, mode.
+    await listen<EnrichedPayload>('pipeline://enriched', (event) => {
+      const store = usePFCStore.getState();
+      const data = event.payload;
+
+      // Map Rust snake_case to our camelCase types
+      const dualMessage = mapDualMessage(data.dual_message);
+      const truthAssessment = mapTruthAssessment(data.truth_assessment);
+      const confidence = truthAssessment.overallTruthLikelihood;
+
+      // Derive evidence grade from confidence
+      const grade = confidence >= 0.8 ? 'A'
+        : confidence >= 0.65 ? 'B'
+        : confidence >= 0.5 ? 'C'
+        : confidence >= 0.3 ? 'D'
+        : 'F';
+
+      store.completeProcessing(dualMessage, confidence, grade, 'research', truthAssessment);
     })
   );
 
@@ -166,6 +297,70 @@ export async function setupTauriListeners(): Promise<UnlistenFn> {
     await listen<FpsFrame>('fps-frame', (_event) => {
       // TODO: update FPS HUD (speedometer, proximity label, stabilization indicator)
     })
+  );
+
+  // ── SOAR events (teaching stones, probe results) ──
+  unlisteners.push(
+    await listen<unknown>('pipeline://soar', (event) => {
+      const store = usePFCStore.getState();
+      const data = event.payload as Record<string, unknown>;
+
+      // ProbeComplete — notify user if at learning edge
+      if (data.ProbeComplete) {
+        const probe = data.ProbeComplete as { at_edge: boolean; reason?: string };
+        if (probe.at_edge) {
+          store.addToast({ message: 'SOAR: Knowledge edge detected — teaching stones available', type: 'info' });
+        }
+      }
+
+      // StonePresented — could be rendered in a dedicated SOAR panel
+      if (data.StonePresented) {
+        const stone = data.StonePresented as { index: number; stone: { name: string } };
+        store.addToast({ message: `SOAR Stone ${stone.index + 1}: ${stone.stone.name}`, type: 'info' });
+      }
+    })
+  );
+
+  // ── Chat title update (auto-generated from first exchange) ──
+  unlisteners.push(
+    await listen<{ chat_id: string; title: string }>('chat-title-update', (event) => {
+      const store = usePFCStore.getState();
+      const { chat_id, title } = event.payload;
+      // Update thread title in the store if the method exists
+      if ('updateThreadTitle' in store && typeof store.updateThreadTitle === 'function') {
+        (store as Record<string, unknown> & { updateThreadTitle: (id: string, t: string) => void }).updateThreadTitle(chat_id, title);
+      }
+    })
+  );
+
+  // ── Chat stream replace (vault actions stripped from response) ──
+  unlisteners.push(
+    await listen<StreamChunk>('chat-stream-replace', (event) => {
+      const store = usePFCStore.getState();
+      if (event.payload.text) {
+        store.clearStreamingText();
+        store.appendStreamingText(event.payload.text);
+      }
+    })
+  );
+
+  // ── Note AI streaming (from generate_note_ai command) ──
+  unlisteners.push(
+    await listen<{ page_id: string; text: string; done: boolean; error?: boolean }>(
+      'note-ai-stream',
+      (event) => {
+        const store = usePFCStore.getState();
+        const { text, done, error } = event.payload;
+        if (error) {
+          store.addToast({ message: text, type: 'error' });
+        }
+        if (done) {
+          store.stopNoteAIGeneration();
+        } else if (text) {
+          store.appendNoteAIText(text);
+        }
+      }
+    )
   );
 
   // ── Entity extraction progress ──

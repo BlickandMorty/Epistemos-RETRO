@@ -247,23 +247,54 @@ function connectNoteAISSE(set: PFCSet, get: PFCGet) {
 
   (async () => {
     try {
-      // TODO: Replace with Tauri invoke + event listener when Rust backend is ready
-      // For now, stub: mark generation as done immediately
       const { commands } = await import('@/lib/bindings');
-      // Will call a Rust command that handles note AI generation
-      void commands; void notePages; void noteBlocks; void inferenceConfig;
-      // Stub: no-op until Rust backend implements note AI
-      set((s) => ({
-        noteAI: { ...s.noteAI, isGenerating: false, generatedText: '(Note AI will be powered by Rust backend)' },
-      }));
+      void notePages; void noteBlocks; void inferenceConfig;
+
+      // Listen for streaming tokens from Rust backend
+      const { listen } = await import('@tauri-apps/api/event');
+      const unlisten = await listen<{ page_id: string; text: string; done: boolean; error?: boolean }>(
+        'note-ai-stream',
+        (event) => {
+          const { text, done, error } = event.payload;
+          if (error) {
+            set((s) => ({
+              noteAI: { ...s.noteAI, isGenerating: false, generatedText: s.noteAI.generatedText || text },
+            }));
+            return;
+          }
+          if (done) {
+            set((s) => ({
+              noteAI: { ...s.noteAI, isGenerating: false },
+            }));
+            unlisten();
+            return;
+          }
+          if (text) {
+            set((s) => ({
+              noteAI: { ...s.noteAI, generatedText: s.noteAI.generatedText + text },
+            }));
+            // Typewriter mode: append to the target block in real time
+            if (noteAI.writeToNote && noteAI.typewriterBlockId) {
+              set((s) => {
+                const blocks = [...s.noteBlocks];
+                const idx = blocks.findIndex((b: NoteBlock) => b.id === noteAI.typewriterBlockId);
+                if (idx >= 0) {
+                  blocks[idx] = { ...blocks[idx], content: blocks[idx].content + text };
+                  return { noteBlocks: blocks };
+                }
+                return {};
+              });
+            }
+          }
+        },
+      );
+
+      // Fire Rust command — it streams back via events above
+      const pageId = noteAI.targetPageId || '';
+      await commands.generateNoteAi(pageId, noteAI.prompt);
+
+      // Cleanup handled in listener above when done=true
       return;
-
-      // --- Original streaming code removed (was fetch-based) ---
-      const reader = null as any;
-      if (!reader) throw new Error('No response body');
-
-      const decoder = new TextDecoder();
-      let buffer = '';
 
       while (true) {
         const { done, value } = await reader.read();

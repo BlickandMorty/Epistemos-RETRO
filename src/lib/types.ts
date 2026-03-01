@@ -47,23 +47,68 @@ export interface SignalUpdate {
 export type AnalysisMode = 'research' | 'quick' | 'deep';
 export type EvidenceGrade = 'A' | 'B' | 'C' | 'D' | 'F' | 'N/A';
 
+export interface SummarySection {
+  label: string;
+  content: string;
+}
+
 export interface LaymanSummary {
+  whatWasTried: string;
   whatIsLikelyTrue: string;
-  whatIsUncertain: string;
-  whatToWatch: string;
+  confidenceExplanation: string;
+  whatCouldChange: string;
+  whoShouldTrust: string;
+  /** Adaptive section labels from the query type */
+  sectionLabels?: Record<string, string>;
+}
+
+export interface EpistemicTagCounts {
+  data: number;
+  model: number;
+  uncertain: number;
+  conflict: number;
+}
+
+export interface ReflectionResult {
+  selfCriticalQuestions: string[];
+  adjustments: string[];
+  leastDefensibleClaim: string;
+  precisionVsEvidenceCheck: string;
+}
+
+export interface ArbitrationVote {
+  engine: string;
+  position: 'supports' | 'opposes' | 'neutral';
+  reasoning: string;
+  confidence: number;
+}
+
+export interface ArbitrationResult {
+  consensus: boolean;
+  votes: ArbitrationVote[];
+  disagreements: string[];
+  resolution: string;
 }
 
 export interface DualMessage {
   rawAnalysis: string;
+  epistemicTags: EpistemicTagCounts;
   laymanSummary?: LaymanSummary;
+  reflection?: ReflectionResult;
+  arbitration?: ArbitrationResult;
+  /** Derived tag list for inline rendering */
+  uncertaintyTags: Array<{ tag: string; claim: string }>;
 }
 
 export interface TruthAssessment {
+  signalInterpretation: string;
   overallTruthLikelihood: number;
-  verdict: string;
-  strengths: string[];
   weaknesses: string[];
-  nuances: string[];
+  improvements: string[];
+  blindSpots: string[];
+  confidenceCalibration: string;
+  dataVsModelBalance: string;
+  recommendedActions: string[];
 }
 
 export interface FileAttachment {

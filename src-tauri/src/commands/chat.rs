@@ -110,10 +110,31 @@ pub async fn submit_query(
     }
 
     // ── Notes context (manifest + mentions) ──────────────────
+    let vault_manifest = {
+        let db = state.lock_db()?;
+        let pages = db.list_pages()?;
+        if pages.is_empty() {
+            None
+        } else {
+            let manifest_lines: Vec<String> = pages.iter()
+                .filter(|p| !p.is_archived)
+                .take(50) // cap for token budget
+                .map(|p| {
+                    let tags = if p.tags.is_empty() {
+                        String::new()
+                    } else {
+                        format!(" [{}]", p.tags.join(", "))
+                    };
+                    format!("- {}{}", p.title, tags)
+                })
+                .collect();
+            Some(format!("Your vault contains {} notes:\n{}", pages.len(), manifest_lines.join("\n")))
+        }
+    };
     let notes_context = chat_context::build_notes_context(
-        None, // TODO: vault manifest when watcher provides it
+        vault_manifest.as_deref(),
         &mentioned_notes,
-        &[], // TODO: track previously loaded notes per chat session
+        &[],
     );
 
     // ── Conversation history ─────────────────────────────────
@@ -477,6 +498,24 @@ pub async fn run_soar_stone(
         }
     });
 
+    Ok(())
+}
+
+/// Cancel the currently running enrichment pipeline (Passes 2+3).
+///
+/// Called from the frontend abort button. Pass 1 streaming may already
+/// be complete, but this ensures background enrichment stops immediately.
+#[tauri::command]
+#[specta::specta]
+pub async fn cancel_query(state: State<'_, AppState>) -> Result<(), AppError> {
+    let old_token = if let Ok(mut guard) = state.enrichment_cancel.lock() {
+        guard.take()
+    } else {
+        None
+    };
+    if let Some(token) = old_token {
+        token.cancel();
+    }
     Ok(())
 }
 

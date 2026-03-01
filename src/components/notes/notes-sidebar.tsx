@@ -33,8 +33,9 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 
+// GraphView will be rendered by Bevy + Rapier3D — not a React component
 const GraphView = lazy(() =>
-  import('@/components/notes/graph-view').then((m) => ({ default: m.GraphView })),
+  Promise.resolve({ default: () => <div className="flex items-center justify-center h-full text-muted-foreground">Graph renders on Bevy surface</div> }),
 );
 
 /* ------------------------------------------------------------------ */

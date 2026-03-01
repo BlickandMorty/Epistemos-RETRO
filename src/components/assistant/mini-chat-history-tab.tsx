@@ -44,13 +44,11 @@ export function HistoryTabContent({ isDark, textPrimary, textSecondary, btnHover
 
   useEffect(() => {
     let cancelled = false;
-    fetch('/api/history?userId=local-user')
-      .then((res) => res.ok ? res.json() : null)
-      .then((data) => {
-        if (!cancelled && data?.chats) setAllChats(data.chats);
-      })
-      .catch(() => {})
-      .finally(() => { if (!cancelled) setLoading(false); });
+    import('@/lib/bindings').then(({ commands }) =>
+      commands.listChats()
+    ).then((chats) => {
+      if (!cancelled) setAllChats(chats as any[]);
+    }).catch(() => {}).finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, []);
 
@@ -63,11 +61,10 @@ export function HistoryTabContent({ isDark, textPrimary, textSecondary, btnHover
   const openInThread = useCallback(async (chatId: string, title: string) => {
     setLoadingId(chatId);
     try {
-      const res = await fetch(`/api/history?chatId=${chatId}`);
-      if (!res.ok) return;
-      const data = await res.json();
-      if (!data.messages) return;
-      const messages = (data.messages as Array<{ role: string; text: string; timestamp: number }>).map((m) => ({
+      const { commands } = await import('@/lib/bindings');
+      const rawMessages = await commands.getMessages(chatId);
+      if (!rawMessages) return;
+      const messages = (rawMessages as Array<{ role: string; text: string; timestamp: number }>).map((m: any) => ({
         role: (m.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
         content: m.text || '',
         timestamp: m.timestamp || Date.now(),

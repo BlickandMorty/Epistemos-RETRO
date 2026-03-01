@@ -35,7 +35,7 @@ import {
 import { usePFCStore } from '@/lib/store/use-pfc-store';
 import { useAssistantStream } from '@/hooks/use-assistant-stream';
 import { useIsDark } from '@/hooks/use-is-dark';
-import { API_PROVIDERS } from '@/lib/engine/llm/config';
+import { API_PROVIDERS } from '@/lib/types';
 import type { MiniChatTab } from '@/lib/store/slices/ui';
 
 import { ChatTabContent } from './mini-chat-chat-tab';

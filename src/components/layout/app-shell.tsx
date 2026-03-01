@@ -12,9 +12,8 @@ import { StarField } from '../decorative/star-field';
 // code on every dev route change when these themes aren't even active
 const ThematicWallpaper = dynamic(() => import('../decorative/wallpapers/thematic').then(m => ({ default: m.ThematicWallpaper })), { ssr: false });
 const SunnyWallpaper = dynamic(() => import('../decorative/wallpapers/sunny').then(m => ({ default: m.SunnyWallpaper })), { ssr: false });
-import type { InferenceMode, ApiProvider } from '@/lib/engine/llm/config';
-import type { ResearchPaper } from '@/lib/research/types';
-import { detectDevice, cacheDeviceProfile } from '@/lib/device-detection';
+import type { InferenceMode, ApiProvider } from '@/lib/types';
+import { detectDevice } from '@/lib/device-detection';
 import { ToastContainer } from '../shared/toast-container';
 import { MiniChat } from '../assistant/mini-chat';
 import { PageTransition } from './page-transition';
@@ -96,23 +95,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     const storedOllamaModel = ls('pfc-ollama-model');
     if (storedOllamaModel) setOllamaModel(storedOllamaModel);
 
-    // --- Detect and cache device profile ---
-    const profile = detectDevice();
-    cacheDeviceProfile(profile);
-
-    // --- Load research papers (batch to avoid per-paper re-renders) ---
-    try {
-      const storedPapers = ls('pfc-research-papers');
-      if (storedPapers) {
-        const papers = JSON.parse(storedPapers) as ResearchPaper[];
-        if (papers.length > 0) {
-          const store = usePFCStore.getState();
-          for (const paper of papers) {
-            store.addResearchPaper(paper);
-          }
-        }
-      }
-    } catch { /* ignore corrupt data */ }
+    // --- Detect device profile ---
+    detectDevice();
 
     // SAFETY: One-time mount hydration from localStorage. All setters are stable
     // Zustand actions that never change identity. Re-running would overwrite user

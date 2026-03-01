@@ -8,21 +8,17 @@ import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import { onStoreEvent } from './events';
 import { STAGES, STAGE_LABELS } from '@/lib/constants';
-import type { StageResult, StageStatus, TruthAssessment } from '@/lib/engine/types';
+import type { StageResult, StageStatus, TruthAssessment } from '@/lib/types';
 
 // Slice creators
 import { createMessageSlice } from './slices/message';
 import { createPipelineSlice } from './slices/pipeline';
 import { createInferenceSlice } from './slices/inference';
 import { createControlsSlice } from './slices/controls';
-import { createCortexSlice } from './slices/cortex';
 import { createConceptsSlice } from './slices/concepts';
-import { createResearchSlice } from './slices/research';
 import { createPortalSlice } from './slices/portal';
 import { createUISlice } from './slices/ui';
 import { createNotesSlice } from './slices/notes';
-import { createLearningSlice } from './slices/learning';
-import { createSOARSlice } from './slices/soar';
 import { createToastSlice } from './slices/toast';
 
 // Slice types — local imports for composition
@@ -30,20 +26,14 @@ import type { MessageSliceState, MessageSliceActions } from './slices/message';
 import type { PipelineSliceState, PipelineSliceActions } from './slices/pipeline';
 import type { InferenceSliceState, InferenceSliceActions } from './slices/inference';
 import type { ControlsSliceState, ControlsSliceActions } from './slices/controls';
-
-import type { CortexSliceState, CortexSliceActions } from './slices/cortex';
 import type { ConceptsSliceState, ConceptsSliceActions } from './slices/concepts';
-import type { ResearchSliceState, ResearchSliceActions } from './slices/research';
 import type { PortalSliceState, PortalSliceActions } from './slices/portal';
 import type { UISliceState, UISliceActions } from './slices/ui';
 import type { NotesSliceState, NotesSliceActions } from './slices/notes';
-import type { LearningSliceState, LearningSliceActions } from './slices/learning';
-import type { SOARSliceState, SOARSliceActions } from './slices/soar';
 import type { ToastSliceState, ToastSliceActions } from './slices/toast';
 
 // Re-export selected slice types used outside the store
 export type { SignalHistoryEntry } from './slices/pipeline';
-export type { CortexSnapshot } from './slices/cortex';
 export type { ConceptWeight } from './slices/concepts';
 export type { MiniChatTab } from './slices/ui';
 
@@ -63,14 +53,10 @@ export type PFCStoreState =
   & PipelineSliceState
   & InferenceSliceState
   & ControlsSliceState
-  & CortexSliceState
   & ConceptsSliceState
-  & ResearchSliceState
   & PortalSliceState
   & UISliceState
   & NotesSliceState
-  & LearningSliceState
-  & SOARSliceState
   & ToastSliceState;
 
 export type PFCStoreActions =
@@ -78,14 +64,10 @@ export type PFCStoreActions =
   & PipelineSliceActions
   & InferenceSliceActions
   & ControlsSliceActions
-  & CortexSliceActions
   & ConceptsSliceActions
-  & ResearchSliceActions
   & PortalSliceActions
   & UISliceActions
   & NotesSliceActions
-  & LearningSliceActions
-  & SOARSliceActions
   & ToastSliceActions
   & { reset: () => void };
 
@@ -102,14 +84,10 @@ export const usePFCStore = create<PFCState>()(
     ...createPipelineSlice(set, get),
     ...createInferenceSlice(set, get),
     ...createControlsSlice(set, get),
-    ...createCortexSlice(set, get),
     ...createConceptsSlice(set, get),
-    ...createResearchSlice(set, get),
     ...createPortalSlice(set, get),
     ...createUISlice(set, get),
     ...createNotesSlice(set, get),
-    ...createLearningSlice(set, get),
-    ...createSOARSlice(set, get),
     ...createToastSlice(set, get),
 
     // Global reset — preserves tier settings, cortex, and codebase analyses
@@ -159,11 +137,6 @@ export const usePFCStore = create<PFCState>()(
         controls: freshControls.controls,
         userSignalOverrides: freshControls.userSignalOverrides,
 
-        // Reset research
-        researchPapers: [],
-        currentCitations: [],
-        pendingReroute: null,
-
         // Reset portal
         portalStack: freshPortal.portalStack,
         showPortal: freshPortal.showPortal,
@@ -184,12 +157,6 @@ export const usePFCStore = create<PFCState>()(
         conceptWeights: {},
         queryConceptHistory: [],
 
-        // Reset learning (preserve history)
-        learningSession: null,
-        learningStreamText: '',
-
-        // Reset SOAR (preserve config)
-        soarSession: null,
       });
     },
   })),

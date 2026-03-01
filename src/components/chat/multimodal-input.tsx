@@ -301,8 +301,8 @@ interface MultimodalInputProps {
 // Stable selectors
 const selectToggleLiveControls = (s: { toggleLiveControls: () => void }) => s.toggleLiveControls;
 const selectLiveControlsOpen = (s: { liveControlsOpen: boolean }) => s.liveControlsOpen;
-const selectControls = (s: { controls: import('@/lib/engine/types').PipelineControls }) => s.controls;
-const selectPendingAttachments = (s: { pendingAttachments: import('@/lib/engine/types').FileAttachment[] }) => s.pendingAttachments;
+const selectControls = (s: { controls: import('@/lib/types').PipelineControls }) => s.controls;
+const selectPendingAttachments = (s: { pendingAttachments: import('@/lib/types').FileAttachment[] }) => s.pendingAttachments;
 const selectRemoveAttachment = (s: { removeAttachment: (id: string) => void }) => s.removeAttachment;
 
 export function MultimodalInput({

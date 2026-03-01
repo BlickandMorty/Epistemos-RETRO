@@ -9,7 +9,7 @@ import { MessageResearch } from './message-research';
 import { TruthBotCard } from './truth-bot-card';
 import { ThinkingAccordion } from './thinking-accordion';
 import { MarkdownContent } from '../shared/markdown';
-import type { ChatMessage } from '@/lib/engine/types';
+import type { ChatMessage } from '@/lib/types';
 import {
   UserIcon,
   ChevronDownIcon,

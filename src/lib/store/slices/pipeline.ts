@@ -4,10 +4,9 @@ import type {
   StageResult,
   StageStatus,
   TDASnapshot,
-  SafetyState,
   SignalUpdate,
-} from '@/lib/engine/types';
-import type { PipelineStage } from '@/lib/constants';
+} from '@/lib/types';
+import type { PipelineStage, SafetyState } from '@/lib/constants';
 import { STAGES, STAGE_LABELS } from '@/lib/constants';
 import type { PFCSet, PFCGet } from '../use-pfc-store';
 

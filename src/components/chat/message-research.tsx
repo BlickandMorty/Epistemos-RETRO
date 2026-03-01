@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { DualMessage } from '@/lib/engine/types';
+import type { DualMessage } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronDownIcon } from 'lucide-react';

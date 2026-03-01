@@ -12,7 +12,7 @@ import {
   CpuIcon,
   CloudIcon,
 } from 'lucide-react';
-import { getInferenceModeFeatures } from '@/lib/research/types';
+import { getInferenceModeFeatures } from '@/lib/types';
 
 interface ResearchModeBarProps {
   isDark: boolean;

@@ -21,8 +21,8 @@ import {
 } from 'lucide-react';
 
 import { usePFCStore } from '@/lib/store/use-pfc-store';
-import { API_PROVIDERS, OPENAI_MODELS, ANTHROPIC_MODELS, GOOGLE_MODELS } from '@/lib/engine/llm/config';
-import type { ApiProvider } from '@/lib/engine/llm/config';
+import { API_PROVIDERS, OPENAI_MODELS, ANTHROPIC_MODELS, GOOGLE_MODELS } from '@/lib/types';
+import type { ApiProvider } from '@/lib/types';
 import type { ChatThread, AssistantMessage } from '@/lib/store/slices/ui';
 import type { ChatEntry } from '@/components/chat/recent-chats';
 import { parseTimestamp, formatRelativeTime } from '@/components/chat/recent-chats';
@@ -355,25 +355,23 @@ function EmptyStateWithRecent({ isDark, textPrimary, textSecondary, btnHover }: 
 
   useEffect(() => {
     let cancelled = false;
-    fetch('/api/history?userId=local-user')
-      .then((res) => res.ok ? res.json() : null)
-      .then((data) => {
-        if (!cancelled && data?.chats) setRecentChats(data.chats.slice(0, 5));
-      })
-      .catch(() => {});
+    import('@/lib/bindings').then(({ commands }) =>
+      commands.listChats()
+    ).then((chats) => {
+      if (!cancelled) setRecentChats((chats as any[]).slice(0, 5));
+    }).catch(() => {});
     return () => { cancelled = true; };
   }, []);
 
   const openChat = useCallback(async (chatId: string, title: string) => {
     setLoadingId(chatId);
     try {
-      const res = await fetch(`/api/history?chatId=${chatId}`);
-      if (!res.ok) return;
-      const data = await res.json();
-      if (!data.messages) return;
+      const { commands } = await import('@/lib/bindings');
+      const rawMessages = await commands.getMessages(chatId);
+      if (!rawMessages) return;
 
       // Convert ChatMessage[] → AssistantMessage[] for the mini-chat thread
-      const messages = (data.messages as Array<{ role: string; text: string; timestamp: number }>).map((m) => ({
+      const messages = (rawMessages as Array<{ role: string; text: string; timestamp: number }>).map((m: any) => ({
         role: (m.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
         content: m.text || '',
         timestamp: m.timestamp || Date.now(),

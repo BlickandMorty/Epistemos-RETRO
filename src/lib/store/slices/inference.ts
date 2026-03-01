@@ -7,8 +7,8 @@ import type {
   OpenAIModel,
   AnthropicModel,
   GoogleModel,
-} from '@/lib/engine/llm/config';
-import type { OllamaHardwareStatus } from '@/lib/engine/llm/ollama';
+  OllamaHardwareStatus,
+} from '@/lib/types';
 import type { PFCSet, PFCGet } from '../use-pfc-store';
 
 // ---------------------------------------------------------------------------

@@ -106,13 +106,13 @@ export function NotesTabContent({ isDark, glassBorder, textPrimary, textSecondar
   const updateBlockContent = usePFCStore((s) => s.updateBlockContent);
   const pushTransaction = usePFCStore((s) => s.pushTransaction);
 
-  // Learn actions
-  const learningSession = usePFCStore((s) => s.learningSession);
-  const learningStreamText = usePFCStore((s) => s.learningStreamText);
-  const startLearningSession = usePFCStore((s) => s.startLearningSession);
-  const pauseLearningSession = usePFCStore((s) => s.pauseLearningSession);
-  const resumeLearningSession = usePFCStore((s) => s.resumeLearningSession);
-  const stopLearningSession = usePFCStore((s) => s.stopLearningSession);
+  // Learn actions — stubbed (will come from Rust backend)
+  const learningSession = null as any;
+  const learningStreamText = '';
+  const startLearningSession = () => {};
+  const pauseLearningSession = () => {};
+  const resumeLearningSession = () => {};
+  const stopLearningSession = () => {};
 
   const isGenerating = noteAI?.isGenerating ?? false;
   const generatedText = noteAI?.generatedText ?? '';

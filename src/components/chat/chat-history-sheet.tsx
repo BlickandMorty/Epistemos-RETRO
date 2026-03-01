@@ -87,10 +87,9 @@ export function ChatsSidePanel({ isDark, isOled, isCosmic, isSunny, isSunset, on
     let cancelled = false;
     async function fetchChats() {
       try {
-        const res = await fetch('/api/history?userId=local-user');
-        if (!res.ok) return;
-        const data = await res.json();
-        if (!cancelled && data.chats) setChats(data.chats);
+        const { commands } = await import('@/lib/bindings');
+        const chats = await commands.listChats();
+        if (!cancelled) setChats(chats as any[]);
       } catch { /* ignore */ } finally {
         if (!cancelled) setLoaded(true);
       }
@@ -416,10 +415,9 @@ export function ChatsOverlay({ isDark, isOled, isCosmic, isSunny, onClose }: {
     async function fetchChats() {
       try {
         setFetchError(false);
-        const res = await fetch('/api/history?userId=local-user');
-        if (!res.ok) { if (!cancelled) setFetchError(true); return; }
-        const data = await res.json();
-        if (!cancelled && data.chats) setChats(data.chats);
+        const { commands } = await import('@/lib/bindings');
+        const chats = await commands.listChats();
+        if (!cancelled) setChats(chats as any[]);
       } catch { if (!cancelled) setFetchError(true); }
     }
     fetchChats();

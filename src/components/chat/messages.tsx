@@ -3,7 +3,7 @@
 import { memo } from 'react';
 import { usePFCStore } from '@/lib/store/use-pfc-store';
 import { Message } from './message';
-import type { ChatMessage } from '@/lib/engine/types';
+import type { ChatMessage } from '@/lib/types';
 import { StreamingText } from './streaming-text';
 import { ThinkingAccordion } from './thinking-accordion';
 import { useScrollToBottom } from '@/hooks/use-scroll-to-bottom';

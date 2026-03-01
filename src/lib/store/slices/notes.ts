@@ -247,24 +247,19 @@ function connectNoteAISSE(set: PFCSet, get: PFCGet) {
 
   (async () => {
     try {
-      const response = await fetch('/api/notes/ai', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          pages: notePages,
-          blocks: noteBlocks,
-          prompt: noteAI.prompt,
-          targetBlockId: noteAI.targetBlockId,
-          inferenceConfig,
-        }),
-        signal: controller.signal,
-      });
+      // TODO: Replace with Tauri invoke + event listener when Rust backend is ready
+      // For now, stub: mark generation as done immediately
+      const { commands } = await import('@/lib/bindings');
+      // Will call a Rust command that handles note AI generation
+      void commands; void notePages; void noteBlocks; void inferenceConfig;
+      // Stub: no-op until Rust backend implements note AI
+      set((s) => ({
+        noteAI: { ...s.noteAI, isGenerating: false, generatedText: '(Note AI will be powered by Rust backend)' },
+      }));
+      return;
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const reader = response.body?.getReader();
+      // --- Original streaming code removed (was fetch-based) ---
+      const reader = null as any;
       if (!reader) throw new Error('No response body');
 
       const decoder = new TextDecoder();

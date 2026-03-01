@@ -363,17 +363,17 @@ export function NoteAIChat({ pageId, activeBlockId, isOpen, onClose, charPos }: 
   const pushTransaction = usePFCStore((s) => s.pushTransaction);
   const noteBlocks = usePFCStore((s) => s.noteBlocks);
 
-  // ── Store state — AI Learn ──
-  const learningSession = usePFCStore((s) => s.learningSession);
-  const learningStreamText = usePFCStore((s) => s.learningStreamText);
-  const learningAutoRun = usePFCStore((s) => s.learningAutoRun);
-  const startLearningSession = usePFCStore((s) => s.startLearningSession);
-  const pauseLearningSession = usePFCStore((s) => s.pauseLearningSession);
-  const resumeLearningSession = usePFCStore((s) => s.resumeLearningSession);
-  const stopLearningSession = usePFCStore((s) => s.stopLearningSession);
-  const setLearningAutoRun = usePFCStore((s) => s.setLearningAutoRun);
-  const schedulerConfig = usePFCStore((s) => s.schedulerConfig);
-  const updateSchedulerConfig = usePFCStore((s) => s.updateSchedulerConfig);
+  // ── Learning — stubbed (will come from Rust backend) ──
+  const learningSession = null as any;
+  const learningStreamText = '';
+  const learningAutoRun = false;
+  const startLearningSession = () => {};
+  const pauseLearningSession = () => {};
+  const resumeLearningSession = () => {};
+  const stopLearningSession = () => {};
+  const setLearningAutoRun = (_v: boolean) => {};
+  const schedulerConfig = { enabled: false, intervalMinutes: 30, maxDuration: 300 };
+  const updateSchedulerConfig = (_c: any) => {};
   const [learnDepth, setLearnDepth] = useState<LearningDepth>('moderate');
 
   // ── Derived learning state ──

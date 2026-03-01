@@ -13,7 +13,7 @@ import { ErrorBoundary } from '../layout/error-boundary';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useIsDark } from '@/hooks/use-is-dark';
-import { getInferenceModeFeatures } from '@/lib/research/types';
+import { getInferenceModeFeatures } from '@/lib/types';
 import { CloudIcon, MonitorIcon, ArrowLeftIcon, MessageSquareIcon, ExternalLinkIcon, ZapIcon, DownloadIcon, LockIcon, SettingsIcon } from 'lucide-react';
 import { GreetingTypewriter, SearchBarPlaceholder } from './greeting-typewriter';
 import { ChatsSidePanel, ChatsOverlay } from './chat-history-sheet';

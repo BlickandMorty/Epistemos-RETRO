@@ -61,12 +61,9 @@ function RecentChatsBase({ isDark, isOled, onShowAll }: RecentChatsProps) {
 
     async function fetchChats() {
       try {
-        const res = await fetch('/api/history?userId=local-user');
-        if (!res.ok) throw new Error('Failed to fetch');
-        const data = await res.json();
-        if (!cancelled && data.chats) {
-          setAllChats(data.chats);
-        }
+        const { commands } = await import('@/lib/bindings');
+        const chats = await commands.listChats();
+        if (!cancelled) setAllChats(chats as any[]);
       } catch {
         // Silently fail
       } finally {

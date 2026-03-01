@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, memo } from 'react';
-import type { TruthAssessment } from '@/lib/engine/types';
+import type { TruthAssessment } from '@/lib/types';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ShieldCheckIcon, ChevronDownIcon } from 'lucide-react';
 import { useIsDark } from '@/hooks/use-is-dark';

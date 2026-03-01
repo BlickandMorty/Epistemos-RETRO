@@ -1,8 +1,7 @@
 'use client';
 
-import type { TruthAssessment } from '@/lib/engine/types';
+import type { TruthAssessment, ApiProvider } from '@/lib/types';
 import type { NoteBlock } from '@/lib/notes/types';
-import type { ApiProvider } from '@/lib/engine/llm/config';
 import type { PFCSet, PFCGet } from '../use-pfc-store';
 
 // ---------------------------------------------------------------------------

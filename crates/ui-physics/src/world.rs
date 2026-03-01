@@ -48,11 +48,11 @@ pub struct PhysicsConfig {
 impl Default for PhysicsConfig {
     fn default() -> Self {
         Self {
-            spring_rest_length: 80.0,
-            spring_stiffness: 0.5,
-            damping: 0.85,
-            gravity_strength: 0.02,
-            mass_per_weight: 1.0,
+            spring_rest_length: 150.0,  // Wide spacing — nodes breathe
+            spring_stiffness: 0.3,      // Soft springs — glide, don't snap
+            damping: 0.55,              // Low drag — nodes drift smoothly into place
+            gravity_strength: 0.015,    // Gentle centering — no harsh pull
+            mass_per_weight: 1.5,       // Heavier = more inertia = calmer movement
             settle_threshold: 0.1,
             target_fps: 90,
         }
@@ -185,8 +185,8 @@ impl PhysicsWorld {
 
             // Ball collider for repulsion (nodes push each other apart).
             let collider = ColliderBuilder::ball(radius)
-                .restitution(0.0)
-                .friction(0.5)
+                .restitution(0.1)   // Soft bounce, not dead stop
+                .friction(0.05)     // Near-zero — nodes slide past each other
                 .build();
             self.collider_set.insert_with_parent(collider, body_handle, &mut self.rigid_body_set);
 
@@ -216,7 +216,7 @@ impl PhysicsWorld {
             // Guard: high config damping (>2) → joint damping > 1.0 → adds energy, destabilizes.
             let safe_weight = (edge.weight as f32).max(0.1);
             let rest_length = self.config.spring_rest_length.max(1.0) / safe_weight.sqrt().max(0.5);
-            let stiffness = (self.config.spring_stiffness.max(0.01) * safe_weight).min(50.0);
+            let stiffness = (self.config.spring_stiffness.max(0.01) * safe_weight).min(20.0);
             let joint_damping = (self.config.damping * 0.5).clamp(0.0, 1.0);
 
             let joint = SpringJointBuilder::new(rest_length, stiffness, joint_damping)
@@ -243,8 +243,8 @@ impl PhysicsWorld {
     }
 
     /// Maximum velocity magnitude for graph-layout mode.
-    /// Prevents spring-explosion artifacts when nodes are far apart.
-    const MAX_GRAPH_VELOCITY: f32 = 500.0;
+    /// Keeps initial spread calm — nodes drift into place, not rocket.
+    const MAX_GRAPH_VELOCITY: f32 = 300.0;
 
     /// Graph-layout step: spring joints + central gravity + velocity clamping.
     fn step_graph(&mut self) {

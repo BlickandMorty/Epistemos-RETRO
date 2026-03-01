@@ -376,8 +376,6 @@ fn fps_player_spawns_near_nodes() {
 
 #[test]
 fn zero_world_scale_does_not_corrupt_physics() {
-    use crate::fps_mode::FpsConfig;
-
     let store = simple_graph();
     let mut world = PhysicsWorld::new(PhysicsConfig::default());
     world.load_from_graph(&store);

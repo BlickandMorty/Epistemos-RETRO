@@ -7,12 +7,17 @@ export interface LearningSession {
   steps: LearningStep[];
   currentStep: number;
   isComplete: boolean;
+  status: 'active' | 'paused' | 'complete';
   createdAt: number;
 }
 
 export interface LearningStep {
+  id: string;
+  title: string;
   type: 'clarify' | 'frameworks' | 'empirical';
+  status: 'pending' | 'active' | 'complete' | 'skipped';
   prompt: string;
   response?: string;
   score?: number;
+  insights?: string[];
 }

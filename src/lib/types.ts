@@ -98,6 +98,8 @@ export interface DualMessage {
   arbitration?: ArbitrationResult;
   /** Derived tag list for inline rendering */
   uncertaintyTags: Array<{ tag: string; claim: string }>;
+  /** Model vs. data tension flags from consolidated enrichment */
+  modelVsDataFlags?: Array<{ source: string; claim: string }>;
 }
 
 export interface TruthAssessment {
@@ -118,6 +120,8 @@ export interface FileAttachment {
   uri: string;
   size: number;
   mimeType?: string;
+  /** Data URL preview for images */
+  preview?: string;
 }
 
 export interface ChatMessage {
@@ -174,30 +178,30 @@ export interface OllamaHardwareStatus {
 
 // ── Provider/Model lists for settings dropdowns ──────────────────
 
-export const API_PROVIDERS: { id: ApiProvider; label: string }[] = [
-  { id: 'openai', label: 'OpenAI' },
-  { id: 'anthropic', label: 'Anthropic' },
-  { id: 'google', label: 'Google' },
+export const API_PROVIDERS: { id: ApiProvider; label: string; value: ApiProvider; color: string }[] = [
+  { id: 'openai', label: 'OpenAI', value: 'openai', color: '#10A37F' },
+  { id: 'anthropic', label: 'Anthropic', value: 'anthropic', color: '#D4A574' },
+  { id: 'google', label: 'Google', value: 'google', color: '#4285F4' },
 ];
 
-export const OPENAI_MODELS: { id: OpenAIModel; label: string }[] = [
-  { id: 'gpt-4o', label: 'GPT-4o' },
-  { id: 'gpt-4o-mini', label: 'GPT-4o Mini' },
-  { id: 'o1', label: 'o1' },
-  { id: 'o1-mini', label: 'o1 Mini' },
-  { id: 'o3-mini', label: 'o3 Mini' },
+export const OPENAI_MODELS: { id: OpenAIModel; label: string; value: OpenAIModel }[] = [
+  { id: 'gpt-4o', label: 'GPT-4o', value: 'gpt-4o' },
+  { id: 'gpt-4o-mini', label: 'GPT-4o Mini', value: 'gpt-4o-mini' },
+  { id: 'o1', label: 'o1', value: 'o1' },
+  { id: 'o1-mini', label: 'o1 Mini', value: 'o1-mini' },
+  { id: 'o3-mini', label: 'o3 Mini', value: 'o3-mini' },
 ];
 
-export const ANTHROPIC_MODELS: { id: AnthropicModel; label: string }[] = [
-  { id: 'claude-sonnet-4-20250514', label: 'Claude Sonnet 4' },
-  { id: 'claude-opus-4-20250514', label: 'Claude Opus 4' },
-  { id: 'claude-haiku-3-20250401', label: 'Claude Haiku 3' },
+export const ANTHROPIC_MODELS: { id: AnthropicModel; label: string; value: AnthropicModel }[] = [
+  { id: 'claude-sonnet-4-20250514', label: 'Claude Sonnet 4', value: 'claude-sonnet-4-20250514' },
+  { id: 'claude-opus-4-20250514', label: 'Claude Opus 4', value: 'claude-opus-4-20250514' },
+  { id: 'claude-haiku-3-20250401', label: 'Claude Haiku 3', value: 'claude-haiku-3-20250401' },
 ];
 
-export const GOOGLE_MODELS: { id: GoogleModel; label: string }[] = [
-  { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
-  { id: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
-  { id: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
+export const GOOGLE_MODELS: { id: GoogleModel; label: string; value: GoogleModel }[] = [
+  { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', value: 'gemini-2.5-flash' },
+  { id: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro', value: 'gemini-2.5-pro' },
+  { id: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash', value: 'gemini-2.0-flash' },
 ];
 
 // ── Inference mode feature flags (stub — will come from Rust) ────
@@ -207,9 +211,26 @@ export interface InferenceModeFeatures {
   canReason: boolean;
   canReroute: boolean;
   canSteer: boolean;
+  /** Whether play/pause thinking controls are available */
+  playPause: boolean;
+  /** Short hint text about the current inference mode */
+  modeHint: string;
+  /** Display label for the current mode */
+  modeLabel: string;
+  /** Whether thinking can be rerouted to a different model */
+  rerouteThinking: boolean;
 }
 
-export function getInferenceModeFeatures(_mode: InferenceMode): InferenceModeFeatures {
-  // All features enabled — Rust backend handles capability detection
-  return { canStream: true, canReason: true, canReroute: true, canSteer: true };
+export function getInferenceModeFeatures(mode: InferenceMode): InferenceModeFeatures {
+  const isLocal = mode === 'local';
+  return {
+    canStream: true,
+    canReason: true,
+    canReroute: !isLocal,
+    canSteer: true,
+    playPause: isLocal,
+    modeHint: isLocal ? 'Local inference' : 'Cloud API',
+    modeLabel: isLocal ? 'Local' : 'Cloud',
+    rerouteThinking: !isLocal,
+  };
 }

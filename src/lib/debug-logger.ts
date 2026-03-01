@@ -5,7 +5,7 @@
  * In production: only warn and error output (info/debug are silenced).
  */
 
-const isDev = process.env.NODE_ENV === 'development';
+const isDev = import.meta.env.DEV;
 
 export const logger = {
   /** Debug-level: only in development. For verbose tracing. */

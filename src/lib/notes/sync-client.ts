@@ -11,16 +11,16 @@ export async function loadVaultsFromDb(): Promise<Vault[]> {
   return [];
 }
 
-export async function loadVaultDataFromDb(_vaultId: string): Promise<{ pages: unknown[]; blocks: unknown[] }> {
-  return { pages: [], blocks: [] };
+export async function loadVaultDataFromDb(_vaultId: string): Promise<{ pages: unknown[]; blocks: unknown[]; books: unknown[]; concepts: unknown[]; pageLinks: unknown[] }> {
+  return { pages: [], blocks: [], books: [], concepts: [], pageLinks: [] };
 }
 
 export async function syncVaultToServer(_vaultId: string): Promise<void> {
   // no-op until Phase 2
 }
 
-export async function migrateToSqlite(): Promise<void> {
-  // no-op until Phase 2
+export async function migrateToSqlite(_payload?: unknown): Promise<{ ok: boolean; skipped: boolean }> {
+  return { ok: true, skipped: true }; // no-op until Phase 2
 }
 
 export async function upsertVaultOnServer(_vault: Vault): Promise<void> {

@@ -67,7 +67,12 @@ export type PFCStoreActions =
   & UISliceActions
   & NotesSliceActions
   & ToastSliceActions
-  & { reset: () => void };
+  & {
+    reset: () => void;
+    hydrateSOAR: () => void;
+    hydrateLearning: () => void;
+    initScheduler: () => void;
+  };
 
 export type PFCState = PFCStoreState & PFCStoreActions;
 
@@ -87,6 +92,11 @@ export const usePFCStore = create<PFCState>()(
     ...createUISlice(set, get),
     ...createNotesSlice(set, get),
     ...createToastSlice(set, get),
+
+    // Hydration stubs — will be implemented with SOAR/Learning systems (Phase 7)
+    hydrateSOAR: () => { /* No-op until SOAR system is wired */ },
+    hydrateLearning: () => { /* No-op until Learning system is wired */ },
+    initScheduler: () => { /* No-op until Learning scheduler is wired */ },
 
     // Global reset — preserves tier settings, cortex, and codebase analyses
     reset: () => {

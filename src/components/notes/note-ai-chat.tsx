@@ -370,7 +370,7 @@ export function NoteAIChat({ pageId, activeBlockId, isOpen, onClose, charPos }: 
   const resumeLearningSession = () => {};
   const stopLearningSession = () => {};
   const setLearningAutoRun = (_v: boolean) => {};
-  const schedulerConfig = { enabled: false, intervalMinutes: 30, maxDuration: 300 };
+  const schedulerConfig = { enabled: false, intervalMinutes: 30, maxDuration: 300, depth: 'moderate' as string, enableDailyBrief: false, dailyBriefHour: 9 };
   const updateSchedulerConfig = (_c: any) => {};
   const [learnDepth, setLearnDepth] = useState<LearningDepth>('moderate');
 

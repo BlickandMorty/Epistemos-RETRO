@@ -211,9 +211,10 @@ impl PhysicsWorld {
             // Spring joint: anchored at body centers, with rest length.
             // Guard: negative/NaN weight → f32::sqrt() returns NaN, NaN.max() is NaN,
             // corrupting the joint and causing all connected nodes to explode.
+            // Guard: negative stiffness config → spring becomes attractive, nodes explode outward.
             let safe_weight = (edge.weight as f32).max(0.1);
-            let rest_length = self.config.spring_rest_length / safe_weight.sqrt().max(0.5);
-            let stiffness = self.config.spring_stiffness * safe_weight;
+            let rest_length = self.config.spring_rest_length.max(1.0) / safe_weight.sqrt().max(0.5);
+            let stiffness = self.config.spring_stiffness.max(0.01) * safe_weight;
 
             let joint = SpringJointBuilder::new(rest_length, stiffness, self.config.damping * 0.5)
                 .local_anchor1(Vector::ZERO)
@@ -480,23 +481,36 @@ impl PhysicsWorld {
         self.mode
     }
 
-    /// Enter FPS mode: freeze nodes, spawn player.
+    /// Enter FPS mode: freeze nodes, spawn player at centroid.
     fn enter_fps_mode(&mut self) {
         // 1. Scale up node positions for exploration feel
-        let scale = self.fps_config.world_scale;
+        // Guard: world_scale must be positive to avoid zero/negative scaling.
+        let scale = self.fps_config.world_scale.max(1.0);
+        let mut centroid = Vector::ZERO;
+        let mut count = 0u32;
+
         for node in &self.frame_nodes {
             if let Some(body) = self.rigid_body_set.get_mut(node.handle) {
                 let pos = body.translation();
-                body.set_translation(pos * scale, false);
+                let scaled = pos * scale;
+                body.set_translation(scaled, false);
                 // Freeze node in place (kinematic = immovable)
                 body.set_body_type(RigidBodyType::KinematicPositionBased, true);
                 body.set_linvel(Vector::ZERO, false);
+                centroid += scaled;
+                count += 1;
             }
         }
 
-        // 2. Spawn player body at origin (or center of mass of visible nodes)
+        // 2. Spawn player body at centroid of visible nodes (not origin).
+        // If the graph is empty, fall back to origin.
+        let spawn_pos = if count > 0 {
+            centroid / count as f32
+        } else {
+            Vector::ZERO
+        };
         let player_rb = RigidBodyBuilder::dynamic()
-            .translation(Vector::ZERO)
+            .translation(spawn_pos)
             .linear_damping(0.1)
             .additional_mass(5.0)
             .build();
@@ -530,7 +544,8 @@ impl PhysicsWorld {
         self.fps_player = None;
 
         // 2. Unfreeze nodes and scale back down
-        let scale = self.fps_config.world_scale;
+        // Guard: world_scale must be positive to avoid division by zero/NaN.
+        let scale = self.fps_config.world_scale.max(1.0);
         for node in &self.frame_nodes {
             if let Some(body) = self.rigid_body_set.get_mut(node.handle) {
                 let pos = body.translation();

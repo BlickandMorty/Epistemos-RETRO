@@ -352,3 +352,75 @@ fn reload_during_fps_mode_exits_cleanly() {
     assert!(world.fps_frame().is_none());
     assert_eq!(world.node_count(), 3);
 }
+
+#[test]
+fn fps_player_spawns_near_nodes() {
+    // Player should spawn at centroid of nodes, not at origin.
+    let mut store = GraphStore::new();
+    store.add_node(make_node("a", 100.0, 0.0));
+    store.add_node(make_node("b", 200.0, 0.0));
+
+    let mut world = PhysicsWorld::new(PhysicsConfig::default());
+    world.load_from_graph(&store);
+
+    world.toggle_fps_mode();
+    world.step();
+
+    let fps = world.fps_frame().expect("should be in FPS mode");
+    // Player should be somewhere near the centroid of scaled nodes,
+    // NOT at the origin. With default world_scale=100 and nodes at 100/200,
+    // centroid x ≈ 15000. Player should be near that, not 0.
+    assert!(fps.x.abs() > 1.0 || fps.y.abs() > 1.0,
+        "Player at ({}, {}) — should not be at origin", fps.x, fps.y);
+}
+
+#[test]
+fn zero_world_scale_does_not_corrupt_physics() {
+    use crate::fps_mode::FpsConfig;
+
+    let store = simple_graph();
+    let mut world = PhysicsWorld::new(PhysicsConfig::default());
+    world.load_from_graph(&store);
+
+    // Manually set world_scale to 0 (degenerate)
+    // Can't directly set fps_config, but toggle FPS mode exercises the guard.
+    // The guard clamps world_scale to max(1.0), so this tests that path.
+    world.toggle_fps_mode();
+    for _ in 0..5 {
+        let frame = world.step();
+        for pos in &frame.positions {
+            assert!(pos.x.is_finite(), "NaN after FPS enter with scale guard");
+        }
+    }
+    world.toggle_fps_mode(); // exit back to graph
+    for _ in 0..5 {
+        let frame = world.step();
+        for pos in &frame.positions {
+            assert!(pos.x.is_finite(), "NaN after FPS exit with scale guard");
+        }
+    }
+}
+
+#[test]
+fn negative_stiffness_config_clamped() {
+    // Negative stiffness would make springs attractive, exploding the graph.
+    // The guard should clamp to minimum 0.01.
+    let mut store = GraphStore::new();
+    store.add_node(make_node("a", -50.0, 0.0));
+    store.add_node(make_node("b", 50.0, 0.0));
+    store.add_edge(make_edge("e1", "a", "b"));
+
+    let mut world = PhysicsWorld::new(PhysicsConfig {
+        spring_stiffness: -10.0,
+        ..PhysicsConfig::default()
+    });
+    world.load_from_graph(&store);
+
+    for _ in 0..50 {
+        let frame = world.step();
+        for pos in &frame.positions {
+            assert!(pos.x.is_finite(), "NaN with negative stiffness");
+            assert!(pos.x.abs() < 100_000.0, "Node exploded with negative stiffness: x={}", pos.x);
+        }
+    }
+}

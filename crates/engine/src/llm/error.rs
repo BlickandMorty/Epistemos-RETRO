@@ -53,3 +53,54 @@ impl LlmError {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn transient_errors_detected() {
+        for status in [429, 502, 503, 529] {
+            let err = LlmError::api_error(status, "test".into());
+            assert!(err.is_transient(), "status {status} should be transient");
+        }
+    }
+
+    #[test]
+    fn non_transient_errors_not_flagged() {
+        for status in [400, 401, 403, 404, 500, 501] {
+            let err = LlmError::api_error(status, "test".into());
+            assert!(!err.is_transient(), "status {status} should NOT be transient");
+        }
+    }
+
+    #[test]
+    fn auth_errors_detected() {
+        assert!(LlmError::api_error(401, "unauthorized".into()).is_auth_error());
+        assert!(LlmError::api_error(403, "forbidden".into()).is_auth_error());
+        assert!(!LlmError::api_error(429, "ratelimit".into()).is_auth_error());
+    }
+
+    #[test]
+    fn network_error_is_not_transient_or_auth() {
+        let err = LlmError::Network("timeout".into());
+        assert!(!err.is_transient());
+        assert!(!err.is_auth_error());
+    }
+
+    #[test]
+    fn user_messages_are_meaningful() {
+        assert!(LlmError::api_error(429, "".into()).user_message().contains("Rate-limited"));
+        assert!(LlmError::api_error(401, "".into()).user_message().contains("API key"));
+        assert!(LlmError::Network("dns".into()).user_message().contains("dns"));
+        assert!(LlmError::NotConfigured("openai".into()).user_message().contains("openai"));
+        assert!(LlmError::StreamEnded.user_message().contains("unexpectedly"));
+    }
+
+    #[test]
+    fn user_message_truncates_long_body() {
+        let long_body = "x".repeat(500);
+        let msg = LlmError::api_error(400, long_body).user_message();
+        assert!(msg.len() < 300, "400 body should be truncated to 200 chars");
+    }
+}

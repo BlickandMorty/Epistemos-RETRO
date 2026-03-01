@@ -450,6 +450,86 @@ fn high_weight_edge_stiffness_capped() {
 }
 
 #[test]
+fn empty_world_step_returns_empty_frame() {
+    let mut world = PhysicsWorld::new(PhysicsConfig::default());
+    // No nodes loaded — step should not panic
+    let frame = world.step();
+    assert!(frame.positions.is_empty());
+}
+
+#[test]
+fn single_node_world_stays_at_origin() {
+    let mut store = GraphStore::new();
+    store.add_node(make_node("solo", 0.0, 0.0));
+
+    let mut world = PhysicsWorld::new(PhysicsConfig::default());
+    world.load_from_graph(&store);
+
+    // With no edges and no other nodes, the single node should barely move
+    for _ in 0..50 {
+        let frame = world.step();
+        assert_eq!(frame.positions.len(), 1);
+        let pos = &frame.positions[0];
+        assert!(pos.x.is_finite());
+        assert!(pos.y.is_finite());
+        assert!(pos.x.abs() < 100.0, "solo node drifted too far: x={}", pos.x);
+    }
+}
+
+#[test]
+fn many_nodes_with_shared_edges_stay_finite() {
+    // Stress test: 50 nodes in a chain
+    let mut store = GraphStore::new();
+    for i in 0..50 {
+        store.add_node(make_node(
+            &format!("n{i}"),
+            (i as f32) * 10.0,
+            0.0,
+        ));
+    }
+    for i in 0..49 {
+        store.add_edge(make_edge(
+            &format!("e{i}"),
+            &format!("n{i}"),
+            &format!("n{}", i + 1),
+        ));
+    }
+
+    let mut world = PhysicsWorld::new(PhysicsConfig::default());
+    world.load_from_graph(&store);
+
+    for _ in 0..200 {
+        let frame = world.step();
+        for pos in &frame.positions {
+            assert!(pos.x.is_finite(), "NaN in chain graph for {}", pos.id);
+            assert!(pos.y.is_finite(), "NaN in chain graph for {}", pos.id);
+            assert!(
+                pos.x.abs() < 100_000.0 && pos.y.abs() < 100_000.0,
+                "Node {} exploded in chain: ({}, {})", pos.id, pos.x, pos.y
+            );
+        }
+    }
+}
+
+#[test]
+fn reload_preserves_node_count() {
+    let mut store = GraphStore::new();
+    store.add_node(make_node("a", 0.0, 0.0));
+    store.add_node(make_node("b", 10.0, 0.0));
+    store.add_edge(make_edge("e1", "a", "b"));
+
+    let mut world = PhysicsWorld::new(PhysicsConfig::default());
+    world.load_from_graph(&store);
+    let frame1 = world.step();
+    assert_eq!(frame1.positions.len(), 2);
+
+    // Reload with same graph — should still work
+    world.load_from_graph(&store);
+    let frame2 = world.step();
+    assert_eq!(frame2.positions.len(), 2);
+}
+
+#[test]
 fn high_damping_config_does_not_destabilize_springs() {
     // If config.damping > 2.0, then damping * 0.5 > 1.0 for the spring joint,
     // which adds energy rather than removing it. Should be clamped to [0, 1].

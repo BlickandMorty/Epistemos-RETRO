@@ -130,29 +130,48 @@ pub async fn advance_research(
         let app_clone = app.clone();
         let page_id_clone = page_id.clone();
 
-        // Spawn analysis in background — emit result as event
+        // Spawn analysis in background — emit result as event.
+        // 5-minute timeout prevents hung LLM calls from blocking forever.
         tokio::spawn(async move {
-            match provider.generate(&prompt, Some(system), 4096).await {
-                Ok(response) => {
-                    let _ = app_clone.emit("research://analysis", serde_json::json!({
+            let result = tokio::time::timeout(
+                std::time::Duration::from_secs(300),
+                provider.generate(&prompt, Some(system), 4096),
+            ).await;
+
+            match result {
+                Ok(Ok(response)) => {
+                    if let Err(e) = app_clone.emit("research://analysis", serde_json::json!({
                         "page_id": page_id_clone,
                         "stage": next_stage,
                         "stage_name": stage_name(next_stage),
                         "analysis": response.text,
-                    }));
+                    })) {
+                        eprintln!("[research] failed to emit analysis event: {e}");
+                    }
 
                     // Append analysis to page summary
-                    if let Ok(db) = db_state.lock_db() {
-                        let separator = format!("\n\n---\n## {} Analysis\n\n", stage_name(next_stage));
-                        if let Err(e) = db.set_page_summary(pid, &format!("{separator}{}", response.text)) {
-                            eprintln!("[research] failed to persist analysis for page {pid}: {e}");
+                    match db_state.lock_db() {
+                        Ok(db) => {
+                            let separator = format!("\n\n---\n## {} Analysis\n\n", stage_name(next_stage));
+                            if let Err(e) = db.set_page_summary(pid, &format!("{separator}{}", response.text)) {
+                                eprintln!("[research] failed to persist analysis for page {pid}: {e}");
+                            }
+                        }
+                        Err(e) => {
+                            eprintln!("[research] failed to lock DB for page {pid}: {e}");
                         }
                     }
                 }
-                Err(e) => {
+                Ok(Err(e)) => {
                     let _ = app_clone.emit("research://error", serde_json::json!({
                         "page_id": page_id_clone,
                         "error": e.user_message(),
+                    }));
+                }
+                Err(_) => {
+                    let _ = app_clone.emit("research://error", serde_json::json!({
+                        "page_id": page_id_clone,
+                        "error": "Research analysis timed out after 5 minutes",
                     }));
                 }
             }

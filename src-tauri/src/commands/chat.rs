@@ -169,15 +169,21 @@ pub async fn submit_query(
     // Emit initial signals
     let _ = app.emit("pipeline://signals", serde_json::to_value(&sigs).unwrap_or_default());
 
-    // Cancel any previous enrichment pipeline
+    // Cancel any previous enrichment pipeline.
+    // Extract old token under lock, cancel OUTSIDE lock to avoid holding
+    // the mutex during potentially slow cancellation propagation.
     let cancel_token = {
         use tokio_util::sync::CancellationToken;
         let new_token = CancellationToken::new();
-        if let Ok(mut guard) = state.enrichment_cancel.lock() {
-            if let Some(old) = guard.take() {
-                old.cancel();
-            }
+        let old_token = if let Ok(mut guard) = state.enrichment_cancel.lock() {
+            let old = guard.take();
             *guard = Some(new_token.clone());
+            old
+        } else {
+            None
+        };
+        if let Some(old) = old_token {
+            old.cancel();
         }
         new_token
     };

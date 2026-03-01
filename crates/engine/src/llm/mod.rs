@@ -100,7 +100,11 @@ pub(crate) fn saturating_u32(v: u64) -> u32 {
     u32::try_from(v).unwrap_or(u32::MAX)
 }
 
-/// HTTP request with retry for transient errors
+/// Exponential backoff delays in seconds: 1s, 2s, 4s.
+const RETRY_BACKOFFS: &[u64] = &[1, 2, 4];
+
+/// HTTP request with exponential backoff retry for transient errors.
+/// Retries up to 3 times on 429/502/503/529 and network errors.
 pub(crate) async fn post_json_with_retry(
     client: &reqwest::Client,
     url: &str,
@@ -108,7 +112,7 @@ pub(crate) async fn post_json_with_retry(
     headers: &[(&str, &str)],
     timeout_secs: u64,
 ) -> Result<reqwest::Response, LlmError> {
-    let max_attempts = 2;
+    let max_attempts = RETRY_BACKOFFS.len() + 1; // 4 attempts total (initial + 3 retries)
     let mut last_err = None;
 
     for attempt in 0..max_attempts {
@@ -128,8 +132,9 @@ pub(crate) async fn post_json_with_retry(
                     let body_text = resp.text().await.unwrap_or_default();
                     let err = LlmError::api_error(status, body_text);
 
-                    if attempt == 0 && err.is_transient() {
-                        tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+                    if let Some(&delay) = err.is_transient().then(|| RETRY_BACKOFFS.get(attempt)).flatten() {
+                        eprintln!("[llm] transient error (attempt {}/{}), retrying in {delay}s: {err}", attempt + 1, max_attempts);
+                        tokio::time::sleep(std::time::Duration::from_secs(delay)).await;
                         last_err = Some(err);
                         continue;
                     }
@@ -139,8 +144,9 @@ pub(crate) async fn post_json_with_retry(
             }
             Err(e) => {
                 let err = LlmError::Network(e.to_string());
-                if attempt == 0 {
-                    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+                if let Some(&delay) = RETRY_BACKOFFS.get(attempt) {
+                    eprintln!("[llm] network error (attempt {}/{}), retrying in {delay}s: {err}", attempt + 1, max_attempts);
+                    tokio::time::sleep(std::time::Duration::from_secs(delay)).await;
                     last_err = Some(err);
                     continue;
                 }

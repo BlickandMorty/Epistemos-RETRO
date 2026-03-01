@@ -344,7 +344,7 @@ pub async fn extract_entities(
                             (nodes, edges)
                         }
                         Err(e) => {
-                            eprintln!("Entity extraction LLM error (notes batch): {}", e.user_message());
+                            eprintln!("[WARN][entities] LLM error extracting from notes batch — batch skipped: {}", e.user_message());
                             (Vec::new(), Vec::new())
                         }
                     }
@@ -389,7 +389,7 @@ pub async fn extract_entities(
                     }
                 }
                 Err(e) => {
-                    eprintln!("Entity extraction LLM error (chat): {}", e.user_message());
+                    eprintln!("[WARN][entities] LLM error extracting from chat — chat skipped: {}", e.user_message());
                 }
             }
 
@@ -400,10 +400,10 @@ pub async fn extract_entities(
         if !all_nodes.is_empty() || !all_edges.is_empty() {
             if let Ok(db) = db_state.lock_db() {
                 if let Err(e) = db.insert_graph_nodes_batch(&all_nodes) {
-                    eprintln!("Failed to persist extracted nodes: {e}");
+                    eprintln!("[WARN][entities] failed to persist extracted nodes — entities lost: {e}");
                 }
                 if let Err(e) = db.insert_graph_edges_batch(&all_edges) {
-                    eprintln!("Failed to persist extracted edges: {e}");
+                    eprintln!("[WARN][entities] failed to persist extracted edges — relationships lost: {e}");
                 }
             }
         }
@@ -798,7 +798,7 @@ pub async fn summarize_node(
             }
             Err(e) => {
                 let fallback = truncate(&content, 300);
-                eprintln!("Node summary LLM error: {}", e.user_message());
+                eprintln!("[WARN][graph] node summary LLM error — using truncated fallback: {}", e.user_message());
                 let _ = app.emit("node://summary", NodeSummaryEvent {
                     node_id: nid,
                     text: fallback,

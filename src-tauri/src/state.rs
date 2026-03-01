@@ -49,11 +49,15 @@ pub struct AppState {
 impl AppState {
     pub fn new(db: Database) -> Self {
         // Load persisted cost tracker from settings KV, or default.
-        let cost_tracker = db.get_setting("cost_tracker")
-            .ok()
-            .flatten()
-            .map(|json| CostTracker::from_json(&json))
-            .unwrap_or_default();
+        // If the DB read fails, start fresh — cost tracking is non-critical.
+        let cost_tracker = match db.get_setting("cost_tracker") {
+            Ok(Some(json)) => CostTracker::from_json(&json),
+            Ok(None) => CostTracker::default(),
+            Err(e) => {
+                eprintln!("[WARN][state] failed to load cost tracker — starting fresh: {e}");
+                CostTracker::default()
+            }
+        };
 
         Self {
             db: Arc::new(Mutex::new(db)),

@@ -1,0 +1,1347 @@
+@import "tailwindcss";
+@import "tailwindcss/theme" theme(reference);
+@plugin "@tailwindcss/typography";
+
+@custom-variant dark (&:is(.dark *, .oled *, .cosmic *, .sunset *));
+
+/* ── Geist — primary app font ── */
+@font-face {
+  font-family: 'Geist';
+  src: url('../assets/fonts/geist/Geist-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Geist';
+  src: url('../assets/fonts/geist/Geist-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Geist';
+  src: url('../assets/fonts/geist/Geist-SemiBold.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Geist';
+  src: url('../assets/fonts/geist/Geist-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'GeistMono';
+  src: url('../assets/fonts/geist/GeistMono-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'GeistMono';
+  src: url('../assets/fonts/geist/GeistMono-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ── Minecraft — pixel display font ── */
+@font-face {
+  font-family: 'Minecraft';
+  src: url('../assets/fonts/Minecraft.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ── Dotemp 8bit — legacy pixel display font ── */
+@font-face {
+  font-family: 'Dotemp8bit';
+  src: url('../assets/fonts/Dotemp-8bit.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ── SN Pro — primary UI / body font ── */
+@font-face {
+  font-family: 'SNPro';
+  src: url('../assets/fonts/sn-pro/SNPro-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'SNPro';
+  src: url('../assets/fonts/sn-pro/SNPro-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'SNPro';
+  src: url('../assets/fonts/sn-pro/SNPro-SemiBold.ttf') format('truetype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'SNPro';
+  src: url('../assets/fonts/sn-pro/SNPro-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ── Source Serif 4 — greeting hero display font (18pt, SemiBold Italic) ── */
+@font-face {
+  font-family: 'SourceSerif4';
+  src: url('../assets/fonts/SourceSerif4-SemiBoldItalic.ttf') format('truetype');
+  font-weight: 600;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* ── Frantically — landing greeting display font ── */
+@font-face {
+  font-family: 'Frantically';
+  src: url('../assets/fonts/Frantically-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ── Space Grotesk — secondary UI font (between retro & SN Pro) ── */
+@font-face {
+  font-family: 'SpaceGrotesk';
+  src: url('../assets/fonts/space-grotesk/SpaceGrotesk-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'SpaceGrotesk';
+  src: url('../assets/fonts/space-grotesk/SpaceGrotesk-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'SpaceGrotesk';
+  src: url('../assets/fonts/space-grotesk/SpaceGrotesk-SemiBold.ttf') format('truetype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'SpaceGrotesk';
+  src: url('../assets/fonts/space-grotesk/SpaceGrotesk-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ── RetroGaming — legacy pixel display font ── */
+@font-face {
+  font-family: 'RetroGaming';
+  src: url('../assets/fonts/RetroGaming.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ── GlastonePixel — legacy pixel display font ── */
+@font-face {
+  font-family: 'GlastonePixel';
+  src: url('../assets/fonts/GlastonePixel-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ── PressStart2P — retro pixel font for syntax typing animation ── */
+@font-face {
+  font-family: 'PressStart2P';
+  src: url('../assets/fonts/PressStart2P.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ── Legacy display fonts ── */
+@font-face {
+  font-family: 'Ubuntu';
+  src: url('../assets/fonts/Ubuntu-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* PFC brand — warm palette */
+  --color-pfc-ember: #C4956A;
+  --color-pfc-violet: #9B7DB8;
+  --color-pfc-green: #34D399;
+  --color-pfc-yellow: #D4A843;
+  --color-pfc-red: #C75E5E;
+  --color-pfc-cyan: #6B8EBF;
+
+  /* Ashy red — font accent across all themes */
+  --color-pfc-ashy-red: #B85C5C;
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro", 'SNPro', 'Geist', "Segoe UI", Roboto, Helvetica, Arial, ui-sans-serif, system-ui, sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro", 'SNPro', 'Geist', "Segoe UI", Roboto, Helvetica, Arial, ui-sans-serif, system-ui, sans-serif;
+  --font-heading: 'RetroGaming', -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro", 'SNPro', 'Geist', system-ui, sans-serif;
+  --font-secondary: 'SpaceGrotesk', -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro", 'SNPro', 'Geist', system-ui, sans-serif;
+  --font-mono: 'GeistMono', "SF Mono", "Cascadia Code", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  --animate-accordion-down: accordion-down 0.25s cubic-bezier(0.2, 0, 0, 1);
+  --animate-accordion-up: accordion-up 0.2s cubic-bezier(0.3, 0, 0.8, 0.15);
+}
+
+/* ─────────────────────────────────────────────────────────
+   Material 3 + Harmonoid — Motion & Duration Tokens
+   ───────────────────────────────────────────────────────── */
+:root {
+  /* Z-index scale — standardized stacking hierarchy */
+  --z-base: 1;
+  --z-dropdown: 10;
+  --z-sticky: 20;
+  --z-nav: 30;
+  --z-sidebar: 39;
+  --z-modal-backdrop: 45;
+  --z-modal: 50;
+  --z-popover: 60;
+  --z-toast: 70;
+  --z-tooltip: 80;
+  --z-vault-picker: 90;
+  --z-grain: 25;
+
+  /* PFC accent colors — shared across all components */
+  --pfc-accent: #C4956A;
+  --pfc-accent-rgb: 196, 149, 106;
+  --pfc-accent-light: rgba(244, 189, 111, 0.08);
+  --pfc-accent-light-hover: rgba(244, 189, 111, 0.14);
+  --pfc-accent-border: rgba(196, 149, 106, 0.15);
+
+  /* Semantic font accent — ashy red on dark+light, blue on OLED */
+  --pfc-font-accent: #B85C5C;
+
+  /* Secondary UI accent — white on dark, brown on light */
+  --pfc-ui-accent: #A07850;
+
+  /* Surface colors — dark/light variants */
+  --pfc-surface-dark: rgba(22, 21, 19, 0.65);
+  --pfc-surface-light: rgba(237, 232, 222, 0.6);
+  --pfc-border-dark: rgba(50, 49, 45, 0.25);
+  --pfc-border-light: rgba(190, 183, 170, 0.3);
+  --pfc-text-muted-dark: rgba(155, 150, 137, 0.8);
+  --pfc-text-muted-light: rgba(0, 0, 0, 0.45);
+
+  /* M3 Emphasized easing — equivalent to Cupertino */
+  --m3-ease-emphasized: cubic-bezier(0.2, 0, 0, 1);
+  --m3-ease-emphasized-decel: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --m3-ease-emphasized-accel: cubic-bezier(0.3, 0, 0.8, 0.15);
+  --m3-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --m3-ease-standard-decel: cubic-bezier(0, 0, 0, 1);
+  --m3-ease-standard-accel: cubic-bezier(0.3, 0, 1, 1);
+
+  /* Legacy — kept for existing references */
+  --anim-motion-cupertino: cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* Harmonoid-inspired duration tiers */
+  --duration-short1: 50ms;
+  --duration-short2: 100ms;
+  --duration-short3: 150ms;
+  --duration-short4: 200ms;
+  --duration-medium1: 250ms;
+  --duration-medium2: 300ms;
+  --duration-medium3: 350ms;
+  --duration-medium4: 400ms;
+  --duration-long1: 450ms;
+  --duration-long2: 500ms;
+  --duration-long3: 550ms;
+  --duration-long4: 600ms;
+
+  /* Blur — GPU-light */
+  --blur-l: blur(14px);
+
+  /* M3 Shape — rounded pill system */
+  --shape-none: 0px;
+  --shape-xs: 4px;
+  --shape-sm: 8px;
+  --shape-md: 12px;
+  --shape-lg: 16px;
+  --shape-xl: 28px;
+  --shape-full: 9999px;
+
+  /* Legacy radius aliases */
+  --radius-obs-s: 8px;
+  --radius-obs-m: 12px;
+  --radius-obs-l: 20px;
+  --radius-obs-xl: 28px;
+
+  /* M3 State layer opacities */
+  --state-hover: 0.08;
+  --state-focus: 0.12;
+  --state-pressed: 0.12;
+  --state-dragged: 0.16;
+
+  /* M3 Type scale — adapted to system fonts */
+  --type-display-lg: 3.5625rem;    /* 57px */
+  --type-display-md: 2.8125rem;    /* 45px */
+  --type-display-sm: 2.25rem;      /* 36px */
+  --type-headline-lg: 2rem;        /* 32px */
+  --type-headline-md: 1.75rem;     /* 28px */
+  --type-headline-sm: 1.5rem;      /* 24px */
+  --type-title-lg: 1.375rem;       /* 22px */
+  --type-title-md: 1rem;           /* 16px */
+  --type-title-sm: 0.875rem;       /* 14px */
+  --type-body-lg: 1rem;            /* 16px */
+  --type-body-md: 0.875rem;        /* 14px */
+  --type-body-sm: 0.75rem;         /* 12px */
+  --type-label-lg: 0.875rem;       /* 14px */
+  --type-label-md: 0.75rem;        /* 12px */
+  --type-label-sm: 0.6875rem;      /* 11px */
+
+  /* Extended scale — chat-specific sizes */
+  --type-chat-user: 0.9375rem;     /* 15px — user message bubbles */
+  --type-chat-response: 1.0625rem; /* 17px — AI response body text */
+  --type-chat-heading: 1.375rem;   /* 22px — AI response topic heading */
+  --type-chat-stream: 1.0625rem;   /* 17px — streaming text container */
+  --type-prose-body: 1.0rem;        /* 16px — markdown paragraph/list text */
+  --type-meta: 0.8125rem;          /* 13px — deep analysis body text */
+  --type-tag: 0.625rem;            /* 10px — tag summary badges */
+  --type-tag-inline: 0.5625rem;    /* 9px  — inline epistemic tags */
+  --type-section-label: 0.5938rem; /* 9.5px — section header labels */
+}
+
+/* ─────────────────────────────────────────────────────────
+   Light theme — warm cream with darker accents/sidebar
+   ───────────────────────────────────────────────────────── */
+:root {
+  --background: #FAFAFA;
+  --foreground: #1C1B1F;
+  --card: rgba(245, 245, 245, 0.92);
+  --card-foreground: #1C1B1F;
+  --popover: rgba(250, 250, 250, 0.97);
+  --popover-foreground: #1C1B1F;
+  --primary: #1C1B1F;
+  --primary-foreground: #FAFAFA;
+  --secondary: #F2F2F2;
+  --secondary-foreground: #1C1B1F;
+  --muted: #F2F2F2;
+  --muted-foreground: #6B6660;
+  --accent: #1C1B1F;
+  --accent-foreground: #FAFAFA;
+  --destructive: #991B1B;
+  --destructive-foreground: #FFFFFF;
+  --border: rgba(0, 0, 0, 0.06);
+  --input: rgba(0, 0, 0, 0.06);
+  --ring: #1C1B1F;
+  --radius: 0.75rem;
+
+  /* Sidebar — slightly off-white for contrast */
+  --sidebar: #F5F5F5;
+  --sidebar-foreground: #1C1B1F;
+  --sidebar-border: rgba(0, 0, 0, 0.05);
+  --sidebar-accent: rgba(0, 0, 0, 0.03);
+  --sidebar-accent-foreground: #1C1B1F;
+  --sidebar-ring: #1C1B1F;
+
+  /* Liquid Glass — light glass */
+  --liquid-glass-background: rgba(248, 248, 248, 0.88);
+  --shadow-base: none;
+  --shadow-border: none;
+  --shadow-xs: none;
+  --shadow-s: none;
+  --shadow-l: none;
+  --shadow-tactile: none;
+
+  /* Glass tokens */
+  --glass-bg: var(--liquid-glass-background);
+  --glass-border: rgba(0, 0, 0, 0.05);
+  --glass-hover: rgba(248, 248, 248, 0.9);
+  --glass-blur: 20px;
+  --glass-blur-heavy: 14px;
+
+  /* Chat surface — near-white */
+  --chat-surface: #FAFAFA;
+
+  /* M3 Surface container hierarchy — subtle near-white grays */
+  --m3-surface: #FAFAFA;
+  --m3-surface-dim: #F2F2F2;
+  --m3-surface-bright: #FEFEFE;
+  --m3-surface-container-lowest: #FEFEFE;
+  --m3-surface-container: #F6F6F6;
+  --m3-surface-container-high: #F0F0F0;
+  --m3-surface-container-highest: #EAEAEA;
+
+  /* M3 Color roles — dark primary (OLED black buttons) */
+  --m3-primary: #1C1B1F;
+  --m3-on-primary: #FFFFFF;
+  --m3-primary-container: #E8E8E8;
+  --m3-on-primary-container: #1C1B1F;
+  --m3-secondary: #49454F;
+  --m3-on-secondary: #FFFFFF;
+  --m3-secondary-container: #E8E8E8;
+  --m3-on-secondary-container: #1C1B1F;
+  --m3-tertiary: #506551;
+  --m3-on-tertiary: #FFFFFF;
+  --m3-tertiary-container: #D2EBD1;
+  --m3-on-tertiary-container: #0D1F12;
+  --m3-outline: #79747E;
+  --m3-outline-variant: #CAC4D0;
+
+  /* Light theme semantic accents */
+  --pfc-font-accent: #B85C5C;
+  /* Secondary UI accent — OLED black (dark buttons on white bg) */
+  --pfc-ui-accent: #1C1B1F;
+
+  /* PFC brand colors → neutral gray on default light for flat monochrome aesthetic */
+  --color-pfc-ember: #8A8A8A;
+  --color-pfc-violet: #8A8A8A;
+  --color-pfc-green: #8A8A8A;
+  --color-pfc-yellow: #8A8A8A;
+  --color-pfc-red: #8A8A8A;
+  --color-pfc-cyan: #8A8A8A;
+  --color-pfc-ashy-red: #8A8A8A;
+}
+
+/* ─────────────────────────────────────────────────────────
+   Dark theme — warm mocha palette inspired by Claude
+   Background: very dark warm gray, accents: mocha/brown,
+   secondary UI accent: white (buttons like "New Chat")
+   ───────────────────────────────────────────────────────── */
+.dark {
+  --background: #1A1816;
+  --foreground: #FFFFFF;
+  --card: rgba(30, 28, 26, 0.88);
+  --card-foreground: #FFFFFF;
+  --popover: rgba(30, 28, 26, 0.96);
+  --popover-foreground: #FFFFFF;
+  --primary: #C4956A;
+  --primary-foreground: #1A1816;
+  --secondary: #221F1D;
+  --secondary-foreground: #FFFFFF;
+  --muted: #221F1D;
+  --muted-foreground: #9B9689;
+  --accent: #C4956A;
+  --accent-foreground: #1A1816;
+  --destructive: #7F1D1D;
+  --destructive-foreground: #FECACA;
+  --border: rgba(60, 55, 48, 0.45);
+  --input: rgba(55, 50, 44, 0.45);
+  --ring: #C4956A;
+
+  /* Chat surface — unified with background */
+  --chat-surface: #1A1816;
+
+  /* M3 Surface container hierarchy — warm dark tones, bumped up */
+  --m3-surface: #1A1816;
+  --m3-surface-dim: #12100E;
+  --m3-surface-bright: #433F3A;
+  --m3-surface-container-lowest: #100E0D;
+  --m3-surface-container: #211F1D;
+  --m3-surface-container-high: #2A2826;
+  --m3-surface-container-highest: #343130;
+
+  /* M3 Color roles — mocha primary */
+  --m3-primary: #E0B896;
+  --m3-on-primary: #442A14;
+  --m3-primary-container: #5E4028;
+  --m3-on-primary-container: #F0DCC8;
+  --m3-secondary: #DDC1A8;
+  --m3-on-secondary: #3E2D1C;
+  --m3-secondary-container: #574434;
+  --m3-on-secondary-container: #FAE1C8;
+  --m3-tertiary: #B6CFB6;
+  --m3-on-tertiary: #223625;
+  --m3-tertiary-container: #384E3A;
+  --m3-on-tertiary-container: #D2EBD1;
+  --m3-outline: #9F8D7F;
+  --m3-outline-variant: #504538;
+
+  /* Sidebar — slightly lighter warm gray for contrast */
+  --sidebar: rgba(36, 33, 30, 0.92);
+  --sidebar-foreground: #FFFFFF;
+  --sidebar-border: rgba(60, 55, 48, 0.3);
+  --sidebar-accent: rgba(44, 40, 36, 0.65);
+  --sidebar-accent-foreground: #FFFFFF;
+  --sidebar-ring: #C4956A;
+
+  /* Theme-specific overrides */
+  --pfc-accent: #C4956A;
+  --pfc-accent-rgb: 196, 149, 106;
+  --pfc-font-accent: #B85C5C;
+  --pfc-ui-accent: #FFFFFF;
+
+  /* Flat shadows (none) */
+  --liquid-glass-background: rgba(34, 31, 28, 0.78);
+  --shadow-base: none;
+  --shadow-border: none;
+  --shadow-xs: none;
+  --shadow-s: none;
+  --shadow-l: none;
+  --shadow-tactile: none;
+
+  /* Glass tokens — warm dark */
+  --glass-bg: var(--liquid-glass-background);
+  --glass-border: rgba(60, 55, 48, 0.28);
+  --glass-hover: rgba(44, 40, 36, 0.55);
+  --glass-blur: 20px;
+  --glass-blur-heavy: 14px;
+
+  /* Surface helpers — darker variants for dark mode */
+  --pfc-surface-dark: rgba(26, 24, 22, 0.65);
+  --pfc-border-dark: rgba(60, 55, 48, 0.25);
+}
+
+/* ─────────────────────────────────────────────────────────
+   OLED theme — true black, white accents, VS Code blue
+   font accent. No brown — clean monochrome.
+   ───────────────────────────────────────────────────────── */
+.oled {
+  --background: #000000;
+  --foreground: #FFFFFF;
+  --card: rgba(18, 18, 18, 0.92);
+  --card-foreground: #FFFFFF;
+  --popover: rgba(14, 14, 14, 0.97);
+  --popover-foreground: #FFFFFF;
+  --primary: #FFFFFF;
+  --primary-foreground: #000000;
+  --secondary: #141414;
+  --secondary-foreground: #FFFFFF;
+  --muted: #141414;
+  --muted-foreground: #8A8A8A;
+  --accent: #FFFFFF;
+  --accent-foreground: #000000;
+  --destructive: #7F1D1D;
+  --destructive-foreground: #FECACA;
+  --border: rgba(48, 48, 48, 0.55);
+  --input: rgba(40, 40, 40, 0.55);
+  --ring: #FFFFFF;
+
+  /* Chat surface — true black */
+  --chat-surface: #000000;
+
+  /* M3 Surface container hierarchy — near-black grays */
+  --m3-surface: #000000;
+  --m3-surface-dim: #000000;
+  --m3-surface-bright: #2A2A2A;
+  --m3-surface-container-lowest: #060606;
+  --m3-surface-container: #141414;
+  --m3-surface-container-high: #1E1E1E;
+  --m3-surface-container-highest: #282828;
+
+  /* M3 Color roles — neutral, no warm tint */
+  --m3-primary: #FFFFFF;
+  --m3-on-primary: #000000;
+  --m3-primary-container: #303030;
+  --m3-on-primary-container: #E0DDD8;
+  --m3-secondary: #C0C0C0;
+  --m3-on-secondary: #1A1A1A;
+  --m3-secondary-container: #2A2A2A;
+  --m3-on-secondary-container: #E0DDD8;
+  --m3-tertiary: #B6CFB6;
+  --m3-on-tertiary: #223625;
+  --m3-tertiary-container: #384E3A;
+  --m3-on-tertiary-container: #D2EBD1;
+  --m3-outline: #6A6A6A;
+  --m3-outline-variant: #404040;
+
+  /* Sidebar — dark gray for contrast against pure black */
+  --sidebar: rgba(16, 16, 16, 0.96);
+  --sidebar-foreground: #FFFFFF;
+  --sidebar-border: rgba(48, 48, 48, 0.4);
+  --sidebar-accent: rgba(26, 26, 26, 0.7);
+  --sidebar-accent-foreground: #FFFFFF;
+  --sidebar-ring: #FFFFFF;
+
+  /* Theme-specific overrides — white accent, no brown */
+  --pfc-accent: #FFFFFF;
+  --pfc-accent-rgb: 255, 255, 255;
+  --pfc-accent-light: rgba(255, 255, 255, 0.06);
+  --pfc-accent-light-hover: rgba(255, 255, 255, 0.12);
+  --pfc-accent-border: rgba(255, 255, 255, 0.12);
+  --pfc-font-accent: #2B8FD4;
+  --pfc-ui-accent: #FFFFFF;
+
+  /* Glass tokens — pure dark gray, no warm tint */
+  --liquid-glass-background: rgba(16, 16, 16, 0.82);
+  --shadow-base: none;
+  --shadow-border: none;
+  --shadow-xs: none;
+  --shadow-s: none;
+  --shadow-l: none;
+  --shadow-tactile: none;
+
+  --glass-bg: var(--liquid-glass-background);
+  --glass-border: rgba(48, 48, 48, 0.32);
+  --glass-hover: rgba(28, 28, 28, 0.7);
+  --glass-blur: 20px;
+  --glass-blur-heavy: 14px;
+
+  /* Surface helpers for OLED */
+  --pfc-surface-dark: rgba(10, 10, 10, 0.65);
+  --pfc-border-dark: rgba(48, 48, 48, 0.25);
+}
+
+/* ─────────────────────────────────────────────────────────
+   Cosmic mode — navy palette + animated space wallpaper
+   on landing page only. All other pages use solid opaque
+   navy surfaces. Indigo-blue accent throughout, plus
+   animated stars/nebula on the home screen.
+   ───────────────────────────────────────────────────────── */
+.cosmic {
+  --background: #0C0B14;
+  --foreground: #FFFFFF;
+  --card: rgba(18, 17, 26, 0.88);
+  --card-foreground: #FFFFFF;
+  --popover: rgba(18, 17, 26, 0.96);
+  --popover-foreground: #FFFFFF;
+  --primary: #8B9FD4;
+  --primary-foreground: #0C0B14;
+  --secondary: #1A1828;
+  --secondary-foreground: #FFFFFF;
+  --muted: #1A1828;
+  --muted-foreground: #9B96A9;
+  --accent: #8B9FD4;
+  --accent-foreground: #0C0B14;
+  --destructive: #7F1D1D;
+  --destructive-foreground: #FECACA;
+  --border: rgba(50, 48, 68, 0.45);
+  --input: rgba(45, 43, 62, 0.45);
+  --ring: #8B9FD4;
+
+  /* Chat surface — opaque navy */
+  --chat-surface: #0C0B14;
+
+  /* M3 Surface container hierarchy — opaque navy tones */
+  --m3-surface: #0C0B14;
+  --m3-surface-dim: #08070E;
+  --m3-surface-bright: #2A283A;
+  --m3-surface-container-lowest: #06050C;
+  --m3-surface-container: #16152A;
+  --m3-surface-container-high: #201F32;
+  --m3-surface-container-highest: #2A2840;
+
+  /* M3 Color roles — indigo-blue on navy */
+  --m3-primary: #A8B8DE;
+  --m3-on-primary: #1A2644;
+  --m3-primary-container: #2E3D5E;
+  --m3-on-primary-container: #D0DAEF;
+  --m3-secondary: #B0B8D0;
+  --m3-on-secondary: #1E2438;
+  --m3-secondary-container: #343C54;
+  --m3-on-secondary-container: #D8DFEF;
+  --m3-tertiary: #B6CFB6;
+  --m3-on-tertiary: #223625;
+  --m3-tertiary-container: #384E3A;
+  --m3-on-tertiary-container: #D2EBD1;
+  --m3-outline: #8F8D9F;
+  --m3-outline-variant: #403E50;
+
+  /* Sidebar — opaque navy */
+  --sidebar: rgba(20, 18, 32, 0.92);
+  --sidebar-foreground: #FFFFFF;
+  --sidebar-border: rgba(50, 48, 68, 0.3);
+  --sidebar-accent: rgba(30, 28, 44, 0.65);
+  --sidebar-accent-foreground: #FFFFFF;
+  --sidebar-ring: #8B9FD4;
+
+  /* Theme-specific overrides — indigo-blue accent */
+  --pfc-accent: #8B9FD4;
+  --pfc-accent-rgb: 139, 159, 212;
+  --pfc-font-accent: #7B9EC7;
+  --pfc-ui-accent: #FFFFFF;
+  --pfc-accent-light: rgba(139, 159, 212, 0.1);
+  --pfc-accent-light-hover: rgba(139, 159, 212, 0.16);
+  --pfc-accent-border: rgba(139, 159, 212, 0.15);
+
+  /* Flat shadows */
+  --liquid-glass-background: rgba(18, 17, 26, 0.78);
+  --shadow-base: none;
+  --shadow-border: none;
+  --shadow-xs: none;
+  --shadow-s: none;
+  --shadow-l: none;
+  --shadow-tactile: none;
+
+  /* Glass tokens — opaque navy */
+  --glass-bg: var(--liquid-glass-background);
+  --glass-border: rgba(50, 48, 68, 0.28);
+  --glass-hover: rgba(30, 28, 44, 0.55);
+  --glass-blur: 20px;
+  --glass-blur-heavy: 14px;
+
+  /* Surface helpers */
+  --pfc-surface-dark: rgba(12, 11, 20, 0.65);
+  --pfc-border-dark: rgba(50, 48, 68, 0.25);
+
+  /* Accent light helper */
+  --pfc-accent-light: rgba(139, 159, 212, 0.1);
+}
+
+/* ─────────────────────────────────────────────────────────
+   Sunny mode — animated sky wallpaper background.
+   Light sky-blue palette with semi-transparent surfaces
+   so animated cloud wallpaper shows through. Blues, whites,
+   and warm yellow accents inspired by pixel art sky scenes.
+   ───────────────────────────────────────────────────────── */
+.sunny {
+  --background: #E8F4FB;
+  --foreground: #1A2634;
+  --card: rgba(235, 245, 252, 0.78);
+  --card-foreground: #1A2634;
+  --popover: rgba(235, 245, 252, 0.94);
+  --popover-foreground: #1A2634;
+  --primary: #5B8FC7;
+  --primary-foreground: #FFFFFF;
+  --secondary: rgba(210, 230, 245, 0.75);
+  --secondary-foreground: #1A2634;
+  --muted: rgba(210, 230, 245, 0.75);
+  --muted-foreground: #5A7A94;
+  --accent: #5B8FC7;
+  --accent-foreground: #FFFFFF;
+  --destructive: #7F1D1D;
+  --destructive-foreground: #FECACA;
+  --border: rgba(130, 170, 210, 0.28);
+  --input: rgba(130, 170, 210, 0.28);
+  --ring: #5B8FC7;
+
+  /* Chat surface — semi-transparent for wallpaper bleed */
+  --chat-surface: rgba(235, 245, 252, 0.72);
+
+  /* M3 Surface container hierarchy — semi-transparent sky */
+  --m3-surface: rgba(232, 244, 251, 0.65);
+  --m3-surface-dim: rgba(218, 236, 248, 0.7);
+  --m3-surface-bright: rgba(245, 250, 255, 0.75);
+  --m3-surface-container-lowest: rgba(248, 252, 255, 0.8);
+  --m3-surface-container: rgba(228, 240, 250, 0.72);
+  --m3-surface-container-high: rgba(218, 234, 248, 0.75);
+  --m3-surface-container-highest: rgba(208, 228, 244, 0.78);
+
+  /* M3 Color roles — sky blue primary, warm yellow tertiary */
+  --m3-primary: #3D7AB8;
+  --m3-on-primary: #FFFFFF;
+  --m3-primary-container: rgba(180, 215, 245, 0.7);
+  --m3-on-primary-container: #0A2840;
+  --m3-secondary: #6A8EA8;
+  --m3-on-secondary: #FFFFFF;
+  --m3-secondary-container: rgba(190, 220, 240, 0.65);
+  --m3-on-secondary-container: #142838;
+  --m3-tertiary: #B8943D;
+  --m3-on-tertiary: #FFFFFF;
+  --m3-tertiary-container: rgba(245, 230, 180, 0.6);
+  --m3-on-tertiary-container: #3A2A08;
+  --m3-outline: #7A9AB8;
+  --m3-outline-variant: rgba(160, 195, 225, 0.5);
+
+  /* Sidebar — semi-transparent sky */
+  --sidebar: rgba(215, 235, 250, 0.88);
+  --sidebar-foreground: #1A2634;
+  --sidebar-border: rgba(130, 170, 210, 0.25);
+  --sidebar-accent: rgba(200, 225, 245, 0.7);
+  --sidebar-accent-foreground: #1A2634;
+  --sidebar-ring: #5B8FC7;
+
+  /* Theme-specific overrides — sky blue accent */
+  --pfc-accent: #5B8FC7;
+  --pfc-accent-rgb: 91, 143, 199;
+  --pfc-font-accent: #D4A843;
+  --pfc-ui-accent: #1A2634;
+  --pfc-accent-light: rgba(91, 143, 199, 0.1);
+  --pfc-accent-light-hover: rgba(91, 143, 199, 0.16);
+  --pfc-accent-border: rgba(91, 143, 199, 0.15);
+
+  /* Liquid Glass — light sky glass */
+  --liquid-glass-background: rgba(235, 245, 252, 0.75);
+  --shadow-base: none;
+  --shadow-border: none;
+  --shadow-xs: none;
+  --shadow-s: none;
+  --shadow-l: none;
+  --shadow-tactile: none;
+
+  /* Glass tokens — translucent sky */
+  --glass-bg: var(--liquid-glass-background);
+  --glass-border: rgba(130, 170, 210, 0.22);
+  --glass-hover: rgba(225, 240, 252, 0.65);
+  --glass-blur: 20px;
+  --glass-blur-heavy: 14px;
+
+  /* Surface helpers */
+  --pfc-surface-dark: rgba(215, 235, 250, 0.55);
+  --pfc-border-dark: rgba(130, 170, 210, 0.2);
+}
+
+/* ─────────────────────────────────────────────────────────
+   Sunset mode — animated mountain sunset wallpaper background.
+   Warm amber/purple palette with semi-transparent surfaces
+   so animated mountain sunset wallpaper shows through.
+   Deep plums, warm ambers, and orange accents.
+   ───────────────────────────────────────────────────────── */
+.sunset {
+  --background: #1E1220;
+  --foreground: #FFFFFF;
+  --card: #241828;
+  --card-foreground: #FFFFFF;
+  --popover: #221626;
+  --popover-foreground: #FFFFFF;
+  --primary: #D4862B;
+  --primary-foreground: #1E1220;
+  --secondary: #2D1A2C;
+  --secondary-foreground: #FFFFFF;
+  --muted: #322030;
+  --muted-foreground: #B09888;
+  --accent: #D4862B;
+  --accent-foreground: #1E1220;
+  --destructive: #7F1D1D;
+  --destructive-foreground: #FECACA;
+  --border: #3D2838;
+  --input: #3D2838;
+  --ring: #D4862B;
+
+  /* Chat surface — opaque (no wallpaper) */
+  --chat-surface: #1E1220;
+
+  /* M3 Surface container hierarchy — opaque warm browns */
+  --m3-surface: #221626;
+  --m3-surface-dim: #1C1020;
+  --m3-surface-bright: #2C1C2C;
+  --m3-surface-container-lowest: #180E1A;
+  --m3-surface-container: #261A2A;
+  --m3-surface-container-high: #2C1E2E;
+  --m3-surface-container-highest: #342434;
+
+  /* M3 Color roles — warm amber primary, purple tertiary */
+  --m3-primary: #D4862B;
+  --m3-on-primary: #FFFFFF;
+  --m3-primary-container: #3E2818;
+  --m3-on-primary-container: #FFD4A0;
+  --m3-secondary: #B88060;
+  --m3-on-secondary: #FFFFFF;
+  --m3-secondary-container: #382218;
+  --m3-on-secondary-container: #FFD0B0;
+  --m3-tertiary: #A060B8;
+  --m3-on-tertiary: #FFFFFF;
+  --m3-tertiary-container: #30183A;
+  --m3-on-tertiary-container: #E0B0F0;
+  --m3-outline: #8A6858;
+  --m3-outline-variant: #4A3430;
+
+  /* Sidebar — opaque warm */
+  --sidebar: #1C1022;
+  --sidebar-foreground: #FFFFFF;
+  --sidebar-border: #3A2434;
+  --sidebar-accent: #3C2434;
+  --sidebar-accent-foreground: #FFFFFF;
+  --sidebar-ring: #D4862B;
+
+  /* Theme-specific overrides — warm amber accent */
+  --pfc-accent: #D4862B;
+  --pfc-accent-rgb: 212, 134, 43;
+  --pfc-font-accent: #F5B84A;
+  --pfc-ui-accent: #FFFFFF;
+  --pfc-accent-light: #2E1E16;
+  --pfc-accent-light-hover: #3A2618;
+  --pfc-accent-border: #3A2418;
+
+  /* Liquid Glass — warm sunset glass */
+  --liquid-glass-background: #241828;
+  --shadow-base: none;
+  --shadow-border: none;
+  --shadow-xs: none;
+  --shadow-s: none;
+  --shadow-l: none;
+  --shadow-tactile: none;
+
+  /* Glass tokens — warm plum with slight translucency */
+  --glass-bg: rgba(36,24,40,0.92);
+  --glass-border: #3E2838;
+  --glass-hover: #382434;
+  --glass-blur: 20px;
+  --glass-blur-heavy: 14px;
+
+  /* Surface helpers */
+  --pfc-surface-dark: #221626;
+  --pfc-border-dark: #3A2434;
+}
+
+/* ─────────────────────────────────────────────────────────
+   Base resets
+   ───────────────────────────────────────────────────────── */
+* {
+  @apply border-border;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  @apply bg-background text-foreground;
+  font-weight: 450;
+  font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1, "ss02" 1;
+  font-optical-sizing: auto;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  letter-spacing: -0.011em;
+}
+
+/* ─────────────────────────────────────────────────────────
+   Grain texture — subtle film grain overlay via SVG noise
+   ───────────────────────────────────────────────────────── */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-grain);
+  pointer-events: none;
+  opacity: 0.030;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 256px 256px;
+  mix-blend-mode: overlay;
+}
+
+/* ─────────────────────────────────────────────────────────
+   Typography — SF Pro / Cupertino hierarchy
+   ───────────────────────────────────────────────────────── */
+h1, h2, h3 {
+  font-family: var(--font-heading);
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+
+h4, h5, h6 {
+  font-family: var(--font-display);
+  font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1, "cv01" 1;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+
+h1 { letter-spacing: -0.032em; }
+h2 { letter-spacing: -0.028em; }
+h3 { letter-spacing: -0.022em; }
+
+/* Docs page — bold concept words get retro font */
+.docs-content strong {
+  font-family: var(--font-heading);
+  font-weight: 400;
+  font-size: 0.8125rem;
+}
+
+nav a, nav button, aside a, aside button, aside span,
+[role="navigation"] a, [role="navigation"] button {
+  font-family: var(--font-display);
+  letter-spacing: -0.012em;
+  font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1;
+}
+
+[class*="badge"], [class*="chip"], [class*="uppercase tracking"] {
+  font-family: var(--font-display);
+  font-feature-settings: "rlig" 1, "calt" 1, "tnum" 1;
+}
+
+[class*="tabular-nums"] {
+  font-feature-settings: "rlig" 1, "calt" 1, "tnum" 1, "ss01" 1;
+}
+
+input, textarea, select {
+  font-family: var(--font-sans);
+  letter-spacing: -0.011em;
+  font-feature-settings: "rlig" 1, "calt" 1;
+}
+
+button {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+  font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1;
+}
+
+[class*="card"] h1, [class*="card"] h2, [class*="card"] h3, [class*="card"] h4 {
+  font-family: var(--font-display);
+  letter-spacing: -0.025em;
+}
+
+.prose-pfc p, .prose-pfc li, .prose-pfc blockquote {
+  letter-spacing: -0.006em;
+  line-height: 1.7;
+}
+
+/* ─────────────────────────────────────────────────────────
+   Scrolling & selection — optimized for 120fps
+   ───────────────────────────────────────────────────────── */
+
+::selection {
+  background-color: rgba(196, 149, 106, 0.25);
+}
+
+/* ─────────────────────────────────────────────────────────
+   Scrollbars — completely hidden, scroll still works
+   ───────────────────────────────────────────────────────── */
+* {
+  scrollbar-width: none;           /* Firefox */
+  -ms-overflow-style: none;        /* IE / Edge */
+}
+
+*::-webkit-scrollbar {
+  display: none;                   /* Chrome / Safari / Opera */
+}
+
+/* ─────────────────────────────────────────────────────────
+   Liquid Glass — Surface utility classes
+   Ported from the Obsidian liquid glass theme
+   ───────────────────────────────────────────────────────── */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: var(--blur-l);
+  -webkit-backdrop-filter: var(--blur-l);
+  box-shadow: var(--shadow-xs);
+}
+
+/* ─────────────────────────────────────────────────────────
+   Animations — purposeful, physics-driven
+   ───────────────────────────────────────────────────────── */
+
+/* Streaming cursor — subtle blink */
+@keyframes blink-cursor {
+  0%, 45% { opacity: 1; }
+  50%, 95% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+.animate-blink {
+  animation: blink-cursor 1.2s ease-in-out infinite;
+}
+
+/* Retro block cursor blink — sharp step-function, no fade */
+@keyframes blink-cursor-retro {
+  0%, 50% { opacity: 1; }
+  50.01%, 100% { opacity: 0; }
+}
+
+.typewriter-cursor {
+  animation: blink-cursor-retro 1s step-end infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Pipeline pulse — soft breathe */
+@keyframes pipeline-pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+.animate-pipeline-pulse {
+  animation: pipeline-pulse 2s var(--anim-motion-cupertino) infinite;
+}
+
+/* Bubble menu item — pill-shaped glass bubble */
+.glass-bubble-pill {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur-heavy));
+  -webkit-backdrop-filter: blur(var(--glass-blur-heavy));
+  box-shadow: var(--shadow-s);
+  border-radius: var(--radius-obs-xl);
+}
+
+/* ─────────────────────────────────────────────────────────
+   Prose — M3-inspired reading experience
+   ───────────────────────────────────────────────────────── */
+.prose-pfc {
+  @apply prose prose-zinc dark:prose-invert max-w-none;
+  font-family: var(--font-sans);
+  --tw-prose-headings: var(--foreground);
+  --tw-prose-body: var(--foreground);
+  --tw-prose-bold: var(--foreground);
+  --tw-prose-quotes: var(--foreground);
+  --tw-prose-counters: var(--foreground);
+  --tw-prose-bullets: var(--foreground);
+  --tw-prose-invert-body: #FFFFFF;
+  --tw-prose-invert-headings: #FFFFFF;
+  --tw-prose-invert-bold: #FFFFFF;
+  --tw-prose-invert-quotes: #FFFFFF;
+  color: var(--foreground);
+}
+
+.prose-pfc h1,
+.prose-pfc h2,
+.prose-pfc h3,
+.prose-pfc h4,
+.prose-pfc h5,
+.prose-pfc h6 {
+  color: var(--foreground) !important;
+  font-family: 'RetroGaming', var(--font-display) !important;
+}
+
+.prose-pfc p,
+.prose-pfc li,
+.prose-pfc td,
+.prose-pfc th,
+.prose-pfc blockquote,
+.prose-pfc strong {
+  color: var(--foreground);
+}
+
+.prose-pfc h1 {
+  font-family: var(--font-display);
+  font-size: var(--type-headline-lg);
+  font-weight: 700;
+  letter-spacing: -0.032em;
+  line-height: 1.2;
+  margin-top: 2rem;
+  margin-bottom: 0.75rem;
+  scroll-margin-top: 4rem;
+}
+
+.prose-pfc h2 {
+  font-family: var(--font-display);
+  font-size: var(--type-headline-sm);
+  font-weight: 650;
+  letter-spacing: -0.025em;
+  line-height: 1.25;
+  margin-top: 1.75rem;
+  margin-bottom: 0.625rem;
+  scroll-margin-top: 4rem;
+}
+
+.prose-pfc h3 {
+  font-family: var(--font-display);
+  font-size: var(--type-title-lg);
+  font-weight: 600;
+  letter-spacing: -0.018em;
+  line-height: 1.3;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+  scroll-margin-top: 4rem;
+}
+
+.prose-pfc h4 {
+  font-family: var(--font-display);
+  font-size: var(--type-title-md);
+  font-weight: 600;
+  letter-spacing: -0.012em;
+  margin-top: 1.25rem;
+  margin-bottom: 0.375rem;
+  scroll-margin-top: 4rem;
+}
+
+.prose-pfc p {
+  font-size: var(--type-prose-body);
+  line-height: 1.75;
+  letter-spacing: -0.006em;
+  margin-bottom: 0.75rem;
+}
+
+.prose-pfc ul, .prose-pfc ol {
+  font-size: var(--type-prose-body);
+  line-height: 1.7;
+  padding-left: 1.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.prose-pfc li {
+  letter-spacing: -0.006em;
+  margin-bottom: 0.25rem;
+}
+
+.prose-pfc li::marker {
+  color: var(--m3-primary);
+}
+
+.prose-pfc blockquote {
+  border-left: 3px solid var(--m3-primary);
+  padding: 0.5rem 1rem;
+  margin: 1rem 0;
+  background: var(--m3-surface-container);
+  border-radius: 0 var(--shape-sm) var(--shape-sm) 0;
+  font-style: normal;
+}
+
+.prose-pfc strong {
+  font-weight: 650;
+  color: var(--foreground);
+}
+
+.prose-pfc code {
+  @apply px-1.5 py-0.5 rounded text-sm font-mono;
+  background: var(--m3-surface-container-high);
+  font-size: var(--type-prose-body);
+}
+
+.prose-pfc pre {
+  @apply rounded-lg border;
+  background: var(--m3-surface-container);
+  padding: 1rem;
+  overflow-x: auto;
+}
+
+.prose-pfc pre code {
+  @apply bg-transparent px-0 py-0;
+  font-size: var(--type-prose-body);
+}
+
+.prose-pfc hr {
+  border-color: var(--m3-outline-variant);
+  margin: 1.5rem 0;
+}
+
+.prose-pfc table {
+  font-size: var(--type-body-sm);
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.prose-pfc th {
+  font-weight: 600;
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 2px solid var(--m3-outline-variant);
+}
+
+.prose-pfc td {
+  padding: 0.375rem 0.75rem;
+  border-bottom: 1px solid var(--m3-outline-variant);
+}
+
+/* ─────────────────────────────────────────────────────────
+   Accordion
+   ───────────────────────────────────────────────────────── */
+@keyframes accordion-down {
+  from { opacity: 0; max-height: 0; transform-origin: top; }
+  to { opacity: 1; max-height: var(--radix-collapsible-content-height, 800px); transform-origin: top; }
+}
+
+@keyframes accordion-up {
+  from { opacity: 1; max-height: var(--radix-collapsible-content-height, 800px); transform-origin: top; }
+  to { opacity: 0; max-height: 0; transform-origin: top; }
+}
+
+/* ─────────────────────────────────────────────────────────
+   Reduced motion — respect user preferences
+   ───────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────
+   Focus — clean, Cupertino-style ring
+   ───────────────────────────────────────────────────────── */
+:focus-visible:not(input):not(textarea):not(select) {
+  outline: 2px solid rgba(196, 149, 106, 0.5);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* ─────────────────────────────────────────────────────────
+   Thinking Indicator — pixel brain with gentle shake
+   ───────────────────────────────────────────────────────── */
+@keyframes thinking-shake {
+  0%, 100% { transform: translateX(0) rotate(0deg); }
+  15% { transform: translateX(-1.5px) rotate(-1.5deg); }
+  30% { transform: translateX(1px) rotate(1deg); }
+  45% { transform: translateX(-1px) rotate(-0.5deg); }
+  60% { transform: translateX(1.5px) rotate(1.5deg); }
+  75% { transform: translateX(-0.5px) rotate(-1deg); }
+  90% { transform: translateX(0.5px) rotate(0.5deg); }
+}
+
+@keyframes thinking-pulse {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+/* Thinking shimmer text effect */
+.thinking-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--color-pfc-violet) 0%,
+    #E0C4A8 50%,
+    var(--color-pfc-violet) 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 2s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0%, 100% { background-position: 200% center; }
+  50% { background-position: 0% center; }
+}
+
+/* ─── Block editor toolbar pop-in ─── */
+@keyframes toolbar-in {
+  from { opacity: 0; transform: scale(0.96) translateY(-2px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* ─── Thematic wallpaper animations ─── */
+@keyframes wallpaper-drift {
+  0%   { transform: scale(1.06) translate(0%, 0%); }
+  25%  { transform: scale(1.08) translate(-1.5%, -1%); }
+  50%  { transform: scale(1.06) translate(-0.5%, -1.5%); }
+  75%  { transform: scale(1.08) translate(1%, -0.5%); }
+  100% { transform: scale(1.06) translate(0%, 0%); }
+}
+
+@keyframes wallpaper-drift-alt {
+  0%   { transform: scale(1.08) translate(0.5%, -0.5%); }
+  25%  { transform: scale(1.06) translate(1%, 0.5%); }
+  50%  { transform: scale(1.08) translate(-1%, 1%); }
+  75%  { transform: scale(1.06) translate(-0.5%, -1%); }
+  100% { transform: scale(1.08) translate(0.5%, -0.5%); }
+}

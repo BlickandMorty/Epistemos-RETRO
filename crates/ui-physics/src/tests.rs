@@ -424,3 +424,56 @@ fn negative_stiffness_config_clamped() {
         }
     }
 }
+
+#[test]
+fn high_weight_edge_stiffness_capped() {
+    // Edge weight of 1000 would produce stiffness = 0.5 * 1000 = 500 without cap.
+    // That's far too stiff — causes spring oscillation artifacts.
+    // After capping, nodes should remain bounded and not oscillate wildly.
+    let mut store = GraphStore::new();
+    store.add_node(make_node("a", -50.0, 0.0));
+    store.add_node(make_node("b", 50.0, 0.0));
+    store.add_edge(make_edge_weighted("e1", "a", "b", 1000.0));
+
+    let mut world = PhysicsWorld::new(PhysicsConfig::default());
+    world.load_from_graph(&store);
+
+    // Run 100 steps — positions should stay finite and bounded
+    for _ in 0..100 {
+        let frame = world.step();
+        for pos in &frame.positions {
+            assert!(pos.x.is_finite(), "NaN from high-weight stiffness for {}", pos.id);
+            assert!(
+                pos.x.abs() < 100_000.0,
+                "Node {} exploded with high-weight edge: x={}", pos.id, pos.x
+            );
+        }
+    }
+}
+
+#[test]
+fn high_damping_config_does_not_destabilize_springs() {
+    // If config.damping > 2.0, then damping * 0.5 > 1.0 for the spring joint,
+    // which adds energy rather than removing it. Should be clamped to [0, 1].
+    let mut store = GraphStore::new();
+    store.add_node(make_node("a", -50.0, 0.0));
+    store.add_node(make_node("b", 50.0, 0.0));
+    store.add_edge(make_edge("e1", "a", "b"));
+
+    let mut world = PhysicsWorld::new(PhysicsConfig {
+        damping: 5.0, // Very high — spring damping would be 2.5 without clamp
+        ..PhysicsConfig::default()
+    });
+    world.load_from_graph(&store);
+
+    for _ in 0..100 {
+        let frame = world.step();
+        for pos in &frame.positions {
+            assert!(pos.x.is_finite(), "NaN from over-damped spring for {}", pos.id);
+            assert!(
+                pos.x.abs() < 100_000.0,
+                "Node {} destabilized with high damping: x={}", pos.id, pos.x
+            );
+        }
+    }
+}

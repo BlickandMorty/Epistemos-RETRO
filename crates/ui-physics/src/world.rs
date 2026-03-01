@@ -212,11 +212,14 @@ impl PhysicsWorld {
             // Guard: negative/NaN weight → f32::sqrt() returns NaN, NaN.max() is NaN,
             // corrupting the joint and causing all connected nodes to explode.
             // Guard: negative stiffness config → spring becomes attractive, nodes explode outward.
+            // Guard: high edge weight (1000+) → stiffness explodes → oscillation artifacts.
+            // Guard: high config damping (>2) → joint damping > 1.0 → adds energy, destabilizes.
             let safe_weight = (edge.weight as f32).max(0.1);
             let rest_length = self.config.spring_rest_length.max(1.0) / safe_weight.sqrt().max(0.5);
-            let stiffness = self.config.spring_stiffness.max(0.01) * safe_weight;
+            let stiffness = (self.config.spring_stiffness.max(0.01) * safe_weight).min(50.0);
+            let joint_damping = (self.config.damping * 0.5).clamp(0.0, 1.0);
 
-            let joint = SpringJointBuilder::new(rest_length, stiffness, self.config.damping * 0.5)
+            let joint = SpringJointBuilder::new(rest_length, stiffness, joint_damping)
                 .local_anchor1(Vector::ZERO)
                 .local_anchor2(Vector::ZERO)
                 .build();

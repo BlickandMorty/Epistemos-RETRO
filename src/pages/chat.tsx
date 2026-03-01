@@ -14,9 +14,9 @@ export default function ChatPage() {
     let cancelled = false;
 
     setCurrentChat(chatId);
-    commands.getMessages(chatId).then((msgs) => {
-      if (!cancelled) {
-        loadMessages(msgs.map((m) => ({
+    commands.getMessages(chatId).then((result) => {
+      if (!cancelled && result.status === 'ok') {
+        loadMessages(result.data.map((m) => ({
           id: m.id,
           role: m.role as 'user' | 'system',
           text: m.content,

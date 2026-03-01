@@ -86,8 +86,8 @@ export function ChatsSidePanel({ isDark, isOled, isCosmic, isSunny, isSunset, on
     async function fetchChats() {
       try {
         const { commands } = await import('@/lib/bindings');
-        const chats = await commands.listChats();
-        if (!cancelled) setChats(chats as any[]);
+        const result = await commands.listChats();
+        if (!cancelled && result.status === 'ok') setChats(result.data as any[]);
       } catch { /* ignore */ } finally {
         if (!cancelled) setLoaded(true);
       }
@@ -414,8 +414,8 @@ export function ChatsOverlay({ isDark, isOled, isCosmic, isSunny, onClose }: {
       try {
         setFetchError(false);
         const { commands } = await import('@/lib/bindings');
-        const chats = await commands.listChats();
-        if (!cancelled) setChats(chats as any[]);
+        const result = await commands.listChats();
+        if (!cancelled && result.status === 'ok') setChats(result.data as any[]);
       } catch { if (!cancelled) setFetchError(true); }
     }
     fetchChats();

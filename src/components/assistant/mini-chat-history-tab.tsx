@@ -44,8 +44,8 @@ export function HistoryTabContent({ isDark, textPrimary, textSecondary, btnHover
     let cancelled = false;
     import('@/lib/bindings').then(({ commands }) =>
       commands.listChats()
-    ).then((chats) => {
-      if (!cancelled) setAllChats(chats as any[]);
+    ).then((result) => {
+      if (!cancelled && result.status === 'ok') setAllChats(result.data as any[]);
     }).catch(() => {}).finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, []);

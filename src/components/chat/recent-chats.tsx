@@ -60,8 +60,8 @@ function RecentChatsBase({ isDark, isOled: _isOled, onShowAll }: RecentChatsProp
     async function fetchChats() {
       try {
         const { commands } = await import('@/lib/bindings');
-        const chats = await commands.listChats();
-        if (!cancelled) setAllChats(chats as any[]);
+        const result = await commands.listChats();
+        if (!cancelled && result.status === 'ok') setAllChats(result.data as any[]);
       } catch {
         // Silently fail
       } finally {

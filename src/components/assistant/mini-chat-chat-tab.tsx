@@ -355,8 +355,8 @@ function EmptyStateWithRecent({ textPrimary, textSecondary, btnHover }: {
     let cancelled = false;
     import('@/lib/bindings').then(({ commands }) =>
       commands.listChats()
-    ).then((chats) => {
-      if (!cancelled) setRecentChats((chats as any[]).slice(0, 5));
+    ).then((result) => {
+      if (!cancelled && result.status === 'ok') setRecentChats((result.data as any[]).slice(0, 5));
     }).catch(() => {});
     return () => { cancelled = true; };
   }, []);

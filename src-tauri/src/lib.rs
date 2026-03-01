@@ -79,7 +79,8 @@ pub fn run() {
     #[cfg(debug_assertions)]
     builder
         .export(
-            specta_typescript::Typescript::default(),
+            specta_typescript::Typescript::default()
+                .bigint(specta_typescript::BigIntExportBehavior::Number),
             "../src/lib/bindings.ts",
         )
         .expect("Failed to export typescript bindings");
@@ -110,7 +111,7 @@ pub fn run() {
 
             // Background: probe local AI services (Foundry, Ollama) so triage
             // routing works immediately. 3s timeout per service, non-blocking.
-            tokio::spawn(async move {
+            tauri::async_runtime::spawn(async move {
                 if let Err(e) = system::probe_and_cache_services(&state).await {
                     eprintln!("[WARN][startup] failed to probe local AI services — triage routing may default to cloud: {e}");
                 }

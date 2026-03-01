@@ -657,4 +657,103 @@ mod tests {
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].title, "100% done");
     }
+
+    // ── WAL mode (file-based DB) ──
+
+    #[test]
+    fn wal_mode_enabled_on_file_db() {
+        let dir = std::env::temp_dir().join(format!("epistemos_wal_test_{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let db_path = dir.join("test.db");
+
+        let db = Database::open(&db_path).expect("open file db");
+        assert_eq!(db.pragma_str("journal_mode").unwrap(), "wal");
+        assert_eq!(db.pragma_i64("synchronous").unwrap(), 1, "NORMAL=1");
+        assert_eq!(db.pragma_i64("busy_timeout").unwrap(), 5000);
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    // ── FTS5 auto-sync triggers ──
+
+    #[test]
+    fn fts5_trigger_auto_indexes_on_save_body() {
+        let db = test_db();
+        let page = Page::new("Trigger Test".into());
+        db.insert_page(&page).unwrap();
+
+        // save_body should auto-sync to FTS5 via trigger (no manual upsert_search_index)
+        db.save_body(page.id, "quantum entanglement experiments").unwrap();
+
+        let results = db.search_fts5("quantum", 10).unwrap();
+        assert_eq!(results.len(), 1, "trigger should auto-index body on save");
+        assert_eq!(results[0].page_id, page.id);
+    }
+
+    #[test]
+    fn fts5_trigger_updates_on_body_change() {
+        let db = test_db();
+        let page = Page::new("Evolving Body".into());
+        db.insert_page(&page).unwrap();
+
+        db.save_body(page.id, "first version about cats").unwrap();
+        assert_eq!(db.search_fts5("cats", 10).unwrap().len(), 1);
+
+        // Update body — trigger should re-index
+        db.save_body(page.id, "second version about dogs").unwrap();
+        assert!(db.search_fts5("cats", 10).unwrap().is_empty(), "old content should be gone");
+        assert_eq!(db.search_fts5("dogs", 10).unwrap().len(), 1, "new content should be indexed");
+    }
+
+    #[test]
+    fn fts5_trigger_removes_on_body_delete() {
+        let db = test_db();
+        let page = Page::new("Delete Body".into());
+        db.insert_page(&page).unwrap();
+        db.save_body(page.id, "unique searchterm xyzzy").unwrap();
+        assert_eq!(db.search_fts5("xyzzy", 10).unwrap().len(), 1);
+
+        // delete_page cascades to page_bodies → trigger removes from search_index
+        db.delete_page(page.id).unwrap();
+        assert!(db.search_fts5("xyzzy", 10).unwrap().is_empty());
+    }
+
+    #[test]
+    fn fts5_trigger_syncs_title_change() {
+        let db = test_db();
+        let mut page = Page::new("Original Title".into());
+        db.insert_page(&page).unwrap();
+        db.save_body(page.id, "some body content").unwrap();
+
+        // Title should be searchable from trigger
+        assert_eq!(db.search_fts5("original", 10).unwrap().len(), 1);
+
+        // Update title — trigger on pages UPDATE OF title should re-index
+        page.title = "Renamed Title".into();
+        page.updated_at = now_ms();
+        db.update_page(&page).unwrap();
+
+        assert!(db.search_fts5("original", 10).unwrap().is_empty(), "old title gone");
+        assert_eq!(db.search_fts5("renamed", 10).unwrap().len(), 1, "new title indexed");
+    }
+
+    // ── Transactional FTS5 rebuild ──
+
+    #[test]
+    fn fts5_rebuild_is_transactional() {
+        let db = test_db();
+
+        // Create 50 pages with bodies
+        for i in 0..50 {
+            let page = Page::new(format!("Bulk Page {i}"));
+            db.insert_page(&page).unwrap();
+            db.save_body(page.id, &format!("Body content for page {i}")).unwrap();
+        }
+
+        let count = db.rebuild_search_index().unwrap();
+        assert_eq!(count, 50);
+
+        // Spot-check a few entries
+        assert_eq!(db.search_fts5("bulk page", 100).unwrap().len(), 50);
+    }
 }

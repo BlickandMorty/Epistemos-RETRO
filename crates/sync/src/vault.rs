@@ -323,13 +323,19 @@ fn import_file_incremental(
 }
 
 /// Collect all .md files under a directory, recursively.
+/// Canonicalizes all paths to prevent directory traversal via symlinks.
 fn collect_md_files(dir: &Path) -> Result<Vec<PathBuf>, SyncError> {
+    let canonical_root = dir.canonicalize()?;
     let mut files = Vec::new();
-    collect_md_files_recursive(dir, &mut files)?;
+    collect_md_files_recursive(&canonical_root, &canonical_root, &mut files)?;
     Ok(files)
 }
 
-fn collect_md_files_recursive(dir: &Path, out: &mut Vec<PathBuf>) -> Result<(), SyncError> {
+fn collect_md_files_recursive(
+    dir: &Path,
+    vault_root: &Path,
+    out: &mut Vec<PathBuf>,
+) -> Result<(), SyncError> {
     for entry in std::fs::read_dir(dir)? {
         let entry = entry?;
         let path = entry.path();
@@ -342,10 +348,23 @@ fn collect_md_files_recursive(dir: &Path, out: &mut Vec<PathBuf>) -> Result<(), 
             continue;
         }
 
-        if path.is_dir() {
-            collect_md_files_recursive(&path, out)?;
-        } else if path.extension().is_some_and(|e| e == "md") {
-            out.push(path);
+        // Canonicalize to resolve symlinks, then verify path stays within vault
+        let canonical = match path.canonicalize() {
+            Ok(p) => p,
+            Err(_) => continue, // skip broken symlinks
+        };
+        if !canonical.starts_with(vault_root) {
+            eprintln!(
+                "[vault] skipping path outside vault root: {}",
+                path.display()
+            );
+            continue;
+        }
+
+        if canonical.is_dir() {
+            collect_md_files_recursive(&canonical, vault_root, out)?;
+        } else if canonical.extension().is_some_and(|e| e == "md") {
+            out.push(canonical);
         }
     }
     Ok(())

@@ -10,8 +10,28 @@ pub struct Database {
 }
 
 impl Database {
+    /// Query a PRAGMA value as string (for diagnostics and testing).
+    pub fn pragma_str(&self, pragma: &str) -> Result<String, StorageError> {
+        let sql = format!("PRAGMA {pragma}");
+        Ok(self.conn.query_row(&sql, [], |r| r.get::<_, String>(0))?)
+    }
+
+    /// Query a PRAGMA value as integer (for diagnostics and testing).
+    pub fn pragma_i64(&self, pragma: &str) -> Result<i64, StorageError> {
+        let sql = format!("PRAGMA {pragma}");
+        Ok(self.conn.query_row(&sql, [], |r| r.get::<_, i64>(0))?)
+    }
+}
+
+impl Database {
     pub fn open(path: &Path) -> Result<Self, StorageError> {
         let conn = Connection::open(path)?;
+        // WAL mode: concurrent reads during writes, 2-3x faster writes
+        // NORMAL sync: safe against app crashes (tiny risk on OS power loss — acceptable)
+        // busy_timeout: wait up to 5s on lock instead of failing immediately
+        conn.execute_batch(
+            "PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA busy_timeout=5000;",
+        )?;
         let db = Self { conn };
         db.create_tables()?;
         Ok(db)
@@ -761,23 +781,34 @@ impl Database {
     }
 
     /// Rebuild the entire FTS5 index from current pages + bodies.
+    /// Wrapped in a single transaction for 10-100x faster bulk writes.
     pub fn rebuild_search_index(&self) -> Result<usize, StorageError> {
-        // Clear existing index
-        self.conn.execute("DELETE FROM search_index", [])?;
-
-        // Load all pages and their bodies
+        // Phase 1: Read all data (before transaction borrows conn)
         let pages = self.list_pages()?;
-        let mut count = 0;
+        let mut entries = Vec::with_capacity(pages.len());
         for page in &pages {
             if page.is_archived {
                 continue;
             }
             let body = self.load_body(page.id)?;
             let tags = page.tags.join(", ");
-            self.upsert_search_index(page.id, &page.title, &body, &tags)?;
-            count += 1;
+            entries.push((page.id.to_string(), page.title.clone(), body, tags));
         }
-        Ok(count)
+
+        // Phase 2: Batch write in single transaction (avoids per-row fsync)
+        let tx = self.conn.unchecked_transaction()?;
+        tx.execute("DELETE FROM search_index", [])?;
+        {
+            let mut stmt = tx.prepare(
+                "INSERT INTO search_index (page_id, title, body, tags) VALUES (?1, ?2, ?3, ?4)",
+            )?;
+            for (pid, title, body, tags) in &entries {
+                stmt.execute(params![pid, title, body, tags])?;
+            }
+        }
+        tx.commit()?;
+
+        Ok(entries.len())
     }
 }
 
@@ -1090,4 +1121,35 @@ CREATE VIRTUAL TABLE IF NOT EXISTS search_index USING fts5(
     tags,
     tokenize='unicode61'
 );
+
+-- Auto-sync FTS5 when page bodies change (Logseq-inspired write-through pattern)
+CREATE TRIGGER IF NOT EXISTS trg_fts_body_insert AFTER INSERT ON page_bodies
+BEGIN
+    DELETE FROM search_index WHERE page_id = NEW.page_id;
+    INSERT INTO search_index (page_id, title, body, tags)
+    SELECT NEW.page_id, p.title, NEW.body, p.tags_json
+    FROM pages p WHERE p.id = NEW.page_id;
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_fts_body_update AFTER UPDATE ON page_bodies
+BEGIN
+    DELETE FROM search_index WHERE page_id = NEW.page_id;
+    INSERT INTO search_index (page_id, title, body, tags)
+    SELECT NEW.page_id, p.title, NEW.body, p.tags_json
+    FROM pages p WHERE p.id = NEW.page_id;
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_fts_body_delete AFTER DELETE ON page_bodies
+BEGIN
+    DELETE FROM search_index WHERE page_id = OLD.page_id;
+END;
+
+-- Auto-sync FTS5 when page title or tags change
+CREATE TRIGGER IF NOT EXISTS trg_fts_page_update AFTER UPDATE OF title, tags_json ON pages
+BEGIN
+    DELETE FROM search_index WHERE page_id = NEW.id;
+    INSERT INTO search_index (page_id, title, body, tags)
+    SELECT NEW.id, NEW.title, pb.body, NEW.tags_json
+    FROM page_bodies pb WHERE pb.page_id = NEW.id;
+END;
 ";

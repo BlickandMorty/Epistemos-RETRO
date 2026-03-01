@@ -186,7 +186,16 @@ function mapTruthAssessment(raw: EnrichedPayload['truth_assessment']): TruthAsse
 
 // ── Listener Setup ────────────────────────────────────────────────
 
+// Idempotence guard — prevents duplicate listeners from React StrictMode double-mount
+let setupPromise: Promise<UnlistenFn> | null = null;
+
 export async function setupTauriListeners(): Promise<UnlistenFn> {
+  if (setupPromise) return setupPromise;
+  setupPromise = _setupTauriListeners();
+  return setupPromise;
+}
+
+async function _setupTauriListeners(): Promise<UnlistenFn> {
   const unlisteners: UnlistenFn[] = [];
 
   // ── Chat streaming (Pass 1 text deltas) ──
@@ -379,5 +388,6 @@ export async function setupTauriListeners(): Promise<UnlistenFn> {
     for (const unlisten of unlisteners) {
       unlisten();
     }
+    setupPromise = null; // Allow re-setup after full cleanup
   };
 }

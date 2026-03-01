@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, createContext, useContext } from 'react';
+import { useState, useEffect, useCallback, useRef, createContext, useContext } from 'react';
 
 // ═══════════════════════════════════════════════════════════════════
 // Custom theme system — replaces next-themes for Vite/Tauri
@@ -59,6 +59,7 @@ export function useThemeProvider(
   attribute = 'class',
 ): ThemeContextValue {
   const [theme, setThemeState] = useState(() => getStoredTheme(defaultTheme));
+  const themeRef = useRef(theme); // stable ref for event handlers
   const [resolvedTheme, setResolvedTheme] = useState(() => {
     const t = getStoredTheme(defaultTheme);
     return t === 'system' ? resolveSystemTheme() : t;
@@ -82,8 +83,9 @@ export function useThemeProvider(
     [attribute],
   );
 
-  // Apply theme on mount
+  // Apply theme on mount and changes
   useEffect(() => {
+    themeRef.current = theme;
     const resolved = applyTheme(theme, attribute);
     setResolvedTheme(resolved);
   }, [theme, attribute]);
@@ -92,14 +94,14 @@ export function useThemeProvider(
   useEffect(() => {
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
     const handleChange = () => {
-      if (theme === 'system') {
+      if (themeRef.current === 'system') {
         const resolved = applyTheme('system', attribute);
         setResolvedTheme(resolved);
       }
     };
     mq.addEventListener('change', handleChange);
     return () => mq.removeEventListener('change', handleChange);
-  }, [theme, attribute]);
+  }, [attribute]); // themeRef is stable — no listener churn on theme change
 
   // Cross-tab sync via storage events
   useEffect(() => {

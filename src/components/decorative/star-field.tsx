@@ -140,13 +140,10 @@ export function StarField({ theme = 'oled' }: { theme?: 'light' | 'dark' | 'oled
     // Schedule first shooting star
     nextShootRef.current = performance.now() + 1000 + Math.random() * 2000;
 
-    let visible = true;
+    let active = true;
 
     function draw(now: number) {
-      if (!visible) {
-        rafRef.current = requestAnimationFrame(draw);
-        return;
-      }
+      if (!active) return; // stop loop when hidden or unmounted
 
       // Throttle to 30fps
       if (now - lastFrameRef.current < FRAME_MS) {
@@ -279,13 +276,16 @@ export function StarField({ theme = 'oled' }: { theme?: 'light' | 'dark' | 'oled
 
     rafRef.current = requestAnimationFrame(draw);
 
-    // Pause when tab hidden
+    // Pause when tab hidden, resume when visible
     const handleVisibility = () => {
-      visible = document.visibilityState === 'visible';
+      const visible = document.visibilityState === 'visible';
+      active = visible;
+      if (visible) rafRef.current = requestAnimationFrame(draw); // resume loop
     };
     document.addEventListener('visibilitychange', handleVisibility);
 
     return () => {
+      active = false;
       cancelAnimationFrame(rafRef.current);
       document.removeEventListener('visibilitychange', handleVisibility);
       ro.disconnect();

@@ -120,9 +120,12 @@ export function ThematicWallpaper({ blurred = false }: { blurred?: boolean }) {
   const sizeRef = useRef({ w: 0, h: 0 });
   const rafRef = useRef<number>(0);
   const lastFrameRef = useRef(0);
+  const activeRef = useRef(true); // guards RAF after unmount + tab hidden
 
   // Particle canvas animation (15fps)
   const drawParticles = useCallback((now: number) => {
+    if (!activeRef.current) return; // unmounted or tab hidden
+
     const canvas = canvasRef.current;
     if (!canvas) {
       rafRef.current = requestAnimationFrame(drawParticles);
@@ -282,22 +285,18 @@ export function ThematicWallpaper({ blurred = false }: { blurred?: boolean }) {
     });
     ro.observe(canvas);
 
-    let visible = true;
+    activeRef.current = true;
+    rafRef.current = requestAnimationFrame(drawParticles);
 
-    const wrappedDraw = (now: number) => {
-      if (!visible) {
-        rafRef.current = requestAnimationFrame(wrappedDraw);
-        return;
-      }
-      drawParticles(now);
+    const handleVis = () => {
+      const visible = document.visibilityState === 'visible';
+      activeRef.current = visible;
+      if (visible) rafRef.current = requestAnimationFrame(drawParticles); // resume
     };
-
-    rafRef.current = requestAnimationFrame(wrappedDraw);
-
-    const handleVis = () => { visible = document.visibilityState === 'visible'; };
     document.addEventListener('visibilitychange', handleVis);
 
     return () => {
+      activeRef.current = false;
       cancelAnimationFrame(rafRef.current);
       document.removeEventListener('visibilitychange', handleVis);
       ro.disconnect();

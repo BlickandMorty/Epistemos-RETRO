@@ -145,7 +145,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       window.removeEventListener('storage', handleStorage);
       window.removeEventListener('pfc-system-theme-update', handleCustom);
     };
-  }, [setTheme, theme]);
+  }, [setTheme]); // theme not needed — applySystemTheme reads from localStorage
 
   // Gate rendering behind `mounted` — all hooks run unconditionally above
   if (!mounted) {

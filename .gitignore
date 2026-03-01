@@ -8,6 +8,7 @@ dist/
 *.local
 
 # Rust / Cargo
+target/
 src-tauri/target/
 src-tauri/gen/
 

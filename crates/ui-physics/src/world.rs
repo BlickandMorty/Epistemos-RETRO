@@ -165,7 +165,8 @@ impl PhysicsWorld {
                 continue;
             }
 
-            let mass = (node.weight as f32 * self.config.mass_per_weight).max(0.5);
+            let weight_f32 = if node.weight.is_finite() { node.weight as f32 } else { 1.0 };
+            let mass = (weight_f32 * self.config.mass_per_weight).max(0.5);
             let radius = (store.link_count(node_id) as f32).cbrt() * 8.0 + 4.0;
 
             let rb = RigidBodyBuilder::dynamic()

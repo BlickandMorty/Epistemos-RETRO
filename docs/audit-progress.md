@@ -67,7 +67,10 @@ Pivoted to: Deep scan for new issues in graph/physics/LLM/storage subsystems
 - [x] 42: Enrichment progress events for Pass 2 + Pass 3 (commit cdf073f)
 - [x] 43: Graph robustness — regex caching, vec pre-alloc, edge metadata_json (commit f68c057)
 
-## Phase 5 — FPS Explore Mode (NEXT)
+## Phase 5 — FPS Explore Mode (START AFTER HARDENING COMPLETE)
+
+Design doc: `docs/plans/2026-03-01-fps-explore-mode-design.md` (approved)
+Architecture: Dual-surface (Bevy wgpu bottom + transparent React webview top)
 
 Backend (COMPLETE):
 - [x] FPS physics: N-body gravity, thrusters, stabilization (ui-physics/fps_mode.rs)
@@ -75,11 +78,20 @@ Backend (COMPLETE):
 - [x] Seamless Graph ↔ FPS transition (world.rs: toggle_fps_mode)
 - [x] Tauri commands: toggle_fps_mode, fps_input, start_physics (physics.rs)
 - [x] Events: physics-frame + fps-frame emitted at 90Hz
+- [x] Decoupled FPS input buffer (separate mutex, <1μs lock)
 
-Frontend (TODO):
-- [ ] Bevy/wgpu 3D rendering layer (graph-render crate)
-- [ ] FPS HUD overlay (React component consuming fps-frame events)
-- [ ] Graph canvas component (React component consuming physics-frame events)
+Frontend (TODO — after all hardening):
+- [ ] Bevy scene setup + wgpu surface in Tauri window (graph-render crate)
+- [ ] Node sphere meshes + edge line meshes + WGSL shaders
+- [ ] Knowledge Probe vessel (icosahedron, particle trail, thruster glow)
+- [ ] Camera system (orbit for graph, chase for FPS)
+- [ ] FPS HUD overlay (React: speed, stabilization, crosshair, proximity)
+- [ ] Graph canvas component (React consuming physics-frame events)
+- [ ] Split-view mode (notes 60% + graph 40%)
+- [ ] Auto-navigate (graph follows current note/folder/block)
+- [ ] Keyboard shortcuts (vim-inspired: G, F, Esc, WASD, Space, Tab)
+- [ ] Pointer lock for FPS mouse-look
+- [ ] Zoom-dive transition animation (Graph → FPS, ~1.5s)
 
 ## macOS vs Retro Parity Assessment
 

@@ -44,6 +44,7 @@ pub async fn start_physics(app: AppHandle, state: State<'_, AppState>) -> Result
     // Spawn the physics loop on a background thread.
     let physics = state.physics.clone();
     let running = state.physics_running.clone();
+    let fps_input_buf = state.fps_input_pending.clone();
 
     tokio::spawn(async move {
         let frame_duration = std::time::Duration::from_micros(frame_duration_us);
@@ -51,14 +52,24 @@ pub async fn start_physics(app: AppHandle, state: State<'_, AppState>) -> Result
         while running.load(Ordering::Relaxed) {
             let start = std::time::Instant::now();
 
-            // Single lock acquisition per frame — step + extract FPS data together.
-            // Two locks per frame at 90Hz caused measurable frame stuttering.
+            // Drain pending FPS input BEFORE acquiring the physics lock.
+            // This keeps the input buffer lock held for < 1μs (struct copy),
+            // completely eliminating contention with the frontend's fps_input() calls.
+            let pending_input = {
+                let mut buf = fps_input_buf.lock().unwrap_or_else(|e| e.into_inner());
+                let snapshot = buf.clone();
+                *buf = FpsInput::default();
+                snapshot
+            };
+
+            // Single lock acquisition per frame — apply input + step + extract FPS data.
             let (frame, fps_data) = {
                 let Ok(mut world) = physics.lock() else {
                     eprintln!("[physics] lock poisoned — stopping simulation");
                     running.store(false, Ordering::Relaxed);
                     break;
                 };
+                world.set_fps_input(pending_input);
                 let f = world.step();
                 let fps = world.fps_frame();
                 (f, fps)
@@ -149,11 +160,21 @@ pub async fn toggle_fps_mode(state: State<'_, AppState>) -> Result<String, AppEr
 
 /// Send FPS input (thruster + mouse) for the current frame.
 /// Called by the frontend on each animation frame while in FPS mode.
+/// Writes to a decoupled input buffer (NOT the physics mutex) to avoid
+/// contention with the 90Hz physics loop. Input is consumed by the loop
+/// on its next tick.
 #[tauri::command]
 #[specta::specta]
 pub async fn fps_input(state: State<'_, AppState>, input: FpsInput) -> Result<(), AppError> {
-    let mut physics = state.lock_physics()?;
-    physics.set_fps_input(input);
+    let mut pending = state.fps_input_pending.lock()
+        .map_err(|e| AppError::Internal(format!("fps_input lock: {e}")))?;
+    // Accumulate mouse deltas (summed between physics ticks) but overwrite thrust.
+    pending.forward = input.forward;
+    pending.strafe = input.strafe;
+    pending.vertical = input.vertical;
+    pending.mouse_dx += input.mouse_dx;
+    pending.mouse_dy += input.mouse_dy;
+    pending.toggle_stabilization |= input.toggle_stabilization;
     Ok(())
 }
 

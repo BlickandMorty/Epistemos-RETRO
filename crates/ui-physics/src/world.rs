@@ -339,16 +339,33 @@ impl PhysicsWorld {
 
     /// Apply a gentle central force pulling all bodies toward the origin.
     /// Prevents the graph from drifting off-screen while springs settle.
+    ///
+    /// Uses capped linear spring: F = -min(pos, cap) * strength.
+    /// The cap prevents enormous forces at extreme distances.
     fn apply_central_gravity(&mut self) {
         let strength = self.config.gravity_strength;
+        const MAX_DIST: f32 = 5000.0;
         for (_, body) in self.rigid_body_set.iter_mut() {
             if !body.is_dynamic() {
                 continue;
             }
             let pos = body.translation();
+            // NaN guard: if position is corrupted, reset to origin instead of propagating
+            if !pos.x.is_finite() || !pos.y.is_finite() || !pos.z.is_finite() {
+                body.set_translation(Vector::ZERO, false);
+                body.set_linvel(Vector::ZERO, false);
+                continue;
+            }
             let dist = pos.length();
             if dist > 1.0 {
-                let force = Vector::new(-pos.x * strength, -pos.y * strength, -pos.z * strength);
+                // Cap force magnitude to prevent extreme acceleration at large distances
+                let effective_dist = dist.min(MAX_DIST);
+                let scale = effective_dist / dist; // ≤ 1.0
+                let force = Vector::new(
+                    -pos.x * scale * strength,
+                    -pos.y * scale * strength,
+                    -pos.z * scale * strength,
+                );
                 body.add_force(force, true);
             }
         }
@@ -384,6 +401,16 @@ impl PhysicsWorld {
         for node in &self.frame_nodes {
             if let Some(body) = self.rigid_body_set.get(node.handle) {
                 let pos = body.translation();
+                // NaN guard: never send corrupted positions to frontend
+                if !pos.x.is_finite() || !pos.y.is_finite() || !pos.z.is_finite() {
+                    positions.push(NodePosition {
+                        id: node.id.clone(),
+                        x: 0.0,
+                        y: 0.0,
+                        z: 0.0,
+                    });
+                    continue;
+                }
                 positions.push(NodePosition {
                     id: node.id.clone(),
                     x: pos.x,
@@ -392,7 +419,9 @@ impl PhysicsWorld {
                 });
 
                 let speed = body.linvel().length();
-                max_velocity = max_velocity.max(speed);
+                if speed.is_finite() {
+                    max_velocity = max_velocity.max(speed);
+                }
             }
         }
 

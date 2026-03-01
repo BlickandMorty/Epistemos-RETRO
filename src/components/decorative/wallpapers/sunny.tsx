@@ -1,4 +1,5 @@
 import { useEffect, useRef, useCallback } from 'react';
+import { scaleCount, scaleFps } from '@/lib/perf';
 
 /* ═══════════════════════════════════════════════════════════════════
    SunnyWallpaper — Animated pixel art sky background
@@ -16,10 +17,10 @@ import { useEffect, useRef, useCallback } from 'react';
    ═══════════════════════════════════════════════════════════════════ */
 
 const WALLPAPER_SRC = '/wallpapers/fluffy-clouds.png';
-const CLOUD_COUNT = 12;
-const DUST_COUNT = 25;
-const SPARKLE_COUNT = 15;
-const PARTICLE_FPS = 18;
+const CLOUD_COUNT = scaleCount(12);
+const DUST_COUNT = scaleCount(25);
+const SPARKLE_COUNT = scaleCount(15);
+const PARTICLE_FPS = scaleFps(18);
 const PARTICLE_FRAME_MS = 1000 / PARTICLE_FPS;
 const PIXEL_SCALE = 4; // draw at 1/4 resolution, upscale with nearest-neighbor → chunky pixel look
 

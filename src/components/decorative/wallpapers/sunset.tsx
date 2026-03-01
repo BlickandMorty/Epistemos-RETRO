@@ -1,4 +1,5 @@
 import { useEffect, useRef, useCallback } from 'react';
+import { scaleCount, scaleFps } from '@/lib/perf';
 
 /* ═══════════════════════════════════════════════════════════════════
    SunsetWallpaper — Animated pixel art mountain sunset background
@@ -15,12 +16,12 @@ import { useEffect, useRef, useCallback } from 'react';
    - prefers-reduced-motion safe
    ═══════════════════════════════════════════════════════════════════ */
 
-const PARTICLE_FPS = 18;
+const PARTICLE_FPS = scaleFps(18);
 const PARTICLE_FRAME_MS = 1000 / PARTICLE_FPS;
 const PIXEL_SCALE = 4;
-const EMBER_COUNT = 30;
-const CLOUD_COUNT = 6;
-const FIREFLY_COUNT = 12;
+const EMBER_COUNT = scaleCount(30);
+const CLOUD_COUNT = scaleCount(6);
+const FIREFLY_COUNT = scaleCount(12);
 
 // ── Mountain layer generator ──
 interface MountainLayer {

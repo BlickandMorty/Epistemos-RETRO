@@ -101,16 +101,17 @@ pub fn run() {
                 .expect("failed to open database");
             let state = AppState::new(db);
 
-            // Pre-load graph store from DB for fast search.
-            // If this fails, graph search/semantic features degrade but the app still works.
-            if let Err(e) = state.reload_graph() {
-                eprintln!("[WARN][startup] failed to pre-load graph — search will be degraded: {e}");
-            }
-
             app.manage(state.clone());
 
-            // Background: probe local AI services (Foundry, Ollama) so triage
-            // routing works immediately. 3s timeout per service, non-blocking.
+            // Background: pre-load graph + probe AI services.
+            // Both are non-critical for initial render — the window opens immediately.
+            let graph_state = state.clone();
+            std::thread::spawn(move || {
+                if let Err(e) = graph_state.reload_graph() {
+                    eprintln!("[WARN][startup] failed to pre-load graph — search will be degraded: {e}");
+                }
+            });
+
             tauri::async_runtime::spawn(async move {
                 if let Err(e) = system::probe_and_cache_services(&state).await {
                     eprintln!("[WARN][startup] failed to probe local AI services — triage routing may default to cloud: {e}");

@@ -12,6 +12,7 @@
  */
 
 import { forwardRef, type CSSProperties, type ReactNode } from 'react';
+import { PERF_TIER } from '@/lib/perf';
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -45,7 +46,7 @@ export const GlassPanel = forwardRef<HTMLDivElement, GlassPanelProps>(
       variant = 'card',
       isDark = false,
       radius = 16,
-      blur = 20,
+      blur = PERF_TIER === 'low' ? 8 : PERF_TIER === 'mid' ? 14 : 20,
       opacity = 0.92,
       style,
       className,

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useCallback } from 'react';
+import { scaleCount, scaleFps } from '@/lib/perf';
 
 /* ═══════════════════════════════════════════════════════════════════
    ThematicWallpaper — Animated pixel art space background
@@ -13,9 +14,9 @@ import { useEffect, useRef, useCallback } from 'react';
    ═══════════════════════════════════════════════════════════════════ */
 
 const WALLPAPER_IMAGE = '/wallpapers/purple-nebula.png';
-const STAR_COUNT = 55;
-const DUST_COUNT = 40;
-const PARTICLE_FPS = 15;
+const STAR_COUNT = scaleCount(55);
+const DUST_COUNT = scaleCount(40);
+const PARTICLE_FPS = scaleFps(15);
 const PARTICLE_FRAME_MS = 1000 / PARTICLE_FPS;
 
 // ══════════════════════════════════════════════════════════════════

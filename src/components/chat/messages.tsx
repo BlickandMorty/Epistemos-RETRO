@@ -1,5 +1,3 @@
-'use client';
-
 import { memo } from 'react';
 import { usePFCStore } from '@/lib/store/use-pfc-store';
 import { Message } from './message';

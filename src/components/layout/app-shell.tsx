@@ -1,17 +1,14 @@
-'use client';
-
-import { useEffect, useRef, useState } from 'react';
-import { usePathname } from 'next/navigation';
-import { useTheme } from 'next-themes';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
+import { useTheme } from '@/hooks/use-theme';
 import { usePFCStore } from '@/lib/store/use-pfc-store';
 import { useIsDark } from '@/hooks/use-is-dark';
-import dynamic from 'next/dynamic';
 import { TopNav } from './top-nav';
 import { StarField } from '../decorative/star-field';
 // Lazy-load heavy canvas wallpapers — avoids compiling 800+ lines of animation
 // code on every dev route change when these themes aren't even active
-const ThematicWallpaper = dynamic(() => import('../decorative/wallpapers/thematic').then(m => ({ default: m.ThematicWallpaper })), { ssr: false });
-const SunnyWallpaper = dynamic(() => import('../decorative/wallpapers/sunny').then(m => ({ default: m.SunnyWallpaper })), { ssr: false });
+const ThematicWallpaper = lazy(() => import('../decorative/wallpapers/thematic').then(m => ({ default: m.ThematicWallpaper })));
+const SunnyWallpaper = lazy(() => import('../decorative/wallpapers/sunny').then(m => ({ default: m.SunnyWallpaper })));
 import type { InferenceMode, ApiProvider } from '@/lib/types';
 import { detectDevice } from '@/lib/device-detection';
 import { ToastContainer } from '../shared/toast-container';
@@ -34,7 +31,7 @@ function ls(key: string): string | null {
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { isDark, isOled, isCosmic, isSunny, isThematic, mounted: themeMounted } = useIsDark();
   const { setTheme, theme } = useTheme();
-  const pathname = usePathname();
+  const { pathname } = useLocation();
   const chatMessages = usePFCStore((s) => s.messages);
   const chatMinimized = usePFCStore((s) => s.chatMinimized);
   const miniChatOpen = usePFCStore((s) => s.miniChatOpen);
@@ -158,8 +155,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className={`relative h-screen overflow-hidden ${isThematic ? '' : 'bg-background'}`}>
       {showStars && <StarField theme={starTheme} />}
-      {showCosmic && <ThematicWallpaper blurred={cosmicBlurred} />}
-      {showSunny && <SunnyWallpaper blurred={sunnyBlurred} />}
+      {showCosmic && <Suspense fallback={null}><ThematicWallpaper blurred={cosmicBlurred} /></Suspense>}
+      {showSunny && <Suspense fallback={null}><SunnyWallpaper blurred={sunnyBlurred} /></Suspense>}
       {/* Sunset uses plain CSS background — no wallpaper component */}
       <TopNav />
       <PageTransition>{children}</PageTransition>

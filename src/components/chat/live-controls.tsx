@@ -1,5 +1,3 @@
-'use client';
-
 import { useState } from 'react';
 import { usePFCStore } from '@/lib/store/use-pfc-store';
 import { Slider } from '@/components/ui/slider';

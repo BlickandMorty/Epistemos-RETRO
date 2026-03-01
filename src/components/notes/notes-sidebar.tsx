@@ -1,5 +1,3 @@
-'use client';
-
 import { memo, useState, useCallback, useMemo, useEffect, useRef, lazy, Suspense } from 'react';
 import { useIsDark } from '@/hooks/use-is-dark';
 import { motion, AnimatePresence } from 'framer-motion';

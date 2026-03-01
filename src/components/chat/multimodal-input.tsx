@@ -1,5 +1,3 @@
-'use client';
-
 import { useRef, useState, useCallback, useEffect, useMemo, type KeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { ArrowUpIcon, StopCircleIcon, SlidersHorizontalIcon, SearchIcon, PaperclipIcon, WrenchIcon, NetworkIcon, BookOpenIcon, SparklesIcon } from 'lucide-react';
@@ -8,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { writeString } from '@/lib/storage-versioning';
 import { usePFCStore } from '@/lib/store/use-pfc-store';
-import { useTheme } from 'next-themes';
+import { useTheme } from '@/hooks/use-theme';
 import { useIsDark } from '@/hooks/use-is-dark';
 
 // ---------------------------------------------------------------------------

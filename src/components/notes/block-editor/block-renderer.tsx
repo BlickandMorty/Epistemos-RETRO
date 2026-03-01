@@ -1,5 +1,3 @@
-'use client';
-
 import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
 import { usePFCStore } from '@/lib/store/use-pfc-store';
 import type { NoteBlock, NotePage, SlashCommand } from '@/lib/notes/types';

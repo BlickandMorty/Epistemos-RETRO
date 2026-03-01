@@ -1,7 +1,5 @@
-'use client';
-
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useNavigate } from 'react-router-dom';
 import { readString } from '@/lib/storage-versioning';
 
 /**
@@ -10,7 +8,7 @@ import { readString } from '@/lib/storage-versioning';
  * Redirects to /onboarding if setup isn't done.
  */
 export function useSetupGuard(): boolean {
-  const router = useRouter();
+  const navigate = useNavigate();
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -18,9 +16,9 @@ export function useSetupGuard(): boolean {
     if (done) {
       setReady(true);
     } else {
-      router.replace('/onboarding');
+      navigate('/onboarding', { replace: true });
     }
-  }, [router]);
+  }, [navigate]);
 
   return ready;
 }

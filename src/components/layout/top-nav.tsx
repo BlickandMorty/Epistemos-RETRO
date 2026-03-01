@@ -1,7 +1,5 @@
-'use client';
-
 import { useState, useEffect, useRef, memo, useCallback } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 import { useIsDark } from '@/hooks/use-is-dark';
 import { useTypewriter } from '@/hooks/use-typewriter';
@@ -381,8 +379,8 @@ const ChatPFCBubble = memo(function ChatPFCBubble({
    TopNav — floating bubbles, zero layout animations
    ═══════════════════════════════════════════════════════════════════ */
 export function TopNav() {
-  const router = useRouter();
-  const pathname = usePathname();
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
   const { isDark, isOled, isSunny, isSunset, isCosmic, mounted } = useIsDark();
   const currentChatId = usePFCStore((s) => s.currentChatId);
 
@@ -396,16 +394,16 @@ export function TopNav() {
         window.scrollTo({ top: 0, behavior: 'smooth' });
         return;
       }
-      router.push('/');
+      navigate('/');
       return;
     }
 
     // Chat nav — go to the last chat, or landing if no chat exists
     if (href === '/chat') {
       if (currentChatId) {
-        router.push(`/chat/${currentChatId}`);
+        navigate(`/chat/${currentChatId}`);
       } else {
-        router.push('/');
+        navigate('/');
       }
       return;
     }
@@ -416,20 +414,8 @@ export function TopNav() {
       return;
     }
 
-    router.push(href);
-  }, [router, pathname, currentChatId]);
-
-  // Prefetch all nav routes on mount so pages are compiled before click
-  useEffect(() => {
-    const routes = NAV_ITEMS.map((item) => item.href);
-    // Also prefetch remaining standalone routes (analytics sub-pages are now components, not routes)
-    const extraRoutes = [
-      '/research-copilot', '/concept-atlas', '/library',
-    ];
-    for (const route of [...routes, ...extraRoutes]) {
-      router.prefetch(route);
-    }
-  }, [router]);
+    navigate(href);
+  }, [navigate, pathname, currentChatId]);
 
   // Notes page: show nav but skip analytics expansion logic
   // (notes has its own floating toolbar for notes-specific controls)

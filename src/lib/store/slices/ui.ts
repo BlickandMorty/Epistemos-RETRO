@@ -1,5 +1,3 @@
-'use client';
-
 import type { TruthAssessment, ApiProvider } from '@/lib/types';
 import type { NoteBlock } from '@/lib/notes/types';
 import type { PFCSet, PFCGet } from '../use-pfc-store';

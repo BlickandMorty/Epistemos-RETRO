@@ -1,5 +1,3 @@
-'use client';
-
 import { useState } from 'react';
 import type { DualMessage } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';

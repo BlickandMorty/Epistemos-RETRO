@@ -1,5 +1,3 @@
-'use client';
-
 /**
  * PillTabs — Shared polymorphic tab bar component
  *

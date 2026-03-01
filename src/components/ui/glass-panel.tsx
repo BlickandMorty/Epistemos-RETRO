@@ -1,5 +1,3 @@
-'use client';
-
 /**
  * GlassPanel — Shared glass-morphism container
  *

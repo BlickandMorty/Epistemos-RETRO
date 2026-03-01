@@ -1,7 +1,5 @@
-"use client"
-
 import * as React from "react"
-import { Switch as SwitchPrimitive } from "radix-ui"
+import * as SwitchPrimitive from "@radix-ui/react-switch"
 
 import { cn } from "@/lib/utils"
 import { useIsDark } from "@/hooks/use-is-dark"

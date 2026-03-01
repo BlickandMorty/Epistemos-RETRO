@@ -1,7 +1,5 @@
-'use client';
-
 import type { LucideIcon } from 'lucide-react';
-import { usePathname, useRouter } from 'next/navigation';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeftIcon } from 'lucide-react';
 import { useIsDark } from '@/hooks/use-is-dark';
 import { useTypewriter } from '@/hooks/use-typewriter';
@@ -60,8 +58,8 @@ export function PageShell({
   backHref,
 }: PageShellProps) {
   const { isDark, isOled } = useIsDark();
-  const pathname = usePathname();
-  const router = useRouter();
+  const { pathname } = useLocation();
+  const navigate = useNavigate();
   // Auto-detect embedded mode when rendered inside the analytics hub
   const isEmbedded = embedded || pathname === '/analytics';
   // Always show header — in embedded mode it's compact
@@ -113,7 +111,7 @@ export function PageShell({
             {/* Back button for sub-pages */}
             {showBack && (
               <button
-                onClick={() => backHref ? router.push(backHref) : router.back()}
+                onClick={() => backHref ? navigate(backHref) : navigate(-1)}
                 aria-label="Go back"
                 style={{
                   display: 'flex',

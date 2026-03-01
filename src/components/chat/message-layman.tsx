@@ -1,5 +1,3 @@
-'use client';
-
 import type { LaymanSummary } from '@/lib/types';
 
 const DEFAULT_LABELS: Record<string, string> = {

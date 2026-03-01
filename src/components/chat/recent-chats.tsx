@@ -1,7 +1,5 @@
-'use client';
-
 import { useState, useEffect, memo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { MessageSquareIcon, ClockIcon, ArrowRightIcon } from 'lucide-react';
 
@@ -51,7 +49,7 @@ interface RecentChatsProps {
 }
 
 function RecentChatsBase({ isDark, isOled, onShowAll }: RecentChatsProps) {
-  const router = useRouter();
+  const navigate = useNavigate();
   const [allChats, setAllChats] = useState<ChatEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
@@ -171,7 +169,7 @@ function RecentChatsBase({ isDark, isOled, onShowAll }: RecentChatsProps) {
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ ...ENTER_SPRING, delay: 0.3 + idx * 0.04 }}
-              onClick={() => router.push(`/chat/${chat.id}`)}
+              onClick={() => navigate(`/chat/${chat.id}`)}
               onMouseEnter={() => setHoveredId(chat.id)}
               onMouseLeave={() => setHoveredId(null)}
               style={{

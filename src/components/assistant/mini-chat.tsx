@@ -1,5 +1,3 @@
-'use client';
-
 /* ═══════════════════════════════════════════════════════════════════
    MiniChat — PFC Assistant: Multi-Thread Deep Knowledge Panel
 
@@ -16,7 +14,7 @@
    ═══════════════════════════════════════════════════════════════════ */
 
 import { useRef, useCallback, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Maximize2,
@@ -66,7 +64,7 @@ const INNER_TABS: { id: MiniChatTab; label: string; icon: LucideIcon }[] = [
 
 export function MiniChat() {
   const { isDark, isOled, isCosmic, isSunny, isSunset, mounted } = useIsDark();
-  const router = useRouter();
+  const navigate = useNavigate();
 
   // Model readiness — if no API key and no local model, mini-chat is locked
   const inferenceMode = usePFCStore((s) => s.inferenceMode);
@@ -99,9 +97,9 @@ export function MiniChat() {
   // Wrap to also navigate to /notes after saving
   const saveMessageToNotes = useCallback((content: string) => {
     const pageId = _saveMessageToNotes(content);
-    if (pageId) router.push('/notes');
+    if (pageId) navigate('/notes');
     return pageId;
-  }, [_saveMessageToNotes, router]);
+  }, [_saveMessageToNotes, navigate]);
   const expandThreadToChat = usePFCStore((s) => s.expandThreadToChat);
   const setChatMinimized = usePFCStore((s) => s.setChatMinimized);
   const addToast = usePFCStore((s) => s.addToast);

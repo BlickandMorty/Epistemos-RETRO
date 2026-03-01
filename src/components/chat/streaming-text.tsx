@@ -1,5 +1,3 @@
-'use client';
-
 import { usePFCStore } from '@/lib/store/use-pfc-store';
 import { MarkdownContent } from '../shared/markdown';
 

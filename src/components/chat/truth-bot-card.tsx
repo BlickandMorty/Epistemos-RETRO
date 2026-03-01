@@ -1,5 +1,3 @@
-'use client';
-
 import { useState, memo } from 'react';
 import type { TruthAssessment } from '@/lib/types';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';

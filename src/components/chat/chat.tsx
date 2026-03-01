@@ -1,8 +1,5 @@
-'use client';
-
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import dynamic from 'next/dynamic';
-import { useRouter } from 'next/navigation';
+import { lazy, Suspense, useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { usePFCStore } from '@/lib/store/use-pfc-store';
 import { useChatStream } from '@/hooks/use-chat-stream';
 import { Messages } from './messages';
@@ -10,7 +7,6 @@ import { MultimodalInput } from './multimodal-input';
 import { ResearchModeBar } from './research-mode-bar';
 import { ThinkingControls } from './thinking-controls';
 import { ErrorBoundary } from '../layout/error-boundary';
-import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useIsDark } from '@/hooks/use-is-dark';
 import { getInferenceModeFeatures } from '@/lib/types';
@@ -22,9 +18,9 @@ import { ChatsSidePanel, ChatsOverlay } from './chat-history-sheet';
 // Dynamic imports — only loaded when the tier enables them
 // ═══════════════════════════════════════════════════════════════════
 
-const LiveControls = dynamic(() => import('./live-controls').then((m) => ({ default: m.LiveControls })), { ssr: false });
-const ConceptHierarchyPanel = dynamic(() => import('../viz/concept-hierarchy-panel').then((m) => ({ default: m.ConceptHierarchyPanel })), { ssr: false });
-const PortalSidebar = dynamic(() => import('../viz/portal-sidebar').then((m) => ({ default: m.PortalSidebar })), { ssr: false });
+const LiveControls = lazy(() => import('./live-controls').then((m) => ({ default: m.LiveControls })));
+const ConceptHierarchyPanel = lazy(() => import('../viz/concept-hierarchy-panel').then((m) => ({ default: m.ConceptHierarchyPanel })));
+const PortalSidebar = lazy(() => import('../viz/portal-sidebar').then((m) => ({ default: m.PortalSidebar })));
 
 import { physicsSpring } from '@/lib/motion/motion-config';
 
@@ -90,7 +86,7 @@ function AllChatsBubble({ isDark, isOled, isSunny, isCosmic, onToggle }: {
 // ═══════════════════════════════════════════════════════════════════
 
 function ActiveThreadsPills({ isDark, isCosmic }: { isDark: boolean; isCosmic?: boolean }) {
-  const router = useRouter();
+  const navigate = useNavigate();
   const chatThreads = usePFCStore((s) => s.chatThreads);
   const expandThreadToChat = usePFCStore((s) => s.expandThreadToChat);
   const setChatMinimized = usePFCStore((s) => s.setChatMinimized);
@@ -144,7 +140,7 @@ function ActiveThreadsPills({ isDark, isCosmic }: { isDark: boolean; isCosmic?: 
               onClick={() => {
                 if (thread.chatId) {
                   setChatMinimized(false);
-                  router.push(`/chat/${thread.chatId}`);
+                  navigate(`/chat/${thread.chatId}`);
                 } else {
                   expandThreadToChat(thread.id);
                 }
@@ -221,7 +217,7 @@ function ActiveThreadsPills({ isDark, isCosmic }: { isDark: boolean; isCosmic?: 
 // ═══════════════════════════════════════════════════════════════════
 
 function ModelLockOverlay({ isDark, inferenceMode }: { isDark: boolean; inferenceMode: string }) {
-  const router = useRouter();
+  const navigate = useNavigate();
   const isLocal = inferenceMode === 'local';
 
   return (
@@ -234,7 +230,7 @@ function ModelLockOverlay({ isDark, inferenceMode }: { isDark: boolean; inferenc
         padding: '1rem 1.25rem',
         cursor: 'pointer',
       }}
-      onClick={() => router.push('/settings')}
+      onClick={() => navigate('/settings')}
     >
       <LockIcon
         style={{
@@ -274,7 +270,7 @@ function ModelLockOverlay({ isDark, inferenceMode }: { isDark: boolean; inferenc
 // ═══════════════════════════════════════════════════════════════════
 
 export function Chat({ mode = 'landing' }: { mode?: 'landing' | 'conversation' }) {
-  const router = useRouter();
+  const navigate = useNavigate();
   const messages = usePFCStore((s) => s.messages);
   const isProcessing = usePFCStore((s) => s.isProcessing);
   const isStreaming = usePFCStore((s) => s.isStreaming);
@@ -302,9 +298,9 @@ export function Chat({ mode = 'landing' }: { mode?: 'landing' | 'conversation' }
   useEffect(() => {
     if (mode === 'landing' && currentChatId && messages.length > 0 && isStreaming && !navigatedRef.current) {
       navigatedRef.current = true;
-      router.push(`/chat/${currentChatId}`);
+      navigate(`/chat/${currentChatId}`);
     }
-  }, [mode, currentChatId, messages.length, isStreaming, router]);
+  }, [mode, currentChatId, messages.length, isStreaming, navigate]);
 
   // Model readiness — lock input when no usable model is configured
   const modelReady = inferenceMode === 'local' ? ollamaAvailable : apiKey.length > 0;
@@ -425,12 +421,9 @@ export function Chat({ mode = 'landing' }: { mode?: 'landing' | 'conversation' }
                         animate={{ y: [0, -6, 0] }}
                         transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
                       >
-                        <Image
+                        <img
                           src={isSunny ? '/pixel-sun.gif' : '/pixel-robot.gif'}
                           alt={isSunny ? 'Brainiac Sun' : 'Brainiac Robot'}
-                          width={96}
-                          height={96}
-                          unoptimized
                           style={{
                             imageRendering: 'pixelated',
                             width: '4.5rem',
@@ -581,7 +574,7 @@ export function Chat({ mode = 'landing' }: { mode?: 'landing' | 'conversation' }
                   onClick={() => {
                     if (Date.now() - lastBackClickRef.current < 300) return;
                     lastBackClickRef.current = Date.now();
-                    router.push('/');
+                    navigate('/');
                   }}
                   style={{
                     pointerEvents: 'auto',
@@ -806,8 +799,8 @@ export function Chat({ mode = 'landing' }: { mode?: 'landing' | 'conversation' }
                   </div>
                 )}
 
-                <LiveControls />
-                <ConceptHierarchyPanel />
+                <Suspense fallback={null}><LiveControls /></Suspense>
+                <Suspense fallback={null}><ConceptHierarchyPanel /></Suspense>
 
                 {/* Research Mode Bar + Input — M3 surface container */}
                 <div style={{
@@ -834,7 +827,7 @@ export function Chat({ mode = 'landing' }: { mode?: 'landing' | 'conversation' }
       </AnimatePresence>
 
       {/* Portal sidebar — code suggestions and artifacts */}
-      {mounted && <PortalSidebar />}
+      {mounted && <Suspense fallback={null}><PortalSidebar /></Suspense>}
     </div>
     </ErrorBoundary>
   );

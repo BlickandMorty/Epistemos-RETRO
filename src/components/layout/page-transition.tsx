@@ -1,6 +1,4 @@
-'use client';
-
-import { usePathname } from 'next/navigation';
+import { useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { type ReactNode, useRef } from 'react';
 
@@ -31,7 +29,7 @@ const pageVariants = {
 };
 
 export function PageTransition({ children }: { children: ReactNode }) {
-  const pathname = usePathname();
+  const { pathname } = useLocation();
   // Generation counter: on rapid route changes, only the latest
   // pathname's enter animation runs to completion. Prevents stale
   // intermediate pages from flashing.

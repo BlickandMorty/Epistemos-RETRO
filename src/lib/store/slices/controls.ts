@@ -1,5 +1,3 @@
-'use client';
-
 import type { PipelineControls } from '@/lib/types';
 import type { PFCSet, PFCGet } from '../use-pfc-store';
 

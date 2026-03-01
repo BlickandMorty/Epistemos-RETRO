@@ -1,5 +1,3 @@
-'use client';
-
 /* ═══════════════════════════════════════════════════════════════════
    MiniChat — Notes Tab Content
    Ask AI + Learn (ported from NoteAIChat). Two inner modes:

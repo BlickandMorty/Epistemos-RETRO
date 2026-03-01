@@ -1,5 +1,3 @@
-'use client';
-
 // ═══════════════════════════════════════════════════════════════════
 // Block-based note system — SiYuan-inspired architecture
 // Rich block types, inline formatting, transactions, undo/redo

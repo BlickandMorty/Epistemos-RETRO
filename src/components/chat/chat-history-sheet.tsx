@@ -1,7 +1,5 @@
-'use client';
-
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useNavigate } from 'react-router-dom';
 import { type ChatEntry, formatRelativeTime, parseTimestamp } from './recent-chats';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeftIcon, MessageSquareIcon, SearchIcon } from 'lucide-react';
@@ -77,7 +75,7 @@ function ChatCardSummary({ text, active, isDark }: { text: string; active: boole
 export function ChatsSidePanel({ isDark, isOled, isCosmic, isSunny, isSunset, onClose }: {
   isDark: boolean; isOled?: boolean; isCosmic?: boolean; isSunny?: boolean; isSunset?: boolean; onClose: () => void;
 }) {
-  const router = useRouter();
+  const navigate = useNavigate();
   const [chats, setChats] = useState<ChatEntry[]>([]);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
@@ -300,7 +298,7 @@ export function ChatsSidePanel({ isDark, isOled, isCosmic, isSunny, isSunset, on
                 onClick={(e) => {
                   e.stopPropagation();
                   onClose();
-                  router.push(`/chat/${chat.id}`);
+                  navigate(`/chat/${chat.id}`);
                 }}
                 onMouseEnter={() => setHoveredId(chat.id)}
                 onMouseLeave={() => setHoveredId(null)}
@@ -404,7 +402,7 @@ const SHEET_SPRING = physicsSpring.chatSheet;
 export function ChatsOverlay({ isDark, isOled, isCosmic, isSunny, onClose }: {
   isDark: boolean; isOled?: boolean; isCosmic?: boolean; isSunny?: boolean; onClose: () => void;
 }) {
-  const router = useRouter();
+  const navigate = useNavigate();
   const [chats, setChats] = useState<ChatEntry[]>([]);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
@@ -604,7 +602,7 @@ export function ChatsOverlay({ isDark, isOled, isCosmic, isSunny, onClose }: {
                 onClick={(e) => {
                   e.stopPropagation();
                   onClose();
-                  router.push(`/chat/${chat.id}`);
+                  navigate(`/chat/${chat.id}`);
                 }}
                 onMouseEnter={() => setHoveredId(chat.id)}
                 onMouseLeave={() => setHoveredId(null)}

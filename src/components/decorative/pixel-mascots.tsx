@@ -1,5 +1,3 @@
-'use client';
-
 /**
  * Pixel-art sun mascot -- uses the actual GIF image directly.
  */

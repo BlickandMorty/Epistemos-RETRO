@@ -1,5 +1,3 @@
-'use client';
-
 import { memo, useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDownIcon, AtomIcon } from 'lucide-react';

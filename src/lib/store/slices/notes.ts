@@ -1,5 +1,3 @@
-'use client';
-
 import { logger } from '@/lib/debug-logger';
 import { readVersioned, writeVersioned, readString, writeString, removeStorage } from '@/lib/storage-versioning';
 import type {

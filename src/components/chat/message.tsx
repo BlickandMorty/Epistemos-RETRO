@@ -1,7 +1,5 @@
-'use client';
-
 import { useState, useRef, memo, useMemo, useCallback, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePFCStore } from '@/lib/store/use-pfc-store';
 import { MessageLayman } from './message-layman';
@@ -137,7 +135,7 @@ function MessageInner({ message }: MessageProps) {
   const latestSynthesisKeyId = useSteeringStore(selectLatestSynthesisKeyId);
   const exemplars = useSteeringStore(selectSteeringExemplars);
   const { isDark, isSunny } = useIsDark();
-  const router = useRouter();
+  const navigate = useNavigate();
   const isUser = message.role === 'user';
   const [deepOpen, setDeepOpen] = useState(false);
   const [hovered, setHovered] = useState(false);
@@ -297,8 +295,8 @@ function MessageInner({ message }: MessageProps) {
 
     store.setActivePage(pageId);
     store.saveNotesToStorage();
-    router.push('/notes');
-  }, [cleanText, safeText, safeDualMessage, message, responseHeading, router]);
+    navigate('/notes');
+  }, [cleanText, safeText, safeDualMessage, message, responseHeading, navigate]);
 
   // ── Export single message as full doc (includes research analysis) ──
   const exportMessage = useCallback(() => {

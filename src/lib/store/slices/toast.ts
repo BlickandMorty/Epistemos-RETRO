@@ -1,5 +1,3 @@
-'use client';
-
 import type { PFCSet, PFCGet } from '../use-pfc-store';
 
 export interface Toast {

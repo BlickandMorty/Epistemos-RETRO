@@ -1,5 +1,3 @@
-'use client';
-
 /* ═══════════════════════════════════════════════════════════════════
    MiniChat — Research Tab Content
    Button-based research actions: Deep Dive, Find Gaps, Synthesize,

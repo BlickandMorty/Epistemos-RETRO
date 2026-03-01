@@ -1,5 +1,3 @@
-'use client';
-
 import { useState } from 'react';
 import { ThumbsUpIcon, ThumbsDownIcon } from 'lucide-react';
 import { useSteeringStore } from '@/lib/store/use-steering-store';

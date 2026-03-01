@@ -1,8 +1,6 @@
-'use client';
-
 import { useState, useRef, useCallback, useMemo } from 'react';
 import { usePFCStore } from '@/lib/store/use-pfc-store';
-import { useTheme } from 'next-themes';
+import { useTheme } from '@/hooks/use-theme';
 import type { NoteBlock, NotePage, BlockType } from '@/lib/notes/types';
 import { stripHtml, normalizePageName } from '@/lib/notes/types';
 import { BlockContextMenu } from './context-menu';

@@ -1,5 +1,3 @@
-'use client';
-
 /* ═══════════════════════════════════════════════════════════════════
    MiniChat — Chat Tab Content
    Thread-aware conversation with message actions, provider/model picker,

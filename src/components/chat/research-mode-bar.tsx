@@ -1,5 +1,3 @@
-'use client';
-
 import { memo, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { writeString } from '@/lib/storage-versioning';

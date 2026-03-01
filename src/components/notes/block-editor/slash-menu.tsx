@@ -1,5 +1,3 @@
-'use client';
-
 import { useState, useEffect, useRef, useMemo } from 'react';
 import type { SlashCommand } from '@/lib/notes/types';
 import { SLASH_COMMANDS, SLASH_CATEGORIES } from '@/lib/notes/types';

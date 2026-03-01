@@ -1,5 +1,3 @@
-'use client';
-
 import { useSteeringStore } from '@/lib/store/use-steering-store';
 import { cn } from '@/lib/utils';
 import { CompassIcon } from 'lucide-react';

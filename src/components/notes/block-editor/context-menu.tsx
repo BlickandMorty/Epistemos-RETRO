@@ -1,5 +1,3 @@
-'use client';
-
 import { useState, useEffect, useRef } from 'react';
 import type { BlockType } from '@/lib/notes/types';
 import {

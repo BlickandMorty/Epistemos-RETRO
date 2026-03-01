@@ -1,11 +1,24 @@
-'use client';
-
 import * as React from 'react';
-import { ThemeProvider as NextThemesProvider } from 'next-themes';
+import { ThemeContext, useThemeProvider } from '@/hooks/use-theme';
+
+interface ThemeProviderProps {
+  children: React.ReactNode;
+  defaultTheme?: string;
+  themes?: string[];
+  attribute?: string;
+}
 
 export function ThemeProvider({
   children,
-  ...props
-}: React.ComponentProps<typeof NextThemesProvider>) {
-  return <NextThemesProvider {...props}>{children}</NextThemesProvider>;
+  defaultTheme = 'dark',
+  themes = ['light', 'dark', 'oled', 'cosmic', 'sunny', 'sunset'],
+  attribute = 'class',
+}: ThemeProviderProps) {
+  const value = useThemeProvider(defaultTheme, themes, attribute);
+
+  return (
+    <ThemeContext.Provider value={value}>
+      {children}
+    </ThemeContext.Provider>
+  );
 }

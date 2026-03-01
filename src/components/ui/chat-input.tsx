@@ -1,5 +1,3 @@
-'use client';
-
 /**
  * ChatInput — Shared chat input bar with send/stop toggle
  *

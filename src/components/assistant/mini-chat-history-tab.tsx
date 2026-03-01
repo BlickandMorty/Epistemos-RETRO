@@ -1,5 +1,3 @@
-'use client';
-
 /* ═══════════════════════════════════════════════════════════════════
    MiniChat — History Tab Content
    Browse ALL past chat sessions from DB, load into mini-chat thread
@@ -8,7 +6,7 @@
    ═══════════════════════════════════════════════════════════════════ */
 
 import { useCallback, useEffect, useState, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useNavigate } from 'react-router-dom';
 import {
   MessageSquare,
   Search,
@@ -33,7 +31,7 @@ export interface HistoryTabContentProps {
    ═══════════════════════════════════════════════════════════════════ */
 
 export function HistoryTabContent({ isDark, textPrimary, textSecondary, btnHover }: HistoryTabContentProps) {
-  const router = useRouter();
+  const navigate = useNavigate();
   const loadChatIntoThread = usePFCStore((s) => s.loadChatIntoThread);
   const setInnerTab = usePFCStore((s) => s.setMiniChatTab);
   const [allChats, setAllChats] = useState<ChatEntry[]>([]);
@@ -79,8 +77,8 @@ export function HistoryTabContent({ isDark, textPrimary, textSecondary, btnHover
   }, [loadChatIntoThread, setInnerTab]);
 
   const openInMainChat = useCallback((chatId: string) => {
-    router.push(`/chat/${chatId}`);
-  }, [router]);
+    navigate(`/chat/${chatId}`);
+  }, [navigate]);
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>

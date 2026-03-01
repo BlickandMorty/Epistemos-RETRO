@@ -1,5 +1,3 @@
-'use client';
-
 import { usePFCStore } from '@/lib/store/use-pfc-store';
 import { useIsDark } from '@/hooks/use-is-dark';
 import { AnimatePresence, motion } from 'framer-motion';

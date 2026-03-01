@@ -30,6 +30,17 @@ fn make_edge(id: &str, src: &str, tgt: &str) -> EdgeRecord {
     }
 }
 
+fn make_edge_weighted(id: &str, src: &str, tgt: &str, weight: f64) -> EdgeRecord {
+    EdgeRecord {
+        id: id.into(),
+        source_node_id: src.into(),
+        target_node_id: tgt.into(),
+        edge_type: GraphEdgeType::Reference,
+        weight,
+        created_at: 0,
+    }
+}
+
 fn simple_graph() -> GraphStore {
     let mut store = GraphStore::new();
     store.add_node(make_node("a", -50.0, 0.0));
@@ -237,4 +248,107 @@ fn fps_frame_returns_some_in_fps_mode() {
     // Now fps_frame should return Some
     let fps_frame = world.fps_frame();
     assert!(fps_frame.is_some());
+}
+
+// ── Audit: Graph/FPS mode fixes ──────────────────────────────────────
+
+#[test]
+fn negative_edge_weight_does_not_produce_nan() {
+    // Negative edge weights caused NaN in sqrt() → spring explosion.
+    let mut store = GraphStore::new();
+    store.add_node(make_node("a", -50.0, 0.0));
+    store.add_node(make_node("b", 50.0, 0.0));
+    store.add_edge(make_edge_weighted("e1", "a", "b", -5.0));
+
+    let mut world = PhysicsWorld::new(PhysicsConfig::default());
+    world.load_from_graph(&store);
+
+    // Run several steps — should not produce NaN positions
+    for _ in 0..20 {
+        let frame = world.step();
+        for pos in &frame.positions {
+            assert!(pos.x.is_finite(), "x is NaN/Inf for node {}", pos.id);
+            assert!(pos.y.is_finite(), "y is NaN/Inf for node {}", pos.id);
+            assert!(pos.z.is_finite(), "z is NaN/Inf for node {}", pos.id);
+        }
+    }
+}
+
+#[test]
+fn zero_edge_weight_does_not_produce_nan() {
+    let mut store = GraphStore::new();
+    store.add_node(make_node("a", -50.0, 0.0));
+    store.add_node(make_node("b", 50.0, 0.0));
+    store.add_edge(make_edge_weighted("e1", "a", "b", 0.0));
+
+    let mut world = PhysicsWorld::new(PhysicsConfig::default());
+    world.load_from_graph(&store);
+
+    for _ in 0..20 {
+        let frame = world.step();
+        for pos in &frame.positions {
+            assert!(pos.x.is_finite(), "x is NaN/Inf for node {}", pos.id);
+            assert!(pos.y.is_finite(), "y is NaN/Inf for node {}", pos.id);
+        }
+    }
+}
+
+#[test]
+fn velocity_clamping_prevents_explosion() {
+    // Nodes far apart with stiff springs = enormous forces.
+    // Without clamping, nodes shoot to infinity.
+    let mut store = GraphStore::new();
+    store.add_node(make_node("a", -10000.0, 0.0));
+    store.add_node(make_node("b", 10000.0, 0.0));
+    store.add_edge(make_edge("e1", "a", "b"));
+
+    let mut world = PhysicsWorld::new(PhysicsConfig {
+        spring_stiffness: 5.0,
+        damping: 0.1,
+        gravity_strength: 0.5,
+        ..PhysicsConfig::default()
+    });
+    world.load_from_graph(&store);
+
+    // After many steps, positions should stay bounded (not explode to infinity)
+    for _ in 0..100 {
+        let frame = world.step();
+        for pos in &frame.positions {
+            assert!(
+                pos.x.abs() < 100_000.0 && pos.y.abs() < 100_000.0,
+                "Node {} exploded to ({}, {})", pos.id, pos.x, pos.y
+            );
+        }
+    }
+}
+
+#[test]
+fn zero_target_fps_does_not_panic() {
+    let config = PhysicsConfig {
+        target_fps: 0,
+        ..PhysicsConfig::default()
+    };
+    // frame_duration_us should not panic with division by zero
+    let duration = config.frame_duration_us();
+    assert!(duration > 0);
+
+    // Constructor should not panic
+    let _world = PhysicsWorld::new(config);
+}
+
+#[test]
+fn reload_during_fps_mode_exits_cleanly() {
+    let store = simple_graph();
+    let mut world = PhysicsWorld::new(PhysicsConfig::default());
+    world.load_from_graph(&store);
+
+    // Enter FPS mode
+    world.toggle_fps_mode();
+    assert_eq!(world.mode(), crate::fps_mode::PhysicsMode::Fps);
+
+    // Reload graph — should exit FPS mode first, not panic
+    world.load_from_graph(&store);
+    assert_eq!(world.mode(), crate::fps_mode::PhysicsMode::Graph);
+    assert!(world.fps_frame().is_none());
+    assert_eq!(world.node_count(), 3);
 }

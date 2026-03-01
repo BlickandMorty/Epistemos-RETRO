@@ -62,7 +62,7 @@ impl Default for PhysicsConfig {
 impl PhysicsConfig {
     /// Frame duration in microseconds for the configured fps target.
     pub fn frame_duration_us(&self) -> u64 {
-        1_000_000 / self.target_fps as u64
+        1_000_000 / (self.target_fps as u64).max(1)
     }
 }
 
@@ -123,7 +123,7 @@ struct FrameNode {
 impl PhysicsWorld {
     pub fn new(config: PhysicsConfig) -> Self {
         let params = IntegrationParameters {
-            dt: 1.0 / config.target_fps as f32,
+            dt: 1.0 / (config.target_fps.max(1)) as f32,
             ..IntegrationParameters::default()
         };
 
@@ -152,7 +152,13 @@ impl PhysicsWorld {
 
     /// Build physics bodies and joints from a GraphStore.
     /// Clears any existing state first.
+    /// If in FPS mode, exits cleanly before reloading.
     pub fn load_from_graph(&mut self, store: &GraphStore) {
+        // Exit FPS mode cleanly before clearing — avoids silently destroying
+        // the player body and leaving the frontend in a stale FPS state.
+        if self.mode == PhysicsMode::Fps {
+            self.exit_fps_mode();
+        }
         self.clear();
 
         // Pre-allocate based on visible node count estimate.
@@ -203,8 +209,11 @@ impl PhysicsWorld {
             };
 
             // Spring joint: anchored at body centers, with rest length.
-            let rest_length = self.config.spring_rest_length / (edge.weight as f32).sqrt().max(0.5);
-            let stiffness = self.config.spring_stiffness * edge.weight as f32;
+            // Guard: negative/NaN weight → f32::sqrt() returns NaN, NaN.max() is NaN,
+            // corrupting the joint and causing all connected nodes to explode.
+            let safe_weight = (edge.weight as f32).max(0.1);
+            let rest_length = self.config.spring_rest_length / safe_weight.sqrt().max(0.5);
+            let stiffness = self.config.spring_stiffness * safe_weight;
 
             let joint = SpringJointBuilder::new(rest_length, stiffness, self.config.damping * 0.5)
                 .local_anchor1(Vector::ZERO)
@@ -229,10 +238,15 @@ impl PhysicsWorld {
         self.extract_frame()
     }
 
-    /// Graph-layout step: spring joints + central gravity.
+    /// Maximum velocity magnitude for graph-layout mode.
+    /// Prevents spring-explosion artifacts when nodes are far apart.
+    const MAX_GRAPH_VELOCITY: f32 = 500.0;
+
+    /// Graph-layout step: spring joints + central gravity + velocity clamping.
     fn step_graph(&mut self) {
         self.apply_central_gravity();
         self.run_rapier_step();
+        self.clamp_velocities(Self::MAX_GRAPH_VELOCITY);
     }
 
     /// FPS-exploration step: N-body gravity + thruster forces + stabilization.
@@ -335,6 +349,24 @@ impl PhysicsWorld {
             if dist > 1.0 {
                 let force = Vector::new(-pos.x * strength, -pos.y * strength, -pos.z * strength);
                 body.add_force(force, true);
+            }
+        }
+    }
+
+    /// Clamp all body velocities to prevent explosion artifacts.
+    /// When springs are stiff and nodes are far apart, forces can be enormous,
+    /// causing nodes to shoot past equilibrium and oscillate wildly.
+    fn clamp_velocities(&mut self, max_speed: f32) {
+        let max_sq = max_speed * max_speed;
+        for (_, body) in self.rigid_body_set.iter_mut() {
+            if !body.is_dynamic() {
+                continue;
+            }
+            let vel = body.linvel();
+            let speed_sq = vel.length_squared();
+            if speed_sq > max_sq {
+                let scale = max_speed / speed_sq.sqrt();
+                body.set_linvel(vel * scale, true);
             }
         }
     }

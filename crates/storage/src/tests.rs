@@ -191,6 +191,7 @@ mod tests {
             target_node_id: n2,
             edge_type: GraphEdgeType::Contains,
             weight: 1.0,
+            metadata_json: None,
             is_manual: false,
             created_at: now_ms(),
         };
@@ -392,7 +393,7 @@ mod tests {
         let edge = GraphEdge {
             id: GraphEdgeId::new(), source_node_id: n1.id,
             target_node_id: n2.id, edge_type: GraphEdgeType::Supports,
-            weight: 0.8, is_manual: false, created_at: now_ms(),
+            weight: 0.8, metadata_json: None, is_manual: false, created_at: now_ms(),
         };
         db.insert_graph_edges_batch(&[edge.clone()]).unwrap();
 

@@ -107,6 +107,16 @@ impl Database {
             .ok_or(StorageError::PageNotFound(id))
     }
 
+    /// Fast page count without loading all rows. Used for pre-allocation hints.
+    pub fn page_count_hint(&self) -> Result<usize, StorageError> {
+        let count: i64 = self.conn.query_row(
+            "SELECT COUNT(*) FROM pages WHERE is_archived = 0",
+            [],
+            |row| row.get(0),
+        )?;
+        Ok(count as usize)
+    }
+
     pub fn list_pages(&self) -> Result<Vec<Page>, StorageError> {
         let mut stmt = self.conn.prepare(
             "SELECT id, title, summary, emoji, research_stage, tags_json,
@@ -527,11 +537,11 @@ impl Database {
     pub fn insert_graph_edge(&self, edge: &GraphEdge) -> Result<(), StorageError> {
         self.conn.execute(
             "INSERT INTO graph_edges (id, source_node_id, target_node_id, edge_type,
-             weight, is_manual, created_at) VALUES (?1,?2,?3,?4,?5,?6,?7)",
+             weight, metadata_json, is_manual, created_at) VALUES (?1,?2,?3,?4,?5,?6,?7,?8)",
             params![
                 edge.id.to_string(), edge.source_node_id.to_string(),
                 edge.target_node_id.to_string(), edge.edge_type.to_i32(),
-                edge.weight, edge.is_manual, edge.created_at,
+                edge.weight, edge.metadata_json, edge.is_manual, edge.created_at,
             ],
         )?;
         Ok(())
@@ -542,13 +552,14 @@ impl Database {
         {
             let mut stmt = tx.prepare(
                 "INSERT OR REPLACE INTO graph_edges (id, source_node_id, target_node_id,
-                 edge_type, weight, is_manual, created_at) VALUES (?1,?2,?3,?4,?5,?6,?7)",
+                 edge_type, weight, metadata_json, is_manual, created_at)
+                 VALUES (?1,?2,?3,?4,?5,?6,?7,?8)",
             )?;
             for edge in edges {
                 stmt.execute(params![
                     edge.id.to_string(), edge.source_node_id.to_string(),
                     edge.target_node_id.to_string(), edge.edge_type.to_i32(),
-                    edge.weight, edge.is_manual, edge.created_at,
+                    edge.weight, edge.metadata_json, edge.is_manual, edge.created_at,
                 ])?;
             }
         }
@@ -559,7 +570,7 @@ impl Database {
     pub fn get_all_graph_edges(&self) -> Result<Vec<GraphEdge>, StorageError> {
         let mut stmt = self.conn.prepare(
             "SELECT id, source_node_id, target_node_id, edge_type, weight,
-             is_manual, created_at FROM graph_edges",
+             metadata_json, is_manual, created_at FROM graph_edges",
         )?;
         let edges = stmt
             .query_map([], |row| Ok(row_to_graph_edge(row)))?
@@ -976,8 +987,9 @@ fn row_to_graph_edge(row: &rusqlite::Row<'_>) -> GraphEdge {
         target_node_id: tgt_str.parse().expect("valid target node id in db"),
         edge_type: GraphEdgeType::from_i32(type_int),
         weight: row.get_unwrap(4),
-        is_manual: row.get_unwrap(5),
-        created_at: row.get_unwrap(6),
+        metadata_json: row.get_unwrap(5),
+        is_manual: row.get_unwrap(6),
+        created_at: row.get_unwrap(7),
     }
 }
 
@@ -1074,6 +1086,7 @@ CREATE TABLE IF NOT EXISTS graph_edges (
     target_node_id TEXT NOT NULL,
     edge_type INTEGER NOT NULL DEFAULT 0,
     weight REAL NOT NULL DEFAULT 1.0,
+    metadata_json TEXT,
     is_manual INTEGER NOT NULL DEFAULT 0,
     created_at INTEGER NOT NULL
 );

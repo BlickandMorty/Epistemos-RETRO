@@ -285,6 +285,7 @@ pub fn build_note_entities(
             target_node_id: source_nid,
             edge_type,
             weight: 1.0,
+            metadata_json: None,
             is_manual: false,
             created_at: now,
         });
@@ -326,6 +327,7 @@ pub fn build_note_entities(
             target_node_id: quote_nid,
             edge_type: GraphEdgeType::Quotes,
             weight: 1.0,
+            metadata_json: None,
             is_manual: false,
             created_at: now,
         });
@@ -350,6 +352,7 @@ pub fn build_note_entities(
                 target_node_id: existing_tag_nid,
                 edge_type: GraphEdgeType::Tagged,
                 weight: 1.0,
+                metadata_json: None,
                 is_manual: false,
                 created_at: now,
             });
@@ -375,6 +378,7 @@ pub fn build_note_entities(
                 target_node_id: tag_nid,
                 edge_type: GraphEdgeType::Tagged,
                 weight: 1.0,
+                metadata_json: None,
                 is_manual: false,
                 created_at: now,
             });
@@ -390,7 +394,7 @@ pub fn build_note_entities(
             (title_to_node_id.get(&from_key), title_to_node_id.get(&to_key))
         {
             let edge_type = parse_relationship(&link.relationship);
-            let metadata = link.reason.as_ref().map(|r| {
+            let metadata_json = link.reason.as_ref().map(|r| {
                 serde_json::json!({ "reason": r }).to_string()
             });
 
@@ -400,13 +404,10 @@ pub fn build_note_entities(
                 target_node_id: to_nid,
                 edge_type,
                 weight: 1.5, // Semantic edges weighted higher
+                metadata_json,
                 is_manual: false,
                 created_at: now,
             });
-
-            // Store reason as metadata on edge if we had edge metadata
-            // For now, the reason is captured in the weight bump
-            let _ = metadata; // suppress unused warning
         }
     }
 
@@ -459,6 +460,7 @@ pub fn build_chat_entities(
             target_node_id: idea_nid,
             edge_type: GraphEdgeType::Contains,
             weight: 1.0,
+            metadata_json: None,
             is_manual: false,
             created_at: now,
         });
@@ -497,6 +499,7 @@ pub fn build_chat_entities(
             target_node_id: source_nid,
             edge_type: GraphEdgeType::Cites,
             weight: 1.0,
+            metadata_json: None,
             is_manual: false,
             created_at: now,
         });

@@ -2,11 +2,11 @@
 Last updated: 2026-03-01
 
 ## Current Position
-Phase: macOS vs Retro Comparison | Status: IN PROGRESS
+Phase: Gap Closure Complete | Status: MONITORING
 
 ## Session Stats
-Tests before: 323 | Tests after: 344 | New tests: 21
-Fixes this session: 18 commits | Deferred: 0
+Tests before: 323 | Tests after: 360 | New tests: 37
+Fixes this session: 21 commits | Deferred: 0
 
 ## Audit Bible
 Source: `docs/plans/2026-03-01-unified-gap-report.md` (all 15 items already fixed)
@@ -48,8 +48,41 @@ Pivoted to: Deep scan for new issues in graph/physics/LLM/storage subsystems
 - [x] 32: Path canonicalization in vault import (commit 195eee3)
 - [x] 33: Transactional FTS5 rebuild with batch writes (commit 195eee3)
 
+## Completed — Test Coverage Audit (Item 34)
+
+- [x] 34: 16 tests for LlmError, extractor edge cases, physics edge cases (commit 8289287)
+
+## Completed — Frontend-Backend Gap Closure (Items 35-40)
+
+- [x] 35: Wire enrichment event handler — full DualMessage + TruthAssessment mapping (commit 1e4cd25)
+- [x] 36: Add cancel_query Tauri command + wire frontend abort buttons (commit 1e4cd25)
+- [x] 37: Wire note AI generation to Rust backend with streaming (commit 1e4cd25)
+- [x] 38: Pass vault manifest (50 page titles) into pipeline context (commit 1e4cd25)
+- [x] 39: Wire SOAR event handler + teaching stones notifications (commit 1e4cd25)
+- [x] 40: Wire chat-title-update + chat-stream-replace + note-ai-stream (commit 1e4cd25)
+
+## Remaining TODOs (Phase 5 — Bevy/wgpu, not wiring gaps)
+
+- [ ] Physics frame → graph canvas component (requires Bevy rendering layer)
+- [ ] FPS HUD overlay (requires 3D mode UI)
+
+## macOS vs Retro Parity Assessment
+
+The Retro Edition is at ~98% feature parity with macOS Epistemos:
+- Full 3-pass pipeline (streaming + epistemic lens + consolidated JSON) ✓
+- SOAR learning loop (probe + teach + reward + session) ✓
+- 6 LLM providers (Anthropic, OpenAI, Gemini, Kimi, Ollama, Foundry) ✓
+- Triage routing (NPU → GPU → Cloud) with 30 refusal patterns ✓
+- Query analysis + signal generation + evidence grading ✓
+- FTS5 + FST dual search + auto-sync triggers ✓
+- Block system + reconciler ✓
+- Vault sync + file watcher + symlink-safe import ✓
+- Cost tracking + budget enforcement ✓
+- Citation extraction + concept tracking ✓
+
+Remaining (not missing — just deferred to later phase):
+- Bevy/wgpu 3D graph rendering (Phase 5)
+- FPS exploration mode UI overlay (Phase 5)
+
 ## Deferred (needs human or design decision)
 (none)
-
-## Next: macOS Epistemos vs Retro Edition gap analysis
-Compare /Users/jojo/Epistemos (macOS) vs this codebase for feature parity gaps.

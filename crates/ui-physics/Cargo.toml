@@ -4,3 +4,10 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+rapier3d = "0.32"
+graph = { path = "../graph" }
+storage = { path = "../storage" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+rustc-hash = { workspace = true }
+specta = { version = "2.0.0-rc.22", features = ["derive"] }

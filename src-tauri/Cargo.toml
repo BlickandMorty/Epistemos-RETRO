@@ -24,7 +24,16 @@ serde_json = { workspace = true }
 uuid = { workspace = true }
 tokio = { workspace = true }
 storage = { path = "../crates/storage" }
+engine = { path = "../crates/engine" }
+graph = { path = "../crates/graph" }
+sync = { path = "../crates/sync" }
+ui-physics = { path = "../crates/ui-physics" }
+embeddings = { path = "../crates/embeddings" }
+reqwest = { workspace = true }
+rustc-hash = { workspace = true }
 thiserror = { workspace = true }
+futures = { workspace = true }
+tokio-util = { workspace = true }
 tauri-specta = { version = "2.0.0-rc.21", features = ["typescript"] }
 specta = { version = "2.0.0-rc.22", features = ["derive", "serde_json"] }
 specta-typescript = "0.0.9"

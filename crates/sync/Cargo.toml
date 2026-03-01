@@ -7,3 +7,9 @@ edition = "2021"
 storage = { path = "../storage" }
 serde = { workspace = true }
 thiserror = { workspace = true }
+uuid = { version = "1", features = ["v4"] }
+notify = { workspace = true }
+notify-debouncer-full = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3"

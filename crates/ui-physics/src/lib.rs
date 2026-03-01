@@ -1,1 +1,6 @@
-// UI-physics crate — WASM spring solver for UI animations
+pub mod fps_mode;
+pub mod fps_player;
+pub mod world;
+
+#[cfg(test)]
+mod tests;

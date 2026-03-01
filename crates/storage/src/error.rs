@@ -6,6 +6,8 @@ pub enum StorageError {
     PageNotFound(PageId),
     #[error("chat not found: {0}")]
     ChatNotFound(String),
+    #[error("folder not found: {0}")]
+    FolderNotFound(String),
     #[error("database error: {0}")]
     Database(#[from] rusqlite::Error),
     #[error("body file I/O: {0}")]

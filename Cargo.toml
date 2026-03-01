@@ -18,3 +18,13 @@ uuid = { version = "1", features = ["v4", "serde"] }
 thiserror = "2"
 tokio = { version = "1", features = ["full"] }
 rusqlite = { version = "0.32", features = ["bundled"] }
+reqwest = { version = "0.12", features = ["json", "stream"] }
+regex = "1"
+rustc-hash = "2.1"
+fst = { version = "0.4", features = ["levenshtein"] }
+ort = { version = "2.0.0-rc.11", default-features = false, features = ["ndarray"] }
+tokio-util = "0.7"
+futures = "0.3"
+async-trait = "0.1"
+notify = "7"
+notify-debouncer-full = "0.4"

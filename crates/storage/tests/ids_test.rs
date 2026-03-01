@@ -41,13 +41,11 @@ fn id_from_str_round_trips() {
 }
 
 #[test]
-fn node_source_serializes() {
-    use storage::types::NodeSource;
-    let source = NodeSource::Page(PageId::new());
-    let json = serde_json::to_string(&source).unwrap();
-    let restored: NodeSource = serde_json::from_str(&json).unwrap();
-    // Just verify it doesn't panic — enum variant round-trip
-    let _ = restored;
+fn graph_node_type_roundtrip() {
+    use storage::types::GraphNodeType;
+    for i in 0..=7 {
+        assert_eq!(GraphNodeType::from_i32(i).to_i32(), i);
+    }
 }
 
 #[test]

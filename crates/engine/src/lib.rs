@@ -1,1 +1,11 @@
-// Engine crate — inference and pipeline orchestration
+pub mod chat_context;
+pub mod citations;
+pub mod cost;
+pub mod llm;
+pub mod orchestrator;
+pub mod pipeline;
+pub mod prompts;
+pub mod query_analyzer;
+pub mod signals;
+pub mod soar;
+pub mod triage;

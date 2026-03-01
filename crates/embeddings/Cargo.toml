@@ -3,5 +3,27 @@ name = "embeddings"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+default = []
+
+# Base ONNX support (CPU-only, works everywhere)
+onnx = ["ort", "ndarray", "tokenizers"]
+
+# Hardware-specific execution providers for Dell XPS 16 9640:
+#   Intel Core Ultra 7 155H NPU → DirectML EP (11 TOPS INT8)
+#   NVIDIA RTX 4060 Laptop (50W) → CUDA EP + TensorRT
+#
+# Enable on Windows: cargo build --features "onnx,cuda,directml"
+# Enable all:         cargo build --features "onnx,cuda,directml,tensorrt"
+cuda = ["ort/cuda"]           # NVIDIA RTX 4060 — CUDA 8.9 (Ada Lovelace)
+tensorrt = ["ort/tensorrt"]   # NVIDIA TensorRT — 50% faster than raw CUDA
+directml = ["ort/directml"]   # Intel NPU via DirectX 12 — sub-ms embeddings
+
 [dependencies]
 thiserror = { workspace = true }
+rustc-hash = { workspace = true }
+
+# ONNX Runtime — behind feature flag for environments without models
+ort = { workspace = true, optional = true }
+ndarray = { version = "0.16", optional = true }
+tokenizers = { version = "0.21", optional = true, default-features = false, features = ["onig"] }

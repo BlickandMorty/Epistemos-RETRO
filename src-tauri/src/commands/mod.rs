@@ -1,6 +1,9 @@
 pub mod notes;
 pub mod chat;
 pub mod graph;
+pub mod folders;
+pub mod physics;
+pub mod research;
 pub mod search;
 pub mod vault;
 pub mod system;

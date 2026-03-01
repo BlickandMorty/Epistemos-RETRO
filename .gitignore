@@ -26,6 +26,9 @@ Thumbs.db
 # Debug logs
 firebase-debug.log
 
+# Generated bindings (tauri-specta)
+src/lib/bindings.ts
+
 # Environment
 .env
 .env.local

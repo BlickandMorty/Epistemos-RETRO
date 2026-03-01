@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use crate::ids::*;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct Page {
     pub id: PageId,
     pub title: String,
@@ -15,7 +15,7 @@ pub struct Page {
     pub updated_at: i64,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct Block {
     pub id: BlockId,
     pub page_id: PageId,
@@ -25,7 +25,7 @@ pub struct Block {
     pub content: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct Chat {
     pub id: ChatId,
     pub title: String,
@@ -33,7 +33,7 @@ pub struct Chat {
     pub updated_at: i64,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct Message {
     pub id: MessageId,
     pub chat_id: ChatId,
@@ -42,7 +42,7 @@ pub struct Message {
     pub created_at: i64,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct SearchResult {
     pub page_id: PageId,
     pub title: String,
@@ -50,30 +50,30 @@ pub struct SearchResult {
     pub score: f64,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct InferenceConfig {
     pub api_provider: String,
     pub model: String,
     pub ollama_base_url: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct ConnectionTestResult {
     pub success: bool,
     pub message: String,
     pub latency_ms: Option<u64>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub enum GraphNodeType { Note, Chat, Idea, Source, Folder, Quote, Tag, Block }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub enum GraphEdgeType {
     Reference, Contains, Tagged, Mentions, Cites, Authored,
     Related, Quotes, Supports, Contradicts, Expands, Questions,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub enum NodeSource {
     Page(PageId),
     Chat(ChatId),
@@ -85,7 +85,7 @@ pub enum NodeSource {
     None,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct GraphNode {
     pub id: GraphNodeId,
     pub node_type: GraphNodeType,
@@ -95,7 +95,7 @@ pub struct GraphNode {
     pub is_manual: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct GraphEdge {
     pub id: GraphEdgeId,
     pub source_node_id: GraphNodeId,

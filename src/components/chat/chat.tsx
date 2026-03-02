@@ -422,6 +422,7 @@ export function Chat({ mode = 'landing' }: { mode?: 'landing' | 'conversation' }
   const [showAllChats, setShowAllChats] = useState(false);
   const [showChatsOverlay, setShowChatsOverlay] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
+  const [, setSearchExpanded] = useState(false);
   const lastBackClickRef = useRef(0);
   const lastChatsClickRef = useRef(0);
 

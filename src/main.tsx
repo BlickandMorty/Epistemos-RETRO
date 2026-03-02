@@ -6,6 +6,7 @@ import { THEME_LIST } from '@/hooks/use-theme';
 import { AppShell } from '@/components/layout/app-shell';
 import { setupTauriListeners } from '@/lib/tauri-bridge';
 import { initWasm } from '@/lib/wasm-loader';
+import { logger } from '@/lib/debug-logger';
 import '@/styles/globals.css';
 
 // ── Lazy page components — code-split per route ──
@@ -22,7 +23,7 @@ function App() {
     let cancelled = false;
 
     // Load custom Rust UI physics WASM solver
-    initWasm().catch(console.error);
+    initWasm().catch((err) => logger.error('wasm', 'WASM load failed', err));
 
     setupTauriListeners().then((unlisten) => {
       if (cancelled) {

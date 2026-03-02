@@ -23,6 +23,7 @@ import {
   ClockIcon,
   FolderPlusIcon,
   NetworkIcon,
+  DownloadIcon,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -1510,6 +1511,22 @@ const ItemContextMenu = memo(function ItemContextMenu({
             )}
           </>
         )}
+
+        <DropdownMenuItem
+          onClick={(e) => {
+            e.stopPropagation();
+            commands.exportPage(page.id).then((path) => {
+              usePFCStore.getState().addToast({ message: `Exported to ${path}`, type: 'info' });
+            }).catch(() => {
+              usePFCStore.getState().addToast({ message: 'Export failed — set vault path in Settings first', type: 'error' });
+            });
+          }}
+          className="gap-2 cursor-pointer"
+          style={{ fontSize: '12px', padding: '5px 8px', borderRadius: 4 }}
+        >
+          <DownloadIcon style={{ width: 12, height: 12 }} />
+          Export to vault
+        </DropdownMenuItem>
 
         <DropdownMenuSeparator style={{ background: c.border, margin: '3px 0' }} />
         <DropdownMenuItem

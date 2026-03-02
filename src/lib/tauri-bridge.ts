@@ -335,9 +335,12 @@ async function _setupTauriListeners(): Promise<UnlistenFn> {
 
     // ── Vault file watcher events ──
 
-    listen<{ path: string; kind: string }>('vault-change', (event) => {
+    listen<Array<{ path: string; kind: string }>>('vault-change', (event) => {
       const store = usePFCStore.getState();
-      store.addToast({ message: `Vault file changed: ${event.payload.kind}`, type: 'info' });
+      const changes = event.payload;
+      const count = changes.length;
+      const kinds = [...new Set(changes.map(c => c.kind))].join(', ');
+      store.addToast({ message: `Vault: ${count} file${count > 1 ? 's' : ''} ${kinds}`, type: 'info' });
       // Refresh notes from backend when vault files change on disk
       store.loadNotesFromStorage();
     }),
@@ -351,11 +354,11 @@ async function _setupTauriListeners(): Promise<UnlistenFn> {
 
     // ── Graph node summary event ──
 
-    listen<{ node_id: string; summary: string }>('node://summary', (event) => {
-      const { node_id, summary } = event.payload;
+    listen<{ node_id: string; text: string; is_complete: boolean }>('node://summary', (event) => {
+      const { node_id, text } = event.payload;
       // Dispatch custom event for Library page to pick up
       window.dispatchEvent(new CustomEvent('pfc-node-summary', {
-        detail: { nodeId: node_id, summary },
+        detail: { nodeId: node_id, summary: text },
       }));
     }),
 

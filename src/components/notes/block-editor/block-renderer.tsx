@@ -93,7 +93,7 @@ function PageLinkPopup({
           : '0 8px 32px rgba(0,0,0,0.1), 0 2px 8px rgba(0,0,0,0.06)',
         padding: '6px',
         backdropFilter: 'blur(20px) saturate(1.5)',
-        animation: 'toolbar-in 0.12s cubic-bezier(0.32, 0.72, 0, 1)',
+        animation: 'toolbar-in 0.22s cubic-bezier(0.34, 1.56, 0.64, 1)',
       }}
     >
       <div style={{

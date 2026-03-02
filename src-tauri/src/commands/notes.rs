@@ -3,6 +3,7 @@ use storage::ids::PageId;
 use storage::types::{Block, Page};
 use crate::error::AppError;
 use crate::state::AppState;
+use super::parse_id;
 
 #[tauri::command]
 #[specta::specta]
@@ -16,7 +17,7 @@ pub async fn create_page(state: State<'_, AppState>, title: String) -> Result<Pa
 #[tauri::command]
 #[specta::specta]
 pub async fn get_page(state: State<'_, AppState>, page_id: String) -> Result<Page, AppError> {
-    let id: PageId = page_id.parse().map_err(|e| AppError::Internal(format!("{e}")))?;
+    let id: PageId = parse_id(&page_id)?;
     let db = state.lock_db()?;
     Ok(db.get_page(id)?)
 }
@@ -53,7 +54,7 @@ pub async fn update_page(state: State<'_, AppState>, page: Page) -> Result<(), A
 #[tauri::command]
 #[specta::specta]
 pub async fn delete_page(state: State<'_, AppState>, page_id: String) -> Result<(), AppError> {
-    let id: PageId = page_id.parse().map_err(|e| AppError::Internal(format!("{e}")))?;
+    let id: PageId = parse_id(&page_id)?;
     let db = state.lock_db()?;
     if let Err(e) = db.delete_search_index(id) {
         eprintln!("[WARN][notes] search index delete failed for {id} — orphaned index entry: {e}");
@@ -65,7 +66,7 @@ pub async fn delete_page(state: State<'_, AppState>, page_id: String) -> Result<
 #[tauri::command]
 #[specta::specta]
 pub async fn load_body(state: State<'_, AppState>, page_id: String) -> Result<String, AppError> {
-    let id: PageId = page_id.parse().map_err(|e| AppError::Internal(format!("{e}")))?;
+    let id: PageId = parse_id(&page_id)?;
     let db = state.lock_db()?;
     Ok(db.load_body(id)?)
 }
@@ -73,7 +74,7 @@ pub async fn load_body(state: State<'_, AppState>, page_id: String) -> Result<St
 #[tauri::command]
 #[specta::specta]
 pub async fn save_body(state: State<'_, AppState>, page_id: String, content: String) -> Result<(), AppError> {
-    let id: PageId = page_id.parse().map_err(|e| AppError::Internal(format!("{e}")))?;
+    let id: PageId = parse_id(&page_id)?;
     let db = state.lock_db()?;
     db.save_body(id, &content)?;
 
@@ -109,7 +110,7 @@ pub async fn save_body(state: State<'_, AppState>, page_id: String, content: Str
 #[tauri::command]
 #[specta::specta]
 pub async fn get_blocks(state: State<'_, AppState>, page_id: String) -> Result<Vec<Block>, AppError> {
-    let id: PageId = page_id.parse().map_err(|e| AppError::Internal(format!("{e}")))?;
+    let id: PageId = parse_id(&page_id)?;
     let db = state.lock_db()?;
     Ok(db.get_blocks_for_page(id)?)
 }
@@ -129,7 +130,7 @@ pub async fn generate_note_ai(
     use futures::StreamExt;
     use super::graph::build_triaged_provider;
 
-    let id: PageId = page_id.parse().map_err(|e| AppError::Internal(format!("{e}")))?;
+    let id: PageId = parse_id(&page_id)?;
 
     // Load note context for the prompt
     let (title, body) = {
@@ -148,31 +149,52 @@ pub async fn generate_note_ai(
          Current note content:\n\n{body}"
     );
 
+    // Cancel any previous note AI task before starting a new one.
+    let cancel_token = {
+        use tokio_util::sync::CancellationToken;
+        let new_token = CancellationToken::new();
+        if let Ok(mut guard) = state.note_ai_cancel.lock() {
+            if let Some(old) = guard.take() {
+                old.cancel();
+            }
+            *guard = Some(new_token.clone());
+        }
+        new_token
+    };
+
     let app_clone = app.clone();
     let page_id_clone = page_id.clone();
 
-    tokio::spawn(async move {
+    state.spawn_tracked("note_ai", async move {
         match provider.stream(&prompt, Some(&system), 2048).await {
             Ok(mut stream) => {
-                while let Some(chunk) = stream.next().await {
-                    match chunk {
-                        Ok(text) if !text.is_empty() => {
-                            let _ = app_clone.emit("note-ai-stream", serde_json::json!({
-                                "page_id": page_id_clone,
-                                "text": text,
-                                "done": false,
-                            }));
+                loop {
+                    tokio::select! {
+                        chunk = stream.next() => {
+                            match chunk {
+                                Some(Ok(text)) if !text.is_empty() => {
+                                    let _ = app_clone.emit("note-ai-stream", serde_json::json!({
+                                        "page_id": page_id_clone,
+                                        "text": text,
+                                        "done": false,
+                                    }));
+                                }
+                                Some(Err(e)) => {
+                                    let _ = app_clone.emit("note-ai-stream", serde_json::json!({
+                                        "page_id": page_id_clone,
+                                        "text": e.user_message(),
+                                        "done": true,
+                                        "error": true,
+                                    }));
+                                    break;
+                                }
+                                None => break,
+                                _ => {}
+                            }
                         }
-                        Err(e) => {
-                            let _ = app_clone.emit("note-ai-stream", serde_json::json!({
-                                "page_id": page_id_clone,
-                                "text": e.user_message(),
-                                "done": true,
-                                "error": true,
-                            }));
+                        _ = cancel_token.cancelled() => {
                             break;
                         }
-                        _ => {}
                     }
                 }
                 let _ = app_clone.emit("note-ai-stream", serde_json::json!({

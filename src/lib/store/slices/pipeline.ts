@@ -71,6 +71,9 @@ export interface PipelineSliceState {
 
   // signal history
   signalHistory: SignalHistoryEntry[];
+
+  // SOAR teaching stones
+  pendingSoarStone: { index: number; name: string; prompt: string } | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -95,6 +98,7 @@ export interface PipelineSliceActions {
     harmony: number,
   ) => void;
   applySignalUpdate: (update: Partial<SignalUpdate>) => void;
+  setSoarStone: (stone: { index: number; name: string; prompt: string } | null) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -128,6 +132,8 @@ export const createPipelineSlice = (set: PFCSet, _get: PFCGet) => ({
   skillGapsDetected: 0,
 
   signalHistory: [] as SignalHistoryEntry[],
+
+  pendingSoarStone: null as { index: number; name: string; prompt: string } | null,
 
   // --- actions ---
 
@@ -196,4 +202,7 @@ export const createPipelineSlice = (set: PFCSet, _get: PFCGet) => ({
         harmonyKeyDistance: update.harmonyKeyDistance,
       }),
     })),
+
+  setSoarStone: (stone: { index: number; name: string; prompt: string } | null) =>
+    set({ pendingSoarStone: stone }),
 });

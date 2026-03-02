@@ -1,5 +1,4 @@
 import { useRef, useCallback, memo, useState } from 'react';
-import { motion } from 'framer-motion';
 import {
   ImagePlusIcon,
   TelescopeIcon,
@@ -8,10 +7,7 @@ import {
 } from 'lucide-react';
 import { usePFCStore } from '@/lib/store/use-pfc-store';
 
-import { spring } from '@/lib/motion/motion-config';
 
-/* M3 emphasized easing for staggered entrance */
-const BTN_SPRING = spring.bouncy;
 
 interface FeatureButtonsProps {
   isDark: boolean;
@@ -41,9 +37,8 @@ function fileTypeFromMime(mime: string): 'image' | 'csv' | 'pdf' | 'text' | 'oth
 }
 
 /* Octa-style feature chip with hover shadow + border highlight */
-function FeatureChip({ feat, index, isDark, isSunny, onClick }: {
+function FeatureChip({ feat, isDark, isSunny, onClick }: {
   feat: FeatureBtn;
-  index: number;
   isDark: boolean;
   isSunny?: boolean;
   onClick: () => void;
@@ -52,12 +47,8 @@ function FeatureChip({ feat, index, isDark, isSunny, onClick }: {
   const Icon = feat.icon;
 
   return (
-    <motion.button
-      initial={{ opacity: 0, y: 10, scale: 0.95 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ ...BTN_SPRING, delay: index * 0.04 }}
-      whileHover={{ scale: 1.04, y: -2 }}
-      whileTap={{ scale: 0.95 }}
+    <button
+      className="animate-spring-up"
       onClick={onClick}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
@@ -67,11 +58,10 @@ function FeatureChip({ feat, index, isDark, isSunny, onClick }: {
         gap: '0.4375rem',
         padding: '0.4375rem 0.875rem',
         borderRadius: 'var(--shape-full)',
-        border: `1px solid ${
-          hovered
-            ? (isDark ? 'rgba(var(--pfc-accent-rgb), 0.2)' : isSunny ? 'var(--border)' : 'rgba(0,0,0,0.06)')
-            : (isDark ? 'var(--border)' : isSunny ? 'var(--border)' : 'rgba(0,0,0,0.04)')
-        }`,
+        border: `1px solid ${hovered
+          ? (isDark ? 'rgba(var(--pfc-accent-rgb), 0.2)' : isSunny ? 'var(--border)' : 'rgba(0,0,0,0.06)')
+          : (isDark ? 'var(--border)' : isSunny ? 'var(--border)' : 'rgba(0,0,0,0.04)')
+          }`,
         background: isDark
           ? (hovered ? 'var(--glass-hover)' : 'var(--pfc-surface-dark)')
           : isSunny
@@ -86,7 +76,17 @@ function FeatureChip({ feat, index, isDark, isSunny, onClick }: {
         fontFamily: 'var(--font-sans)',
         letterSpacing: '0.01em',
         boxShadow: isDark ? 'none' : isSunny ? 'none' : '0 1px 3px rgba(0,0,0,0.04), 0 1px 6px rgba(0,0,0,0.03)',
-        transition: 'all 0.2s ease',
+        transition: 'all 0.2s ease, transform 0.1s ease',
+      }}
+      onPointerDown={(e) => { e.currentTarget.style.transform = 'scale(0.95)'; }}
+      onPointerUp={(e) => { e.currentTarget.style.transform = hovered ? 'scale(1.04) translateY(-2px)' : 'scale(1)'; }}
+      onPointerLeave={(e) => {
+        setHovered(false);
+        e.currentTarget.style.transform = 'scale(1)';
+      }}
+      onPointerEnter={(e) => {
+        setHovered(true);
+        e.currentTarget.style.transform = 'scale(1.04) translateY(-2px)';
       }}
     >
       <Icon style={{
@@ -97,7 +97,7 @@ function FeatureChip({ feat, index, isDark, isSunny, onClick }: {
         transition: 'color 0.15s',
       }} />
       {feat.label}
-    </motion.button>
+    </button>
   );
 }
 
@@ -195,12 +195,11 @@ export const FeatureButtons = memo(function FeatureButtons({ isDark, isSunny, on
         justifyContent: 'center',
         flexWrap: 'wrap',
       }}>
-        {FEATURES.map((feat, i) => {
+        {FEATURES.map((feat) => {
           return (
             <FeatureChip
               key={feat.action}
               feat={feat}
-              index={i}
               isDark={isDark}
               isSunny={isSunny}
               onClick={() => handleClick(feat.action)}

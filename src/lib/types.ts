@@ -44,7 +44,7 @@ export interface SignalUpdate {
 
 // ── Messages ─────────────────────────────────────────────────────
 
-export type AnalysisMode = 'research' | 'quick' | 'deep';
+export type AnalysisMode = 'research' | 'quick' | 'deep' | 'moderate' | 'creative';
 export type EvidenceGrade = 'A' | 'B' | 'C' | 'D' | 'F' | 'N/A';
 
 export interface SummarySection {

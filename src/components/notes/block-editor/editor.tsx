@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useMemo } from 'react';
+import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { usePFCStore } from '@/lib/store/use-pfc-store';
 import { useTheme } from '@/hooks/use-theme';
 import type { NoteBlock, NotePage, BlockType } from '@/lib/notes/types';
@@ -27,6 +27,28 @@ export function BlockEditor({ pageId, readOnly, bookLayout }: { pageId: string; 
   // Typewriter mode — track which block is being written to
   const typewriterBlockId = usePFCStore((s) => s.noteAI.writeToNote ? s.noteAI.typewriterBlockId : null);
   const isTypewriting = usePFCStore((s) => s.noteAI.writeToNote && s.noteAI.isGenerating);
+
+  // ── Catch pfc-note-ai events from context menu → invoke Tauri backend ──
+  useEffect(() => {
+    const AI_PROMPTS: Record<string, string> = {
+      'ai-continue': 'Continue writing from where this block left off.',
+      'ai-summarize': 'Summarize the key points of this page.',
+      'ai-expand': 'Expand and elaborate on this block with more detail.',
+      'ai-rewrite': 'Rewrite this block to improve clarity and style.',
+    };
+
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as
+        | { action: string; blockId: string; pageId: string }
+        | undefined;
+      if (!detail || detail.pageId !== pageId) return;
+      const prompt = AI_PROMPTS[detail.action] ?? detail.action;
+      usePFCStore.getState().startNoteAIGeneration(pageId, detail.blockId, prompt);
+    };
+
+    window.addEventListener('pfc-note-ai', handler);
+    return () => window.removeEventListener('pfc-note-ai', handler);
+  }, [pageId]);
 
   // ── Navigate to a page by title (from [[link]] click) ──
   const handleNavigateToPage = useCallback((pageTitle: string) => {
@@ -405,12 +427,22 @@ export function BlockEditor({ pageId, readOnly, bookLayout }: { pageId: string; 
           cursor: pointer;
           border-bottom: 1px solid rgba(var(--pfc-accent-rgb), 0.3);
           font-weight: 500;
-          transition: border-color 0.15s, color 0.15s;
           text-decoration: none;
+          display: inline-block;
+          transition: border-color 0.2s cubic-bezier(0.34,1.56,0.64,1),
+                      color 0.15s cubic-bezier(0.2,0,0,1),
+                      transform 0.25s cubic-bezier(0.34,1.56,0.64,1),
+                      text-shadow 0.2s cubic-bezier(0.2,0,0,1);
         }
         .pfc-page-link:hover {
           border-bottom-color: var(--pfc-accent);
           color: #D4B896;
+          transform: scale(1.03) translateY(-1px);
+          text-shadow: 0 0 8px rgba(var(--pfc-accent-rgb), 0.3);
+        }
+        .pfc-page-link:active {
+          transform: scale(0.97);
+          transition-duration: 0.1s;
         }
         /* Book layout — prevent blocks from splitting across columns */
         [data-book-layout] .pfc-block {

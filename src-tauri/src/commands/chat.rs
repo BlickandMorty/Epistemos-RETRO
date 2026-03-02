@@ -3,6 +3,7 @@ use storage::ids::ChatId;
 use storage::types::{Chat, Message};
 use crate::error::AppError;
 use crate::state::AppState;
+use super::parse_id;
 
 use engine::chat_context;
 use engine::citations;
@@ -39,6 +40,12 @@ pub struct CitationEvent {
     pub source: String,
 }
 
+#[derive(Clone, Serialize, specta::Type)]
+pub struct TriageEvent {
+    pub provider: String,
+    pub tier: String,
+}
+
 #[tauri::command]
 #[specta::specta]
 pub async fn create_chat(state: State<'_, AppState>, title: Option<String>) -> Result<Chat, AppError> {
@@ -58,7 +65,7 @@ pub async fn list_chats(state: State<'_, AppState>) -> Result<Vec<Chat>, AppErro
 #[tauri::command]
 #[specta::specta]
 pub async fn get_messages(state: State<'_, AppState>, chat_id: String) -> Result<Vec<Message>, AppError> {
-    let id: ChatId = chat_id.parse().map_err(|e| AppError::Internal(format!("{e}")))?;
+    let id: ChatId = parse_id(&chat_id)?;
     let db = state.lock_db()?;
     Ok(db.get_messages_for_chat(id)?)
 }
@@ -66,7 +73,7 @@ pub async fn get_messages(state: State<'_, AppState>, chat_id: String) -> Result
 #[tauri::command]
 #[specta::specta]
 pub async fn delete_chat(state: State<'_, AppState>, chat_id: String) -> Result<(), AppError> {
-    let id: ChatId = chat_id.parse().map_err(|e| AppError::Internal(format!("{e}")))?;
+    let id: ChatId = parse_id(&chat_id)?;
     let db = state.lock_db()?;
     db.delete_chat(id)?;
     Ok(())
@@ -80,7 +87,7 @@ pub async fn submit_query(
     chat_id: String,
     query: String,
 ) -> Result<(), AppError> {
-    let id: ChatId = chat_id.parse().map_err(|e| AppError::Internal(format!("{e}")))?;
+    let id: ChatId = parse_id(&chat_id)?;
 
     // ── Vault briefing mode ──────────────────────────────────
     let is_briefing = chat_context::is_vault_briefing(&query);
@@ -141,10 +148,10 @@ pub async fn submit_query(
     let conversation_history = {
         let db = state.lock_db()?;
         let messages = db.get_messages_for_chat(id)?;
-        let history_msgs: Vec<_> = messages.iter()
+        let history_msgs: Vec<_> = messages.into_iter()
             .map(|m| chat_context::HistoryMessage {
-                role: m.role.clone(),
-                content: m.content.clone(),
+                role: m.role,
+                content: m.content,
             })
             .collect();
         chat_context::build_conversation_history(&history_msgs, 10, 2000)
@@ -171,6 +178,13 @@ pub async fn submit_query(
 
     // Build LLM provider via triage routing (NPU → GPU → Cloud)
     let (provider, provider_name) = build_triaged_provider(&state, &cleaned_query)?;
+    let tier = if provider_name.contains("foundry") { "npu" }
+        else if provider_name.contains("ollama") { "gpu" }
+        else { "cloud" };
+    let _ = app.emit("pipeline://triage", TriageEvent {
+        provider: provider_name.clone(),
+        tier: tier.to_string(),
+    });
     let provider_type = LlmProviderType::from_settings_name(&provider_name);
     let model_name = {
         let db = state.lock_db()?;
@@ -219,20 +233,16 @@ pub async fn submit_query(
     let (tx, mut rx) = orchestrator::channel();
 
     // Spawn event forwarder: broadcast → Tauri events
+    // Consolidate clones for the spawned task boundary
     let app_fwd = app.clone();
-    let chat_id_fwd = chat_id.clone();
+    let chat_id_fwd = chat_id;
     let db_state = state.inner().clone();
-    let app_title = app.clone();
-    let chat_id_title = chat_id.clone();
-    let query_for_title = query.clone();
     let provider_for_title = provider.clone();
-    let db_title = state.inner().clone();
-    let cost_state = state.inner().clone();
     let cost_provider_type = provider_type;
     let cost_model_name = model_name;
-    let query_for_cost = query.clone();
+    let query_for_cost = query;
 
-    tokio::spawn(async move {
+    state.spawn_tracked("pipeline_forward", async move {
         let mut full_response = String::new();
         let mut is_first_chat = false;
 
@@ -316,11 +326,11 @@ pub async fn submit_query(
                             provider: cost_provider_type.clone(),
                             model: cost_model_name.clone(),
                         };
-                        if let Ok(mut ct) = cost_state.lock_cost_tracker() {
+                        if let Ok(mut ct) = db_state.lock_cost_tracker() {
                             ct.record(&usage);
                             if let Ok(json) = ct.to_json() {
                                 drop(ct);
-                                if let Ok(db) = cost_state.lock_db() {
+                                if let Ok(db) = db_state.lock_db() {
                                     let _ = db.set_setting("cost_tracker", &json);
                                 }
                             }
@@ -330,13 +340,7 @@ pub async fn submit_query(
                     // ── Citation extraction ──────────────────────
                     let extracted = citations::extract(&full_response, "chat");
                     if !extracted.is_empty() {
-                        let events: Vec<CitationEvent> = extracted.iter().map(|c| CitationEvent {
-                            title: c.title.clone(),
-                            doi: c.doi.clone(),
-                            url: c.url.clone(),
-                            source: c.source.clone(),
-                        }).collect();
-                        let _ = app_fwd.emit("pipeline://citations", &events);
+                        let _ = app_fwd.emit("pipeline://citations", &citation_events(&extracted));
                     }
 
                     // Emit concepts
@@ -374,13 +378,7 @@ pub async fn submit_query(
                     // Extract citations from deep analysis too
                     let extracted = citations::extract(&data.dual_message.raw_analysis, "research");
                     if !extracted.is_empty() {
-                        let events: Vec<CitationEvent> = extracted.iter().map(|c| CitationEvent {
-                            title: c.title.clone(),
-                            doi: c.doi.clone(),
-                            url: c.url.clone(),
-                            source: c.source.clone(),
-                        }).collect();
-                        let _ = app_fwd.emit("pipeline://citations", &events);
+                        let _ = app_fwd.emit("pipeline://citations", &citation_events(&extracted));
                     }
 
                     // ── Cost recording (Pass 2/3 — estimate from enrichment text) ──
@@ -395,11 +393,11 @@ pub async fn submit_query(
                             provider: cost_provider_type.clone(),
                             model: cost_model_name.clone(),
                         };
-                        if let Ok(mut ct) = cost_state.lock_cost_tracker() {
+                        if let Ok(mut ct) = db_state.lock_cost_tracker() {
                             ct.record(&usage);
                             if let Ok(json) = ct.to_json() {
                                 drop(ct);
-                                if let Ok(db) = cost_state.lock_db() {
+                                if let Ok(db) = db_state.lock_db() {
                                     let _ = db.set_setting("cost_tracker", &json);
                                 }
                             }
@@ -425,18 +423,18 @@ pub async fn submit_query(
         // ── Auto title generation (after pipeline completes) ─
         if is_first_chat {
             generate_chat_title(
-                &app_title,
+                &app_fwd,
                 &provider_for_title,
-                &query_for_title,
-                &chat_id_title,
-                &db_title,
+                &query_for_cost,
+                &chat_id_fwd,
+                &db_state,
             ).await;
         }
     });
 
-    // Run the full 3-pass pipeline (tokio::spawn, NOT JS workers)
+    // Run the full 3-pass pipeline (spawn_tracked, NOT JS workers)
     let query_owned = cleaned_query;
-    tokio::spawn(async move {
+    state.spawn_tracked("pipeline_run", async move {
         orchestrator::run_with_context(tx, provider, &query_owned, &qa, &sigs, &controls, pipeline_ctx, cancel_token).await;
     });
 
@@ -464,26 +462,47 @@ pub async fn run_soar_stone(
                   designed to deepen understanding. Be clear, rigorous, and educational. \
                   Use concrete examples. Acknowledge uncertainty honestly.";
 
+    // Cancel any previous SOAR stone task before starting a new one.
+    let cancel_token = {
+        use tokio_util::sync::CancellationToken;
+        let new_token = CancellationToken::new();
+        if let Ok(mut guard) = state.soar_cancel.lock() {
+            if let Some(old) = guard.take() {
+                old.cancel();
+            }
+            *guard = Some(new_token.clone());
+        }
+        new_token
+    };
+
     let app_clone = app.clone();
     let chat_id_clone = chat_id.clone();
 
-    tokio::spawn(async move {
+    state.spawn_tracked("soar_stone", async move {
         match provider.stream(&stone_prompt, Some(system), 4096).await {
             Ok(mut stream) => {
-                while let Some(chunk) = stream.next().await {
-                    match chunk {
-                        Ok(text) if !text.is_empty() => {
-                            let _ = app_clone.emit("chat-stream", StreamChunk {
-                                chat_id: chat_id_clone.clone(),
-                                text,
-                                done: false,
-                            });
+                loop {
+                    tokio::select! {
+                        chunk = stream.next() => {
+                            match chunk {
+                                Some(Ok(text)) if !text.is_empty() => {
+                                    let _ = app_clone.emit("chat-stream", StreamChunk {
+                                        chat_id: chat_id_clone.clone(),
+                                        text,
+                                        done: false,
+                                    });
+                                }
+                                Some(Err(e)) => {
+                                    let _ = app_clone.emit("pipeline://error", &e.user_message());
+                                    break;
+                                }
+                                None => break,
+                                _ => {}
+                            }
                         }
-                        Err(e) => {
-                            let _ = app_clone.emit("pipeline://error", &e.user_message());
+                        _ = cancel_token.cancelled() => {
                             break;
                         }
-                        _ => {}
                     }
                 }
                 let _ = app_clone.emit("chat-stream", StreamChunk {
@@ -520,6 +539,16 @@ pub async fn cancel_query(state: State<'_, AppState>) -> Result<(), AppError> {
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────
+
+/// Convert extracted citations to CitationEvent payloads.
+fn citation_events(extracted: &[citations::ExtractedCitation]) -> Vec<CitationEvent> {
+    extracted.iter().map(|c| CitationEvent {
+        title: c.title.clone(),
+        doi: c.doi.clone(),
+        url: c.url.clone(),
+        source: c.source.clone(),
+    }).collect()
+}
 
 /// Execute parsed vault actions against the database.
 fn execute_vault_actions(state: &AppState, actions: &[chat_context::VaultAction]) {

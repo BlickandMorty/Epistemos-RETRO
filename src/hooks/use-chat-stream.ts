@@ -14,7 +14,21 @@ export function useChatStream() {
     if (isStreamingRef.current) return;
 
     const store = usePFCStore.getState();
-    const targetChatId = chatId || store.currentChatId;
+    let targetChatId = chatId || store.currentChatId;
+
+    // If no active chat, create one on the backend first
+    if (!targetChatId) {
+      try {
+        const res = await commands.createChat(null);
+        if (res.status === 'ok') {
+          targetChatId = res.data.id;
+          store.setCurrentChat(targetChatId);
+        }
+      } catch {
+        store.addToast({ message: 'Failed to create chat session', type: 'error' });
+        return;
+      }
+    }
 
     store.submitQuery(query);
     store.startStreaming();
@@ -22,7 +36,8 @@ export function useChatStream() {
 
     try {
       // Calls Rust backend — all logic handled there
-      await commands.submitQuery(targetChatId ?? '', query);
+      if (!targetChatId) throw new Error('No chat ID provided');
+      await commands.submitQuery(targetChatId, query);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       store.addToast({ message: msg, type: 'error' });

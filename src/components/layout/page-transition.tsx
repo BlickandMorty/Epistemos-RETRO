@@ -1,61 +1,23 @@
 import { useLocation } from 'react-router-dom';
-import { AnimatePresence, motion } from 'framer-motion';
-import { type ReactNode, useRef } from 'react';
+import { type ReactNode } from 'react';
 
-/* ═══════════════════════════════════════════════════════════
-   PageTransition — smooth route-change wrapper
-
-   Wraps the App Router's {children} slot in AnimatePresence
-   keyed by pathname. Uses ultra-fast exit (80ms) and snappy
-   enter (150ms) for responsive page cycling.
-
-   Refinement: `mode="wait"` ensures clean handoff between
-   pages. Durations are short enough that rapid cycling
-   still feels instant without overlapping DOM nodes.
-   ═══════════════════════════════════════════════════════════ */
-
-import { M3_EASE, M3_ACCEL } from '@/lib/motion/motion-config';
-
-const pageVariants = {
-  initial: { opacity: 0 },
-  animate: {
-    opacity: 1,
-    transition: { duration: 0.15, ease: M3_EASE },
-  },
-  exit: {
-    opacity: 0,
-    transition: { duration: 0.08, ease: M3_ACCEL },
-  },
-};
-
+/**
+ * PageTransition — smooth route-change wrapper.
+ * Uses CSS fade-in keyed by pathname for snappy page cycling.
+ */
 export function PageTransition({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
-  // Generation counter: on rapid route changes, only the latest
-  // pathname's enter animation runs to completion. Prevents stale
-  // intermediate pages from flashing.
-  const genRef = useRef(0);
-  const currentGen = ++genRef.current;
 
   return (
-    <AnimatePresence mode="wait" initial={false}>
-      <motion.div
-        key={pathname}
-        variants={pageVariants}
-        initial="initial"
-        animate="animate"
-        exit="exit"
-        style={{
-          position: 'absolute',
-          inset: 0,
-          willChange: 'opacity',
-        }}
-        onAnimationStart={() => {
-          // If a newer route has arrived, skip this animation
-          if (currentGen !== genRef.current) return;
-        }}
-      >
-        {children}
-      </motion.div>
-    </AnimatePresence>
+    <div
+      key={pathname}
+      className="animate-fade-in"
+      style={{
+        position: 'absolute',
+        inset: 0,
+      }}
+    >
+      {children}
+    </div>
   );
 }

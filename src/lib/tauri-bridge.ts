@@ -12,6 +12,10 @@
 
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { usePFCStore } from '@/lib/store/use-pfc-store';
+import {
+  updateNodePositions as physicsUpdatePositions,
+  updateFpsCamera as physicsUpdateCamera,
+} from '@/lib/store/physics-positions';
 
 // ── Event payload types (matches Rust serialization) ───────────────
 
@@ -251,9 +255,30 @@ async function _setupTauriListeners(): Promise<UnlistenFn> {
       usePFCStore.getState().addToast({ message: event.payload, type: 'error' });
     }),
 
-    listen<PhysicsFrame>('physics-frame', () => { /* Phase 5: feed positions into graph */ }),
+    listen<{ provider: string; tier: string }>('pipeline://triage', (event) => {
+      const { provider, tier } = event.payload;
+      const label = tier === 'npu' ? 'NPU' : tier === 'gpu' ? 'GPU' : 'Cloud';
+      usePFCStore.getState().addToast({
+        message: `Routed to ${label} (${provider})`,
+        type: 'info',
+        duration: 3000,
+      });
+    }),
 
-    listen<FpsFrame>('fps-frame', () => { /* Phase 5: update FPS HUD */ }),
+    listen<PhysicsFrame>('physics-frame', (event) => {
+      // Direct write to ref-based store — no React re-render at 90Hz
+      physicsUpdatePositions(event.payload.positions, event.payload.settled);
+    }),
+
+    listen<FpsFrame>('fps-frame', (event) => {
+      physicsUpdateCamera({
+        x: event.payload.x, y: event.payload.y, z: event.payload.z,
+        yaw: event.payload.yaw, pitch: event.payload.pitch,
+        speed: event.payload.speed,
+        proximityNode: event.payload.proximity_node,
+        stabilization: event.payload.stabilization,
+      });
+    }),
 
     listen<unknown>('pipeline://soar', (event) => {
       const store = usePFCStore.getState();
@@ -263,8 +288,17 @@ async function _setupTauriListeners(): Promise<UnlistenFn> {
         if (probe.at_edge) store.addToast({ message: 'SOAR: Knowledge edge detected', type: 'info' });
       }
       if (data.StonePresented) {
-        const stone = data.StonePresented as { index: number; stone: { name: string } };
+        const stone = data.StonePresented as {
+          index: number;
+          stone: { name: string; prompt: string };
+        };
         store.addToast({ message: `SOAR Stone ${stone.index + 1}: ${stone.stone.name}`, type: 'info' });
+        // Store the stone for interactive UI rendering in chat
+        store.setSoarStone({
+          index: stone.index,
+          name: stone.stone.name,
+          prompt: stone.stone.prompt,
+        });
       }
     }),
 
@@ -297,6 +331,49 @@ async function _setupTauriListeners(): Promise<UnlistenFn> {
     listen<ExtractionProgress>('extraction://progress', (event) => {
       const { phase, current, total } = event.payload;
       usePFCStore.getState().addToast({ message: `${phase}: ${current}/${total}`, type: 'info' });
+    }),
+
+    // ── Vault file watcher events ──
+
+    listen<{ path: string; kind: string }>('vault-change', (event) => {
+      const store = usePFCStore.getState();
+      store.addToast({ message: `Vault file changed: ${event.payload.kind}`, type: 'info' });
+      // Refresh notes from backend when vault files change on disk
+      store.loadNotesFromStorage();
+    }),
+
+    listen<{ message: string }>('vault-watcher-error', (event) => {
+      usePFCStore.getState().addToast({
+        message: `Vault watcher error: ${event.payload.message}`,
+        type: 'error',
+      });
+    }),
+
+    // ── Graph node summary event ──
+
+    listen<{ node_id: string; summary: string }>('node://summary', (event) => {
+      const { node_id, summary } = event.payload;
+      // Dispatch custom event for Library page to pick up
+      window.dispatchEvent(new CustomEvent('pfc-node-summary', {
+        detail: { nodeId: node_id, summary },
+      }));
+    }),
+
+    // ── Research pipeline events ──
+
+    listen<{ page_id: string; stage: string; analysis: string }>('research://analysis', (event) => {
+      const { stage, analysis } = event.payload;
+      usePFCStore.getState().addToast({
+        message: `Research ${stage}: ${analysis.slice(0, 80)}…`,
+        type: 'info',
+      });
+    }),
+
+    listen<{ page_id: string; message: string }>('research://error', (event) => {
+      usePFCStore.getState().addToast({
+        message: `Research error: ${event.payload.message}`,
+        type: 'error',
+      });
     }),
   ]);
 

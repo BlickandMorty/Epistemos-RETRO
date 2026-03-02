@@ -458,15 +458,16 @@ pub fn assess_structural_quality(stone_question: &str, target_query: &str) -> St
 
 /// Jaccard-like token overlap between two texts.
 fn compute_token_overlap(a: &str, b: &str) -> f64 {
-    let tokens_a: std::collections::HashSet<String> = a.to_lowercase()
+    let a_lower = a.to_lowercase();
+    let b_lower = b.to_lowercase();
+
+    let tokens_a: std::collections::HashSet<&str> = a_lower
         .split_whitespace()
         .filter(|w| w.len() > 3)
-        .map(String::from)
         .collect();
-    let tokens_b: std::collections::HashSet<String> = b.to_lowercase()
+    let tokens_b: std::collections::HashSet<&str> = b_lower
         .split_whitespace()
         .filter(|w| w.len() > 3)
-        .map(String::from)
         .collect();
 
     if tokens_a.is_empty() || tokens_b.is_empty() {
@@ -483,7 +484,7 @@ fn compute_token_overlap(a: &str, b: &str) -> f64 {
 
 /// Extract factual claims from an analysis text.
 fn extract_claims(analysis: &str, max_claims: usize) -> Vec<String> {
-    let mut claims: Vec<String> = Vec::new();
+    let mut claims: Vec<String> = Vec::with_capacity(max_claims);
 
     let sentences: Vec<&str> = analysis
         .split(['.', '!', '?', '\n'])

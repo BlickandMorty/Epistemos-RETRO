@@ -3,6 +3,7 @@ use tauri::{AppHandle, Emitter, State};
 use storage::ids::PageId;
 use crate::error::AppError;
 use crate::state::AppState;
+use super::parse_id;
 
 use super::graph::build_triaged_provider;
 
@@ -44,7 +45,7 @@ pub async fn start_research(
     page_id: String,
     topic: Option<String>,
 ) -> Result<ResearchStatus, AppError> {
-    let pid: PageId = page_id.parse().map_err(|e| AppError::Internal(format!("{e}")))?;
+    let pid: PageId = parse_id(&page_id)?;
 
     let db = state.lock_db()?;
     let mut page = db.get_page(pid)?;
@@ -76,7 +77,7 @@ pub async fn advance_research(
     state: State<'_, AppState>,
     page_id: String,
 ) -> Result<ResearchStatus, AppError> {
-    let pid: PageId = page_id.parse().map_err(|e| AppError::Internal(format!("{e}")))?;
+    let pid: PageId = parse_id(&page_id)?;
 
     let (page, body, current_stage) = {
         let db = state.lock_db()?;
@@ -132,7 +133,7 @@ pub async fn advance_research(
 
         // Spawn analysis in background — emit result as event.
         // 5-minute timeout prevents hung LLM calls from blocking forever.
-        tokio::spawn(async move {
+        state.spawn_tracked("research_analysis", async move {
             let result = tokio::time::timeout(
                 std::time::Duration::from_secs(300),
                 provider.generate(&prompt, Some(system), 4096),
@@ -199,7 +200,7 @@ pub async fn get_research_status(
     state: State<'_, AppState>,
     page_id: String,
 ) -> Result<ResearchStatus, AppError> {
-    let pid: PageId = page_id.parse().map_err(|e| AppError::Internal(format!("{e}")))?;
+    let pid: PageId = parse_id(&page_id)?;
     let db = state.lock_db()?;
     let page = db.get_page(pid)?;
 

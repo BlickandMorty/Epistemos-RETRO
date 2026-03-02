@@ -2,7 +2,6 @@ import { useRef, useState, useCallback, useEffect, useMemo, type KeyboardEvent }
 import { createPortal } from 'react-dom';
 import { ArrowUpIcon, StopCircleIcon, SlidersHorizontalIcon, SearchIcon, PaperclipIcon, WrenchIcon, NetworkIcon, BookOpenIcon, SparklesIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { writeString } from '@/lib/storage-versioning';
 import { usePFCStore } from '@/lib/store/use-pfc-store';
@@ -62,46 +61,62 @@ const INTENT_TEMPLATES: PromptTemplate[] = [
 ];
 
 const DOMAIN_EXPANSIONS: Array<{ trigger: RegExp; expansions: string[] }> = [
-  { trigger: /\b(sleep|insomnia|circadian|rest)\b/i, expansions: [
-    'on cognitive performance and decision-making?',
-    'compared to pharmacological interventions?',
-    'and its dose-response relationship with health outcomes?',
-  ]},
-  { trigger: /\b(diet|nutrition|food|eating|fasting|calori)\b/i, expansions: [
-    'controlling for genetic and lifestyle confounders?',
-    'in randomized versus observational study designs?',
-    'and metabolic adaptation over time?',
-  ]},
-  { trigger: /\b(anxiety|depression|mental|therapy|cbt|ssri|psych)\b/i, expansions: [
-    'with long-term follow-up data beyond 12 months?',
-    'and placebo response rates in clinical trials?',
-    'across different severity levels and comorbidities?',
-  ]},
-  { trigger: /\b(ai|machine.?learn|algorithm|model|neural|gpt|llm)\b/i, expansions: [
-    'and benchmark reproducibility across hardware configurations?',
-    'compared to human expert performance on equivalent tasks?',
-    'accounting for data contamination and training set overlap?',
-  ]},
-  { trigger: /\b(climate|environment|carbon|emission|pollution|eco)\b/i, expansions: [
-    'with uncertainty quantification from IPCC-class models?',
-    'comparing observational data with model predictions?',
-    'and the economic cost-benefit under different scenarios?',
-  ]},
-  { trigger: /\b(drug|medic|treat|vaccine|pharma|dose|clinical)\b/i, expansions: [
-    'with number-needed-to-treat and adverse event profiles?',
-    'in phase III trials versus real-world effectiveness?',
-    'stratified by age, sex, and comorbidity subgroups?',
-  ]},
-  { trigger: /\b(education|school|student|learn|teach|test)\b/i, expansions: [
-    'controlling for socioeconomic and cultural variables?',
-    'with longitudinal tracking of academic outcomes?',
-    'and the replication status of foundational studies?',
-  ]},
-  { trigger: /\b(exercise|fitness|workout|physical|sport|train)\b/i, expansions: [
-    'and dose-response curves across intensity levels?',
-    'in randomized trials with active control groups?',
-    'for different age groups and baseline fitness levels?',
-  ]},
+  {
+    trigger: /\b(sleep|insomnia|circadian|rest)\b/i, expansions: [
+      'on cognitive performance and decision-making?',
+      'compared to pharmacological interventions?',
+      'and its dose-response relationship with health outcomes?',
+    ]
+  },
+  {
+    trigger: /\b(diet|nutrition|food|eating|fasting|calori)\b/i, expansions: [
+      'controlling for genetic and lifestyle confounders?',
+      'in randomized versus observational study designs?',
+      'and metabolic adaptation over time?',
+    ]
+  },
+  {
+    trigger: /\b(anxiety|depression|mental|therapy|cbt|ssri|psych)\b/i, expansions: [
+      'with long-term follow-up data beyond 12 months?',
+      'and placebo response rates in clinical trials?',
+      'across different severity levels and comorbidities?',
+    ]
+  },
+  {
+    trigger: /\b(ai|machine.?learn|algorithm|model|neural|gpt|llm)\b/i, expansions: [
+      'and benchmark reproducibility across hardware configurations?',
+      'compared to human expert performance on equivalent tasks?',
+      'accounting for data contamination and training set overlap?',
+    ]
+  },
+  {
+    trigger: /\b(climate|environment|carbon|emission|pollution|eco)\b/i, expansions: [
+      'with uncertainty quantification from IPCC-class models?',
+      'comparing observational data with model predictions?',
+      'and the economic cost-benefit under different scenarios?',
+    ]
+  },
+  {
+    trigger: /\b(drug|medic|treat|vaccine|pharma|dose|clinical)\b/i, expansions: [
+      'with number-needed-to-treat and adverse event profiles?',
+      'in phase III trials versus real-world effectiveness?',
+      'stratified by age, sex, and comorbidity subgroups?',
+    ]
+  },
+  {
+    trigger: /\b(education|school|student|learn|teach|test)\b/i, expansions: [
+      'controlling for socioeconomic and cultural variables?',
+      'with longitudinal tracking of academic outcomes?',
+      'and the replication status of foundational studies?',
+    ]
+  },
+  {
+    trigger: /\b(exercise|fitness|workout|physical|sport|train)\b/i, expansions: [
+      'and dose-response curves across intensity levels?',
+      'in randomized trials with active control groups?',
+      'for different age groups and baseline fitness levels?',
+    ]
+  },
 ];
 
 const ANALYTICAL_FRAMES = [
@@ -203,13 +218,9 @@ function BrainButtonWithToggle({
   return (
     <div style={{ position: 'relative', flexShrink: 0 }}>
       {/* PFC Brain logo — IS the theme toggle. Glowing = dark mode, dim = light mode */}
-      <motion.button
+      <button
         onClick={handlePress}
         aria-label="Cycle theme"
-        animate={{
-          rotate: brainGlow ? [0, -10, 10, -5, 5, 0] : 0,
-        }}
-        transition={brainGlow ? { duration: 0.6, ease: 'easeInOut' } : { duration: 0.3 }}
         style={{
           height: '2.5rem',
           width: '2.5rem',
@@ -223,41 +234,29 @@ function BrainButtonWithToggle({
           background: isDark ? 'rgba(244,189,111,0.08)' : 'rgba(128,86,16,0.04)',
           color: isDark ? 'rgba(237,224,212,0.9)' : 'rgba(29,27,22,0.35)',
           boxShadow: 'none',
-          transition: 'background 0.3s, color 0.3s, box-shadow 0.3s',
+          transition: 'background 0.3s, color 0.3s, box-shadow 0.3s, transform 0.6s ease-in-out',
+          transform: brainGlow ? 'rotate(5deg) scale(1.05)' : 'rotate(0deg) scale(1)', // Simplified CSS animation fallback
         }}
+        onPointerDown={(e) => { e.currentTarget.style.transform = 'scale(0.92)'; }}
+        onPointerUp={(e) => { e.currentTarget.style.transform = brainGlow ? 'rotate(5deg) scale(1.05)' : 'rotate(0deg) scale(1)'; }}
+        onPointerLeave={(e) => { e.currentTarget.style.transform = brainGlow ? 'rotate(5deg) scale(1.05)' : 'rotate(0deg) scale(1)'; }}
       >
         <MiniPFCBrain />
-      </motion.button>
+      </button>
 
       {/* RGB chromatic ring flash on tap — gaming laptop style */}
-      <AnimatePresence>
-        {brainGlow && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{
-              opacity: [0, 1, 1, 1, 1, 0],
-              scale: [0.8, 1.02, 1.02, 1.02, 1.02, 1.12],
-              boxShadow: [
-                '0 0 8px rgba(244,189,111,0.7), inset 0 0 4px rgba(244,189,111,0.3)',
-                '0 0 14px rgba(34,211,238,0.7), inset 0 0 6px rgba(34,211,238,0.3)',
-                '0 0 14px rgba(52,211,153,0.7), inset 0 0 6px rgba(52,211,153,0.3)',
-                '0 0 14px rgba(224,120,80,0.7), inset 0 0 6px rgba(224,120,80,0.3)',
-                '0 0 14px rgba(251,191,36,0.7), inset 0 0 6px rgba(251,191,36,0.3)',
-                '0 0 0px rgba(244,189,111,0), inset 0 0 0px rgba(244,189,111,0)',
-              ],
-            }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.7, ease: 'easeInOut' }}
-            style={{
-              position: 'absolute',
-              inset: '-3px',
-              borderRadius: '50%',
-              border: '2px solid rgba(244,189,111,0.4)',
-              pointerEvents: 'none',
-            }}
-          />
-        )}
-      </AnimatePresence>
+      {brainGlow && (
+        <div
+          style={{
+            position: 'absolute',
+            inset: '-3px',
+            borderRadius: '50%',
+            border: '2px solid rgba(244,189,111,0.4)',
+            pointerEvents: 'none',
+            animation: 'chromatic-ring-flash 0.7s ease-in-out forwards',
+          }}
+        />
+      )}
 
       {/* Persistent glow halo in dark mode */}
       {isDark && !brainGlow && (
@@ -506,37 +505,32 @@ export function MultimodalInput({
   return (
     <div className="relative">
       {/* Theme cycle flash indicator */}
-      <AnimatePresence>
-        {themeCycleFlash && (
-          <motion.div
-            initial={{ opacity: 0, y: 6, scale: 0.9 }}
-            animate={{ opacity: 1, y: -32, scale: 1 }}
-            exit={{ opacity: 0, y: -40, scale: 0.95 }}
-            transition={{ duration: 0.3, ease: [0.2, 0, 0, 1] }}
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: '50%',
-              transform: 'translateX(-50%)',
-              zIndex: 'var(--z-modal)',
-              padding: '0.25rem 0.75rem',
-              borderRadius: '9999px',
-              fontSize: '0.6875rem',
-              fontWeight: 600,
-              fontFamily: 'var(--font-sans)',
-              letterSpacing: '0.04em',
-              color: isDark ? 'rgba(232,228,222,0.9)' : 'rgba(28,27,31,0.8)',
-              background: isDark ? 'var(--pfc-surface-dark)' : 'rgba(255,255,255,0.9)',
-              border: 'none',
-              backdropFilter: 'blur(12px)',
-              WebkitBackdropFilter: 'blur(12px)',
-              pointerEvents: 'none',
-            }}
-          >
-            {themeLabel} mode
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {themeCycleFlash && (
+        <div
+          className="animate-spring-up"
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: '50%',
+            transform: 'translateX(-50%) translateY(-32px) scale(1)', // Final state
+            zIndex: 'var(--z-modal)',
+            padding: '0.25rem 0.75rem',
+            borderRadius: '9999px',
+            fontSize: '0.6875rem',
+            fontWeight: 600,
+            fontFamily: 'var(--font-sans)',
+            letterSpacing: '0.04em',
+            color: isDark ? 'rgba(232,228,222,0.9)' : 'rgba(28,27,31,0.8)',
+            background: isDark ? 'var(--pfc-surface-dark)' : 'rgba(255,255,255,0.9)',
+            border: 'none',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            pointerEvents: 'none',
+          }}
+        >
+          {themeLabel} mode
+        </div>
+      )}
 
       {/* Input container — border-radius controlled by parent wrapper in hero mode */}
       <div
@@ -792,10 +786,8 @@ export function MultimodalInput({
                 </button>
                 {/* Tools popup rendered via portal to escape overflow:hidden */}
                 {toolsOpen && typeof document !== 'undefined' && createPortal(
-                  <motion.div
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.18, ease: [0.32, 0.72, 0, 1] }}
+                  <div
+                    className="animate-spring-up"
                     onClick={(e) => e.stopPropagation()}
                     style={{
                       position: 'fixed',
@@ -853,7 +845,7 @@ export function MultimodalInput({
                         </div>
                       </button>
                     ))}
-                  </motion.div>,
+                  </div>,
                   document.body,
                 )}
               </div>
@@ -873,8 +865,7 @@ export function MultimodalInput({
                   <StopCircleIcon className="h-4 w-4 text-destructive" />
                 </Button>
               ) : trimmedValue ? (
-                <motion.button
-                  whileTap={{ scale: 0.92 }}
+                <button
                   onClick={handleSubmit}
                   aria-label="Send message"
                   style={{
@@ -889,11 +880,14 @@ export function MultimodalInput({
                     flexShrink: 0,
                     background: 'var(--m3-primary)',
                     color: 'var(--m3-on-primary)',
-                    transition: 'background 0.15s',
+                    transition: 'transform 0.15s, background 0.15s',
                   }}
+                  onPointerDown={(e) => { e.currentTarget.style.transform = 'scale(0.92)'; }}
+                  onPointerUp={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+                  onPointerLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
                 >
                   <ArrowUpIcon style={{ height: '1.125rem', width: '1.125rem' }} />
-                </motion.button>
+                </button>
               ) : (
                 <BrainButtonWithToggle isDark={isDark} brainGlow={brainGlow} onBrainTap={handleBrainTap} />
               )}
@@ -990,8 +984,7 @@ export function MultimodalInput({
                 <StopCircleIcon className="h-4 w-4 text-destructive" />
               </Button>
             ) : trimmedValue ? (
-              <motion.button
-                whileTap={{ scale: 0.92 }}
+              <button
                 onClick={handleSubmit}
                 aria-label="Send message"
                 style={{
@@ -1006,11 +999,14 @@ export function MultimodalInput({
                   flexShrink: 0,
                   background: 'var(--m3-primary)',
                   color: 'var(--m3-on-primary)',
-                  transition: 'background 0.15s',
+                  transition: 'transform 0.15s, background 0.15s',
                 }}
+                onPointerDown={(e) => { e.currentTarget.style.transform = 'scale(0.92)'; }}
+                onPointerUp={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+                onPointerLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
               >
                 <ArrowUpIcon style={{ height: '1.125rem', width: '1.125rem' }} />
-              </motion.button>
+              </button>
             ) : (
               <BrainButtonWithToggle isDark={isDark} brainGlow={brainGlow} onBrainTap={handleBrainTap} />
             )}
@@ -1018,72 +1014,63 @@ export function MultimodalInput({
         )}
 
         {/* Grok-style inline suggestions — only appear when typing */}
-        <AnimatePresence>
-          {showTyping && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.22, ease: [0.32, 0.72, 0, 1] }}
-              style={{ overflow: 'hidden', willChange: 'height, opacity', transform: 'translateZ(0)' }}
-            >
-              <div style={{
-                borderTop: 'none',
-                paddingTop: '0.375rem',
-                marginTop: '0.5rem',
-              }}>
-                {visibleTypingSuggestions.map((s, i) => (
-                  <motion.button
-                    key={`t-${i}-${s.slice(0, 20)}`}
-                    initial={{ opacity: 0, x: -4 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.025, duration: 0.15, ease: [0.32, 0.72, 0, 1] }}
-                    onClick={() => handleSuggestionClick(s)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.75rem',
-                      width: '100%',
-                      padding: '0.5rem 0.375rem',
-                      background: 'transparent',
-                      border: 'none',
-                      cursor: 'pointer',
-                      textAlign: 'left',
-                      fontSize: '0.8125rem',
-                      borderRadius: '9999px',
-                      color: isDark ? 'rgba(237,224,212,0.8)' : 'rgba(29,27,22,0.55)',
-                      transition: 'background 0.12s',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = isDark ? 'var(--m3-surface-container-high)' : 'rgba(0,0,0,0.03)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = 'transparent';
-                    }}
-                  >
-                    <SearchIcon style={{
-                      height: '0.875rem',
-                      width: '0.875rem',
-                      flexShrink: 0,
-                      opacity: 0.3,
-                    }} />
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      <span style={{
-                        fontWeight: 600,
-                        color: isDark ? 'rgba(237,224,212,0.95)' : 'rgba(29,27,22,0.85)',
-                      }}>
-                        {trimmedValue}
-                      </span>
-                      <span style={{ opacity: 0.45 }}>
-                        {s.slice(trimmedValue.length)}
-                      </span>
+        {showTyping && (
+          <div
+            className="animate-spring-up"
+          >
+            <div style={{
+              borderTop: 'none',
+              paddingTop: '0.375rem',
+              marginTop: '0.5rem',
+            }}>
+              {visibleTypingSuggestions.map((s, i) => (
+                <button
+                  key={`t-${i}-${s.slice(0, 20)}`}
+                  onClick={() => handleSuggestionClick(s)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    width: '100%',
+                    padding: '0.5rem 0.375rem',
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    fontSize: '0.8125rem',
+                    borderRadius: '9999px',
+                    color: isDark ? 'rgba(237,224,212,0.8)' : 'rgba(29,27,22,0.55)',
+                    transition: 'background 0.12s',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = isDark ? 'var(--m3-surface-container-high)' : 'rgba(0,0,0,0.03)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent';
+                  }}
+                >
+                  <SearchIcon style={{
+                    height: '0.875rem',
+                    width: '0.875rem',
+                    flexShrink: 0,
+                    opacity: 0.3,
+                  }} />
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <span style={{
+                      fontWeight: 600,
+                      color: isDark ? 'rgba(237,224,212,0.95)' : 'rgba(29,27,22,0.85)',
+                    }}>
+                      {trimmedValue}
                     </span>
-                  </motion.button>
-                ))}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+                    <span style={{ opacity: 0.45 }}>
+                      {s.slice(trimmedValue.length)}
+                    </span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

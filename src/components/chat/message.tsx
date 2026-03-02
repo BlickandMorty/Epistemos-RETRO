@@ -1,7 +1,7 @@
 import { useState, useRef, memo, useMemo, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
 import { usePFCStore } from '@/lib/store/use-pfc-store';
+import { useSpring, useSpringFrame } from '@/hooks/use-spring';
 import { MessageLayman } from './message-layman';
 import { MessageResearch } from './message-research';
 import { TruthBotCard } from './truth-bot-card';
@@ -21,10 +21,7 @@ import { ConceptMiniMap } from '../viz/concept-mini-map';
 import { SteeringFeedback } from './steering-feedback';
 // import { useSteeringStore } from '@/lib/store/use-steering-store';
 
-import { spring } from '@/lib/motion/motion-config';
 
-/* M3 emphasized easing for message entrance — smooth slide, no recoil */
-const MSG_SPRING = spring.standard;
 
 interface MessageProps {
   message: ChatMessage;
@@ -140,6 +137,63 @@ function MessageInner({ message }: MessageProps) {
   // Steering synthesis key — will be wired when backend steering is connected
   const messageSynthesisKeyId: string | null = null;
 
+  // Refs for direct DOM manipulation to bypass React render loop
+  const deepAnalysisRef = useRef<HTMLDivElement>(null);
+  const hoverToolbarRef = useRef<HTMLDivElement>(null);
+
+  // Spring animation for deep analysis panel
+  // 0 = closed, 1 = fully open
+  const deepSpring = useSpring(deepOpen ? 1 : 0, {
+    stiffness: 400,
+    damping: 30,
+    mass: 1,
+  });
+
+  // Spring animation for the hover toolbar
+  const hoverSpring = useSpring(hovered ? 1 : 0, {
+    stiffness: 500,
+    damping: 35,
+    mass: 1,
+  });
+
+  // Push targets when React state changes
+  useEffect(() => {
+    deepSpring.setTarget(deepOpen ? 1 : 0);
+  }, [deepOpen, deepSpring.setTarget]);
+
+  useEffect(() => {
+    hoverSpring.setTarget(hovered ? 1 : 0);
+  }, [hovered, hoverSpring.setTarget]);
+
+  // Read spring values every frame and apply to DOM directly
+  useSpringFrame(() => {
+    if (deepAnalysisRef.current) {
+      const v = deepSpring.get();
+      const el = deepAnalysisRef.current;
+      if (v < 0.01 && !deepOpen) {
+        el.style.display = 'none';
+      } else {
+        el.style.display = 'block';
+        el.style.height = deepOpen ? 'auto' : `${v * 100}%`;
+        el.style.opacity = Math.min(1, v * 1.5).toString();
+      }
+    }
+    if (hoverToolbarRef.current) {
+      const v = hoverSpring.get();
+      const el = hoverToolbarRef.current;
+      el.style.opacity = v.toString();
+      el.style.transform = `translateY(${4 * (1 - v)}px) scale(${0.96 + (0.04 * v)})`;
+      el.style.pointerEvents = v > 0.5 ? 'auto' : 'none';
+
+      // Minor optimization, don't display if totally invisible
+      if (v < 0.01 && !hovered) {
+        el.style.display = 'none';
+      } else {
+        el.style.display = 'flex';
+      }
+    }
+  });
+
   // ── Defensive defaults for potentially missing fields ──
   const safeText = message.text ?? '';
   const safeDualMessage = message.dualMessage ?? null;
@@ -247,13 +301,13 @@ function MessageInner({ message }: MessageProps) {
           currentChunk = '';
         }
         chunks.push({ content: trimmed.replace(/^#+\s+/, ''), type: 'heading' });
-      // Horizontal rule → flush current paragraph
+        // Horizontal rule → flush current paragraph
       } else if (/^---+$/.test(trimmed)) {
         if (currentChunk.trim()) {
           chunks.push({ content: currentChunk.trim(), type: 'paragraph' });
           currentChunk = '';
         }
-      // Empty line → flush paragraph
+        // Empty line → flush paragraph
       } else if (trimmed === '') {
         if (currentChunk.trim()) {
           chunks.push({ content: currentChunk.trim(), type: 'paragraph' });
@@ -306,12 +360,10 @@ function MessageInner({ message }: MessageProps) {
   // ════════════════════════════════════════════════
   if (isUser) {
     return (
-      <motion.div
+      <div
         role="article"
         aria-label="User message"
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={MSG_SPRING}
+        className="animate-spring-up"
         style={{
           display: 'flex',
           gap: '0.75rem',
@@ -397,7 +449,7 @@ function MessageInner({ message }: MessageProps) {
             color: isDark ? 'rgba(155,150,137,0.6)' : 'rgba(0,0,0,0.35)',
           }} />
         </div>
-      </motion.div>
+      </div>
     );
   }
 
@@ -405,12 +457,10 @@ function MessageInner({ message }: MessageProps) {
   // ASSISTANT MESSAGE — clean text (Gemini-style), no bubble
   // ════════════════════════════════════════════════
   return (
-    <motion.div
+    <div
       role="article"
       aria-label="Assistant response"
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={MSG_SPRING}
+      className="animate-spring-up"
       style={{
         display: 'flex',
         gap: '0.75rem',
@@ -428,7 +478,7 @@ function MessageInner({ message }: MessageProps) {
           <img src="/pixel-robot.gif" alt="Robot" width={26} height={26} style={{ width: 26, height: 26, imageRendering: 'pixelated' }} />
         ) : (
           <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: '50%', background: 'rgba(0,0,0,0.08)', color: 'rgba(0,0,0,0.45)' }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4" /><path d="M20 21a8 8 0 0 0-16 0" /></svg>
           </span>
         )}
       </div>
@@ -476,301 +526,291 @@ function MessageInner({ message }: MessageProps) {
             fontFamily: 'var(--font-secondary)',
           }}
         >
-            {safeDualMessage ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                  {/* ── Summary response — full standalone answer ── */}
-                  <div style={{ paddingBottom: '1.25rem' }}>
-                    <MarkdownContent content={cleanText} />
+          {safeDualMessage ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+              {/* ── Summary response — full standalone answer ── */}
+              <div style={{ paddingBottom: '1.25rem' }}>
+                <MarkdownContent content={cleanText} />
+              </div>
+
+              {/* ── Confidence + Grade bar ── */}
+              {safeConfidence !== null && (
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  fontSize: 'var(--type-label-sm)',
+                  fontFamily: 'var(--font-mono)',
+                  color: isDark ? 'rgba(155,150,137,0.4)' : 'rgba(0,0,0,0.3)',
+                  paddingBottom: '1rem',
+                }}>
+                  <span>{(safeConfidence! * 100).toFixed(0)}% confidence</span>
+                  {message.evidenceGrade && (
+                    <span style={{
+                      padding: '0.0625rem 0.375rem',
+                      borderRadius: 'var(--shape-full)',
+                      fontSize: 'var(--type-label-sm)',
+                      fontWeight: 600,
+                      background: message.evidenceGrade === 'A'
+                        ? isDark ? 'rgba(52,211,153,0.08)' : 'rgba(52,211,153,0.06)'
+                        : message.evidenceGrade === 'B'
+                          ? isDark ? 'rgba(212,168,67,0.08)' : 'rgba(212,168,67,0.06)'
+                          : isDark ? 'rgba(199,94,94,0.08)' : 'rgba(199,94,94,0.06)',
+                      color: message.evidenceGrade === 'A'
+                        ? '#34D399'
+                        : message.evidenceGrade === 'B'
+                          ? '#D4A843'
+                          : '#C75E5E',
+                    }}>
+                      Grade {message.evidenceGrade}
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* ── Separator line between summary and analysis ── */}
+              <div style={{
+                height: '1px',
+                background: isDark
+                  ? 'linear-gradient(90deg, rgba(79,69,57,0.3) 0%, rgba(79,69,57,0.08) 100%)'
+                  : 'linear-gradient(90deg, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.02) 100%)',
+                marginBottom: '1rem',
+              }} />
+
+              {/* ── Deep analysis toggle — M3 tonal button ── */}
+              <button
+                aria-expanded={deepOpen}
+                onClick={(e) => { e.stopPropagation(); setDeepOpen(!deepOpen); }}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.375rem',
+                  padding: '0.4375rem 0.875rem',
+                  borderRadius: '0.75rem',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: 'var(--type-label-md)',
+                  fontWeight: 500,
+                  letterSpacing: '0.01em',
+                  color: deepOpen
+                    ? 'var(--m3-primary)'
+                    : isDark ? 'rgba(232,228,222,0.55)' : 'rgba(0,0,0,0.45)',
+                  background: deepOpen
+                    ? isDark ? 'rgba(var(--pfc-accent-rgb), 0.1)' : 'rgba(var(--pfc-accent-rgb), 0.08)'
+                    : isDark ? 'var(--m3-surface-container)' : 'var(--m3-surface-container)',
+                  boxShadow: isDark
+                    ? '0 1px 3px rgba(0,0,0,0.15)'
+                    : '0 1px 3px rgba(0,0,0,0.04)',
+                  transition: 'color 0.2s, background 0.2s, box-shadow 0.2s',
+                  alignSelf: 'flex-start',
+                }}
+              >
+                <ChevronDownIcon style={{
+                  height: '0.75rem',
+                  width: '0.75rem',
+                  transition: 'transform 0.2s',
+                  transform: deepOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                }} />
+                {deepOpen ? 'Hide' : 'View'} deep analysis
+              </button>
+
+              {/* ── Expandable deep analysis section — M3 flat surface ── */}
+              <div
+                ref={deepAnalysisRef}
+                style={{
+                  overflow: 'hidden',
+                  transform: 'translateZ(0)',
+                  display: 'none', // Initial state, will be overwritten by frame loop
+                }}
+              >
+                <div style={{
+                  marginTop: '0.75rem',
+                  borderRadius: '1rem',
+                  background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.025)',
+                  padding: '1.25rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '1.25rem',
+                }}>
+                  {/* Methodology + Confidence + Caveats — structured breakdown from layman summary */}
+                  {safeDualMessage!.laymanSummary && (() => {
+                    const ls = safeDualMessage!.laymanSummary;
+                    const deepSections: string[] = [];
+                    if (ls.whatWasTried) {
+                      deepSections.push(`### ${ls.sectionLabels?.whatWasTried || 'Research Approach'}\n${ls.whatWasTried}`);
+                    }
+                    if (ls.confidenceExplanation) {
+                      deepSections.push(`### ${ls.sectionLabels?.confidenceExplanation || 'Confidence Assessment'}\n${ls.confidenceExplanation}`);
+                    }
+                    if (ls.whatCouldChange) {
+                      deepSections.push(`### ${ls.sectionLabels?.whatCouldChange || 'What Could Change This'}\n${ls.whatCouldChange}`);
+                    }
+                    if (ls.whoShouldTrust) {
+                      deepSections.push(`### ${ls.sectionLabels?.whoShouldTrust || 'Applicability'}\n${ls.whoShouldTrust}`);
+                    }
+                    return deepSections.length > 0 ? (
+                      <MarkdownContent content={deepSections.join('\n\n')} />
+                    ) : null;
+                  })()}
+
+                  {/* Raw research analysis — full pipeline output */}
+                  <div>
+                    <p style={{
+                      fontSize: 'var(--type-label-sm)',
+                      fontWeight: 600,
+                      color: isDark ? 'rgba(155,150,137,0.4)' : 'rgba(0,0,0,0.3)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.04em',
+                      marginBottom: '0.75rem',
+                    }}>
+                      Research Analysis
+                    </p>
+                    <MessageResearch dualMessage={safeDualMessage!} />
                   </div>
 
-                  {/* ── Confidence + Grade bar ── */}
-                  {safeConfidence !== null && (
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.5rem',
-                      fontSize: 'var(--type-label-sm)',
-                      fontFamily: 'var(--font-mono)',
-                      color: isDark ? 'rgba(155,150,137,0.4)' : 'rgba(0,0,0,0.3)',
-                      paddingBottom: '1rem',
-                    }}>
-                      <span>{(safeConfidence! * 100).toFixed(0)}% confidence</span>
-                      {message.evidenceGrade && (
-                        <span style={{
-                          padding: '0.0625rem 0.375rem',
-                          borderRadius: 'var(--shape-full)',
-                          fontSize: 'var(--type-label-sm)',
-                          fontWeight: 600,
-                          background: message.evidenceGrade === 'A'
-                            ? isDark ? 'rgba(52,211,153,0.08)' : 'rgba(52,211,153,0.06)'
-                            : message.evidenceGrade === 'B'
-                              ? isDark ? 'rgba(212,168,67,0.08)' : 'rgba(212,168,67,0.06)'
-                              : isDark ? 'rgba(199,94,94,0.08)' : 'rgba(199,94,94,0.06)',
-                          color: message.evidenceGrade === 'A'
-                            ? '#34D399'
-                            : message.evidenceGrade === 'B'
-                              ? '#D4A843'
-                              : '#C75E5E',
-                        }}>
-                          Grade {message.evidenceGrade}
-                        </span>
-                      )}
-                    </div>
+                  {/* Layman structured breakdown (reflection, arbitration) */}
+                  {safeDualMessage?.laymanSummary && <MessageLayman layman={safeDualMessage.laymanSummary} />}
+
+                  {/* Concepts */}
+                  {message.concepts && message.concepts.length > 0 && (
+                    <ConceptMiniMap messageConcepts={message.concepts} />
                   )}
 
-                  {/* ── Separator line between summary and analysis ── */}
-                  <div style={{
-                    height: '1px',
-                    background: isDark
-                      ? 'linear-gradient(90deg, rgba(79,69,57,0.3) 0%, rgba(79,69,57,0.08) 100%)'
-                      : 'linear-gradient(90deg, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.02) 100%)',
-                    marginBottom: '1rem',
-                  }} />
+                  {/* Steering */}
+                  <SteeringFeedback synthesisKeyId={messageSynthesisKeyId} />
 
-                  {/* ── Deep analysis toggle — M3 tonal button ── */}
-                  <button
-                    aria-expanded={deepOpen}
-                    onClick={(e) => { e.stopPropagation(); setDeepOpen(!deepOpen); }}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '0.375rem',
-                      padding: '0.4375rem 0.875rem',
-                      borderRadius: '0.75rem',
-                      border: 'none',
-                      cursor: 'pointer',
-                      fontSize: 'var(--type-label-md)',
-                      fontWeight: 500,
-                      letterSpacing: '0.01em',
-                      color: deepOpen
-                        ? 'var(--m3-primary)'
-                        : isDark ? 'rgba(232,228,222,0.55)' : 'rgba(0,0,0,0.45)',
-                      background: deepOpen
-                        ? isDark ? 'rgba(var(--pfc-accent-rgb), 0.1)' : 'rgba(var(--pfc-accent-rgb), 0.08)'
-                        : isDark ? 'var(--m3-surface-container)' : 'var(--m3-surface-container)',
-                      boxShadow: isDark
-                        ? '0 1px 3px rgba(0,0,0,0.15)'
-                        : '0 1px 3px rgba(0,0,0,0.04)',
-                      transition: 'color 0.2s, background 0.2s, box-shadow 0.2s',
-                      alignSelf: 'flex-start',
-                    }}
-                  >
-                    <ChevronDownIcon style={{
-                      height: '0.75rem',
-                      width: '0.75rem',
-                      transition: 'transform 0.2s',
-                      transform: deepOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-                    }} />
-                    {deepOpen ? 'Hide' : 'View'} deep analysis
-                  </button>
-
-                  {/* ── Expandable deep analysis section — M3 flat surface ── */}
-                  <AnimatePresence>
-                    {deepOpen && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        transition={{ duration: 0.3, ease: [0.2, 0, 0, 1] }}
-                        style={{ overflow: 'hidden', transform: 'translateZ(0)' }}
-                      >
-                        <div style={{
-                          marginTop: '0.75rem',
-                          borderRadius: '1rem',
-                          background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.025)',
-                          padding: '1.25rem',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '1.25rem',
-                        }}>
-                          {/* Methodology + Confidence + Caveats — structured breakdown from layman summary */}
-                          {safeDualMessage!.laymanSummary && (() => {
-                            const ls = safeDualMessage!.laymanSummary;
-                            const deepSections: string[] = [];
-                            if (ls.whatWasTried) {
-                              deepSections.push(`### ${ls.sectionLabels?.whatWasTried || 'Research Approach'}\n${ls.whatWasTried}`);
-                            }
-                            if (ls.confidenceExplanation) {
-                              deepSections.push(`### ${ls.sectionLabels?.confidenceExplanation || 'Confidence Assessment'}\n${ls.confidenceExplanation}`);
-                            }
-                            if (ls.whatCouldChange) {
-                              deepSections.push(`### ${ls.sectionLabels?.whatCouldChange || 'What Could Change This'}\n${ls.whatCouldChange}`);
-                            }
-                            if (ls.whoShouldTrust) {
-                              deepSections.push(`### ${ls.sectionLabels?.whoShouldTrust || 'Applicability'}\n${ls.whoShouldTrust}`);
-                            }
-                            return deepSections.length > 0 ? (
-                              <MarkdownContent content={deepSections.join('\n\n')} />
-                            ) : null;
-                          })()}
-
-                          {/* Raw research analysis — full pipeline output */}
-                          <div>
-                            <p style={{
-                              fontSize: 'var(--type-label-sm)',
-                              fontWeight: 600,
-                              color: isDark ? 'rgba(155,150,137,0.4)' : 'rgba(0,0,0,0.3)',
-                              textTransform: 'uppercase',
-                              letterSpacing: '0.04em',
-                              marginBottom: '0.75rem',
-                            }}>
-                              Research Analysis
-                            </p>
-                            <MessageResearch dualMessage={safeDualMessage!} />
-                          </div>
-
-                          {/* Layman structured breakdown (reflection, arbitration) */}
-                          {safeDualMessage?.laymanSummary && <MessageLayman layman={safeDualMessage.laymanSummary} />}
-
-                          {/* Concepts */}
-                          {message.concepts && message.concepts.length > 0 && (
-                            <ConceptMiniMap messageConcepts={message.concepts} />
-                          )}
-
-                          {/* Steering */}
-                          <SteeringFeedback synthesisKeyId={messageSynthesisKeyId} />
-
-                          {/* Truth Assessment — slightly darker sub-surface */}
-                          {showTruthBot && message.truthAssessment && (
-                            <TruthBotCard assessment={message.truthAssessment} />
-                          )}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                  {/* Truth Assessment — slightly darker sub-surface */}
+                  {showTruthBot && message.truthAssessment && (
+                    <TruthBotCard assessment={message.truthAssessment} />
+                  )}
                 </div>
-            ) : (
-              <MarkdownContent content={safeText} />
-            )}
-          </div>
+              </div>
+            </div>
+          ) : (
+            <MarkdownContent content={safeText} />
+          )}
+        </div>
 
         {/* ── Hover action toolbar — M3 grouped surface container ── */}
-        <AnimatePresence>
-          {hovered && (
-            <motion.div
-              initial={{ opacity: 0, y: 4, scale: 0.96 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 4, scale: 0.96 }}
-              transition={{ duration: 0.15, ease: [0.2, 0, 0, 1] }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.125rem',
-                position: 'absolute',
-                bottom: '0',
-                left: 0,
-                zIndex: 5,
-                padding: '0.25rem',
-                borderRadius: '0.75rem',
-                background: isDark ? 'var(--m3-surface-container)' : 'var(--m3-surface-container-high)',
-                boxShadow: isDark
-                  ? '0 2px 8px -1px rgba(0,0,0,0.25)'
-                  : '0 1px 4px rgba(0,0,0,0.06), 0 2px 8px -2px rgba(0,0,0,0.04)',
-              }}
-            >
-              {/* Copy */}
-              <button
-                onClick={(e) => { e.stopPropagation(); copyText(); }}
-                title="Copy text"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.25rem',
-                  padding: '0.3125rem 0.625rem',
-                  borderRadius: '0.5rem',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: 'var(--type-label-sm)',
-                  fontWeight: 500,
-                  color: isDark ? 'rgba(232,228,222,0.6)' : 'rgba(0,0,0,0.45)',
-                  background: 'transparent',
-                  transition: 'background 0.15s, color 0.15s',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)';
-                  e.currentTarget.style.color = isDark ? 'rgba(232,228,222,0.9)' : 'rgba(0,0,0,0.7)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'transparent';
-                  e.currentTarget.style.color = isDark ? 'rgba(232,228,222,0.6)' : 'rgba(0,0,0,0.45)';
-                }}
-              >
-                {copied ? <CheckIcon style={{ height: 12, width: 12 }} /> : <CopyIcon style={{ height: 12, width: 12 }} />}
-                {copied ? 'Copied' : 'Copy'}
-              </button>
+        <div
+          ref={hoverToolbarRef}
+          style={{
+            alignItems: 'center',
+            gap: '0.125rem',
+            position: 'absolute',
+            bottom: '0',
+            left: 0,
+            zIndex: 5,
+            padding: '0.25rem',
+            borderRadius: '0.75rem',
+            background: isDark ? 'var(--m3-surface-container)' : 'var(--m3-surface-container-high)',
+            boxShadow: isDark
+              ? '0 2px 8px -1px rgba(0,0,0,0.25)'
+              : '0 1px 4px rgba(0,0,0,0.06), 0 2px 8px -2px rgba(0,0,0,0.04)',
+            display: 'none', // Initial state
+          }}
+        >
+          {/* Copy */}
+          <button
+            onClick={(e) => { e.stopPropagation(); copyText(); }}
+            title="Copy text"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.25rem',
+              padding: '0.3125rem 0.625rem',
+              borderRadius: '0.5rem',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: 'var(--type-label-sm)',
+              fontWeight: 500,
+              color: isDark ? 'rgba(232,228,222,0.6)' : 'rgba(0,0,0,0.45)',
+              background: 'transparent',
+              transition: 'background 0.15s, color 0.15s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)';
+              e.currentTarget.style.color = isDark ? 'rgba(232,228,222,0.9)' : 'rgba(0,0,0,0.7)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+              e.currentTarget.style.color = isDark ? 'rgba(232,228,222,0.6)' : 'rgba(0,0,0,0.45)';
+            }}
+          >
+            {copied ? <CheckIcon style={{ height: 12, width: 12 }} /> : <CopyIcon style={{ height: 12, width: 12 }} />}
+            {copied ? 'Copied' : 'Copy'}
+          </button>
 
-              {/* Separator */}
-              <div style={{ width: '1px', height: '1rem', background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }} />
+          {/* Separator */}
+          <div style={{ width: '1px', height: '1rem', background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }} />
 
-              {/* Export as doc */}
-              <button
-                onClick={(e) => { e.stopPropagation(); exportMessage(); }}
-                title="Export as document"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.25rem',
-                  padding: '0.3125rem 0.625rem',
-                  borderRadius: '0.5rem',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: 'var(--type-label-sm)',
-                  fontWeight: 500,
-                  color: isDark ? 'rgba(232,228,222,0.6)' : 'rgba(0,0,0,0.45)',
-                  background: 'transparent',
-                  transition: 'background 0.15s, color 0.15s',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)';
-                  e.currentTarget.style.color = isDark ? 'rgba(232,228,222,0.9)' : 'rgba(0,0,0,0.7)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'transparent';
-                  e.currentTarget.style.color = isDark ? 'rgba(232,228,222,0.6)' : 'rgba(0,0,0,0.45)';
-                }}
-              >
-                <FileTextIcon style={{ height: 12, width: 12 }} />
-                Export
-              </button>
+          {/* Export as doc */}
+          <button
+            onClick={(e) => { e.stopPropagation(); exportMessage(); }}
+            title="Export as document"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.25rem',
+              padding: '0.3125rem 0.625rem',
+              borderRadius: '0.5rem',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: 'var(--type-label-sm)',
+              fontWeight: 500,
+              color: isDark ? 'rgba(232,228,222,0.6)' : 'rgba(0,0,0,0.45)',
+              background: 'transparent',
+              transition: 'background 0.15s, color 0.15s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)';
+              e.currentTarget.style.color = isDark ? 'rgba(232,228,222,0.9)' : 'rgba(0,0,0,0.7)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+              e.currentTarget.style.color = isDark ? 'rgba(232,228,222,0.6)' : 'rgba(0,0,0,0.45)';
+            }}
+          >
+            <FileTextIcon style={{ height: 12, width: 12 }} />
+            Export
+          </button>
 
-              {/* Separator */}
-              <div style={{ width: '1px', height: '1rem', background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }} />
+          {/* Separator */}
+          <div style={{ width: '1px', height: '1rem', background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }} />
 
-              {/* Send to notes */}
-              <button
-                onClick={(e) => { e.stopPropagation(); sendToNotes(); }}
-                title="Send to notes"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.25rem',
-                  padding: '0.3125rem 0.625rem',
-                  borderRadius: '0.5rem',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: 'var(--type-label-sm)',
-                  fontWeight: 500,
-                  color: isDark ? 'rgba(232,228,222,0.6)' : 'rgba(0,0,0,0.45)',
-                  background: 'transparent',
-                  transition: 'background 0.15s, color 0.15s',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)';
-                  e.currentTarget.style.color = isDark ? 'rgba(232,228,222,0.9)' : 'rgba(0,0,0,0.7)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'transparent';
-                  e.currentTarget.style.color = isDark ? 'rgba(232,228,222,0.6)' : 'rgba(0,0,0,0.45)';
-                }}
-              >
-                <StickyNoteIcon style={{ height: 12, width: 12 }} />
-                Notes
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
+          {/* Send to notes */}
+          <button
+            onClick={(e) => { e.stopPropagation(); sendToNotes(); }}
+            title="Send to notes"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.25rem',
+              padding: '0.3125rem 0.625rem',
+              borderRadius: '0.5rem',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: 'var(--type-label-sm)',
+              fontWeight: 500,
+              color: isDark ? 'rgba(232,228,222,0.6)' : 'rgba(0,0,0,0.45)',
+              background: 'transparent',
+              transition: 'background 0.15s, color 0.15s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)';
+              e.currentTarget.style.color = isDark ? 'rgba(232,228,222,0.9)' : 'rgba(0,0,0,0.7)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+              e.currentTarget.style.color = isDark ? 'rgba(232,228,222,0.6)' : 'rgba(0,0,0,0.45)';
+            }}
+          >
+            <StickyNoteIcon style={{ height: 12, width: 12 }} />
+            Notes
+          </button>
+        </div>
       </div>
-    </motion.div>
+    </div>
   );
 }
 

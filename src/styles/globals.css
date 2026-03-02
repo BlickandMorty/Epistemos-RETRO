@@ -12,6 +12,7 @@
   font-style: normal;
   font-display: swap;
 }
+
 @font-face {
   font-family: 'Geist';
   src: url('../assets/fonts/geist/Geist-Medium.woff2') format('woff2');
@@ -19,6 +20,7 @@
   font-style: normal;
   font-display: swap;
 }
+
 @font-face {
   font-family: 'Geist';
   src: url('../assets/fonts/geist/Geist-SemiBold.woff2') format('woff2');
@@ -26,6 +28,7 @@
   font-style: normal;
   font-display: swap;
 }
+
 @font-face {
   font-family: 'Geist';
   src: url('../assets/fonts/geist/Geist-Bold.woff2') format('woff2');
@@ -33,6 +36,7 @@
   font-style: normal;
   font-display: swap;
 }
+
 @font-face {
   font-family: 'GeistMono';
   src: url('../assets/fonts/geist/GeistMono-Regular.woff2') format('woff2');
@@ -40,6 +44,7 @@
   font-style: normal;
   font-display: swap;
 }
+
 @font-face {
   font-family: 'GeistMono';
   src: url('../assets/fonts/geist/GeistMono-Medium.woff2') format('woff2');
@@ -74,6 +79,7 @@
   font-style: normal;
   font-display: swap;
 }
+
 @font-face {
   font-family: 'SNPro';
   src: url('../assets/fonts/sn-pro/SNPro-Medium.ttf') format('truetype');
@@ -81,6 +87,7 @@
   font-style: normal;
   font-display: swap;
 }
+
 @font-face {
   font-family: 'SNPro';
   src: url('../assets/fonts/sn-pro/SNPro-SemiBold.ttf') format('truetype');
@@ -88,6 +95,7 @@
   font-style: normal;
   font-display: swap;
 }
+
 @font-face {
   font-family: 'SNPro';
   src: url('../assets/fonts/sn-pro/SNPro-Bold.ttf') format('truetype');
@@ -122,6 +130,7 @@
   font-style: normal;
   font-display: swap;
 }
+
 @font-face {
   font-family: 'SpaceGrotesk';
   src: url('../assets/fonts/space-grotesk/SpaceGrotesk-Medium.ttf') format('truetype');
@@ -129,6 +138,7 @@
   font-style: normal;
   font-display: swap;
 }
+
 @font-face {
   font-family: 'SpaceGrotesk';
   src: url('../assets/fonts/space-grotesk/SpaceGrotesk-SemiBold.ttf') format('truetype');
@@ -136,6 +146,7 @@
   font-style: normal;
   font-display: swap;
 }
+
 @font-face {
   font-family: 'SpaceGrotesk';
   src: url('../assets/fonts/space-grotesk/SpaceGrotesk-Bold.ttf') format('truetype');
@@ -230,6 +241,45 @@
 
   --animate-accordion-down: accordion-down 0.25s cubic-bezier(0.2, 0, 0, 1);
   --animate-accordion-up: accordion-up 0.2s cubic-bezier(0.3, 0, 0.8, 0.15);
+
+  --animate-spring-up: spring-up 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.1) forwards;
+  --animate-spring-up-delayed: spring-up 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.1) forwards 0.08s;
+  --animate-fade-in: fade-in 0.2s ease-out forwards;
+  --animate-zoom-in: zoom-in 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.1) forwards;
+}
+
+@keyframes spring-up {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  0% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes zoom-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 /* ─────────────────────────────────────────────────────────
@@ -321,32 +371,56 @@
   --state-dragged: 0.16;
 
   /* M3 Type scale — adapted to system fonts */
-  --type-display-lg: 3.5625rem;    /* 57px */
-  --type-display-md: 2.8125rem;    /* 45px */
-  --type-display-sm: 2.25rem;      /* 36px */
-  --type-headline-lg: 2rem;        /* 32px */
-  --type-headline-md: 1.75rem;     /* 28px */
-  --type-headline-sm: 1.5rem;      /* 24px */
-  --type-title-lg: 1.375rem;       /* 22px */
-  --type-title-md: 1rem;           /* 16px */
-  --type-title-sm: 0.875rem;       /* 14px */
-  --type-body-lg: 1rem;            /* 16px */
-  --type-body-md: 0.875rem;        /* 14px */
-  --type-body-sm: 0.75rem;         /* 12px */
-  --type-label-lg: 0.875rem;       /* 14px */
-  --type-label-md: 0.75rem;        /* 12px */
-  --type-label-sm: 0.6875rem;      /* 11px */
+  --type-display-lg: 3.5625rem;
+  /* 57px */
+  --type-display-md: 2.8125rem;
+  /* 45px */
+  --type-display-sm: 2.25rem;
+  /* 36px */
+  --type-headline-lg: 2rem;
+  /* 32px */
+  --type-headline-md: 1.75rem;
+  /* 28px */
+  --type-headline-sm: 1.5rem;
+  /* 24px */
+  --type-title-lg: 1.375rem;
+  /* 22px */
+  --type-title-md: 1rem;
+  /* 16px */
+  --type-title-sm: 0.875rem;
+  /* 14px */
+  --type-body-lg: 1rem;
+  /* 16px */
+  --type-body-md: 0.875rem;
+  /* 14px */
+  --type-body-sm: 0.75rem;
+  /* 12px */
+  --type-label-lg: 0.875rem;
+  /* 14px */
+  --type-label-md: 0.75rem;
+  /* 12px */
+  --type-label-sm: 0.6875rem;
+  /* 11px */
 
   /* Extended scale — chat-specific sizes */
-  --type-chat-user: 0.9375rem;     /* 15px — user message bubbles */
-  --type-chat-response: 1.0625rem; /* 17px — AI response body text */
-  --type-chat-heading: 1.375rem;   /* 22px — AI response topic heading */
-  --type-chat-stream: 1.0625rem;   /* 17px — streaming text container */
-  --type-prose-body: 1.0rem;        /* 16px — markdown paragraph/list text */
-  --type-meta: 0.8125rem;          /* 13px — deep analysis body text */
-  --type-tag: 0.625rem;            /* 10px — tag summary badges */
-  --type-tag-inline: 0.5625rem;    /* 9px  — inline epistemic tags */
-  --type-section-label: 0.5938rem; /* 9.5px — section header labels */
+  --type-chat-user: 0.9375rem;
+  /* 15px — user message bubbles */
+  --type-chat-response: 1.0625rem;
+  /* 17px — AI response body text */
+  --type-chat-heading: 1.375rem;
+  /* 22px — AI response topic heading */
+  --type-chat-stream: 1.0625rem;
+  /* 17px — streaming text container */
+  --type-prose-body: 1.0rem;
+  /* 16px — markdown paragraph/list text */
+  --type-meta: 0.8125rem;
+  /* 13px — deep analysis body text */
+  --type-tag: 0.625rem;
+  /* 10px — tag summary badges */
+  --type-tag-inline: 0.5625rem;
+  /* 9px  — inline epistemic tags */
+  --type-section-label: 0.5938rem;
+  /* 9.5px — section header labels */
 }
 
 /* ─────────────────────────────────────────────────────────
@@ -891,7 +965,7 @@
   --shadow-tactile: none;
 
   /* Glass tokens — warm plum with slight translucency */
-  --glass-bg: rgba(36,24,40,0.92);
+  --glass-bg: rgba(36, 24, 40, 0.92);
   --glass-border: #3E2838;
   --glass-hover: #382434;
   --glass-blur: 20px;
@@ -909,7 +983,8 @@
   @apply border-border;
 }
 
-html, body {
+html,
+body {
   height: 100%;
   overflow: hidden;
 }
@@ -923,6 +998,22 @@ body {
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
   letter-spacing: -0.011em;
+  /* Force GPU rasterization for crisp text on high-DPI displays */
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+/* ── High-DPI sharpness — subpixel rendering on 2x+ displays ── */
+@media (-webkit-min-device-pixel-ratio: 1.5),
+(min-resolution: 144dpi) {
+  body {
+    -webkit-font-smoothing: subpixel-antialiased;
+  }
+
+  img,
+  svg {
+    image-rendering: -webkit-optimize-contrast;
+  }
 }
 
 /* ─────────────────────────────────────────────────────────
@@ -944,22 +1035,34 @@ body::after {
 /* ─────────────────────────────────────────────────────────
    Typography — SF Pro / Cupertino hierarchy
    ───────────────────────────────────────────────────────── */
-h1, h2, h3 {
+h1,
+h2,
+h3 {
   font-family: var(--font-heading);
   letter-spacing: -0.01em;
   text-wrap: balance;
 }
 
-h4, h5, h6 {
+h4,
+h5,
+h6 {
   font-family: var(--font-display);
   font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1, "cv01" 1;
   letter-spacing: -0.025em;
   text-wrap: balance;
 }
 
-h1 { letter-spacing: -0.032em; }
-h2 { letter-spacing: -0.028em; }
-h3 { letter-spacing: -0.022em; }
+h1 {
+  letter-spacing: -0.032em;
+}
+
+h2 {
+  letter-spacing: -0.028em;
+}
+
+h3 {
+  letter-spacing: -0.022em;
+}
 
 /* Docs page — bold concept words get retro font */
 .docs-content strong {
@@ -968,14 +1071,21 @@ h3 { letter-spacing: -0.022em; }
   font-size: 0.8125rem;
 }
 
-nav a, nav button, aside a, aside button, aside span,
-[role="navigation"] a, [role="navigation"] button {
+nav a,
+nav button,
+aside a,
+aside button,
+aside span,
+[role="navigation"] a,
+[role="navigation"] button {
   font-family: var(--font-display);
   letter-spacing: -0.012em;
   font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1;
 }
 
-[class*="badge"], [class*="chip"], [class*="uppercase tracking"] {
+[class*="badge"],
+[class*="chip"],
+[class*="uppercase tracking"] {
   font-family: var(--font-display);
   font-feature-settings: "rlig" 1, "calt" 1, "tnum" 1;
 }
@@ -984,7 +1094,9 @@ nav a, nav button, aside a, aside button, aside span,
   font-feature-settings: "rlig" 1, "calt" 1, "tnum" 1, "ss01" 1;
 }
 
-input, textarea, select {
+input,
+textarea,
+select {
   font-family: var(--font-sans);
   letter-spacing: -0.011em;
   font-feature-settings: "rlig" 1, "calt" 1;
@@ -996,12 +1108,17 @@ button {
   font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1;
 }
 
-[class*="card"] h1, [class*="card"] h2, [class*="card"] h3, [class*="card"] h4 {
+[class*="card"] h1,
+[class*="card"] h2,
+[class*="card"] h3,
+[class*="card"] h4 {
   font-family: var(--font-display);
   letter-spacing: -0.025em;
 }
 
-.prose-pfc p, .prose-pfc li, .prose-pfc blockquote {
+.prose-pfc p,
+.prose-pfc li,
+.prose-pfc blockquote {
   letter-spacing: -0.006em;
   line-height: 1.7;
 }
@@ -1018,12 +1135,15 @@ button {
    Scrollbars — completely hidden, scroll still works
    ───────────────────────────────────────────────────────── */
 * {
-  scrollbar-width: none;           /* Firefox */
-  -ms-overflow-style: none;        /* IE / Edge */
+  scrollbar-width: none;
+  /* Firefox */
+  -ms-overflow-style: none;
+  /* IE / Edge */
 }
 
 *::-webkit-scrollbar {
-  display: none;                   /* Chrome / Safari / Opera */
+  display: none;
+  /* Chrome / Safari / Opera */
 }
 
 /* ─────────────────────────────────────────────────────────
@@ -1043,9 +1163,20 @@ button {
 
 /* Streaming cursor — subtle blink */
 @keyframes blink-cursor {
-  0%, 45% { opacity: 1; }
-  50%, 95% { opacity: 0; }
-  100% { opacity: 1; }
+
+  0%,
+  45% {
+    opacity: 1;
+  }
+
+  50%,
+  95% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 1;
+  }
 }
 
 .animate-blink {
@@ -1054,8 +1185,16 @@ button {
 
 /* Retro block cursor blink — sharp step-function, no fade */
 @keyframes blink-cursor-retro {
-  0%, 50% { opacity: 1; }
-  50.01%, 100% { opacity: 0; }
+
+  0%,
+  50% {
+    opacity: 1;
+  }
+
+  50.01%,
+  100% {
+    opacity: 0;
+  }
 }
 
 .typewriter-cursor {
@@ -1063,14 +1202,26 @@ button {
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Pipeline pulse — soft breathe */
 @keyframes pipeline-pulse {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 1; }
+
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+
+  50% {
+    opacity: 1;
+  }
 }
 
 .animate-pipeline-pulse {
@@ -1174,7 +1325,8 @@ button {
   margin-bottom: 0.75rem;
 }
 
-.prose-pfc ul, .prose-pfc ol {
+.prose-pfc ul,
+.prose-pfc ol {
   font-size: var(--type-prose-body);
   line-height: 1.7;
   padding-left: 1.25rem;
@@ -1249,20 +1401,41 @@ button {
    Accordion
    ───────────────────────────────────────────────────────── */
 @keyframes accordion-down {
-  from { opacity: 0; max-height: 0; transform-origin: top; }
-  to { opacity: 1; max-height: var(--radix-collapsible-content-height, 800px); transform-origin: top; }
+  from {
+    opacity: 0;
+    max-height: 0;
+    transform-origin: top;
+  }
+
+  to {
+    opacity: 1;
+    max-height: var(--radix-collapsible-content-height, 800px);
+    transform-origin: top;
+  }
 }
 
 @keyframes accordion-up {
-  from { opacity: 1; max-height: var(--radix-collapsible-content-height, 800px); transform-origin: top; }
-  to { opacity: 0; max-height: 0; transform-origin: top; }
+  from {
+    opacity: 1;
+    max-height: var(--radix-collapsible-content-height, 800px);
+    transform-origin: top;
+  }
+
+  to {
+    opacity: 0;
+    max-height: 0;
+    transform-origin: top;
+  }
 }
 
 /* ─────────────────────────────────────────────────────────
    Reduced motion — respect user preferences
    ───────────────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
@@ -1290,28 +1463,55 @@ select:focus-visible {
    Thinking Indicator — pixel brain with gentle shake
    ───────────────────────────────────────────────────────── */
 @keyframes thinking-shake {
-  0%, 100% { transform: translateX(0) rotate(0deg); }
-  15% { transform: translateX(-1.5px) rotate(-1.5deg); }
-  30% { transform: translateX(1px) rotate(1deg); }
-  45% { transform: translateX(-1px) rotate(-0.5deg); }
-  60% { transform: translateX(1.5px) rotate(1.5deg); }
-  75% { transform: translateX(-0.5px) rotate(-1deg); }
-  90% { transform: translateX(0.5px) rotate(0.5deg); }
+
+  0%,
+  100% {
+    transform: translateX(0) rotate(0deg);
+  }
+
+  15% {
+    transform: translateX(-1.5px) rotate(-1.5deg);
+  }
+
+  30% {
+    transform: translateX(1px) rotate(1deg);
+  }
+
+  45% {
+    transform: translateX(-1px) rotate(-0.5deg);
+  }
+
+  60% {
+    transform: translateX(1.5px) rotate(1.5deg);
+  }
+
+  75% {
+    transform: translateX(-0.5px) rotate(-1deg);
+  }
+
+  90% {
+    transform: translateX(0.5px) rotate(0.5deg);
+  }
 }
 
 @keyframes thinking-pulse {
-  0%, 100% { opacity: 0.7; }
-  50% { opacity: 1; }
+
+  0%,
+  100% {
+    opacity: 0.7;
+  }
+
+  50% {
+    opacity: 1;
+  }
 }
 
 /* Thinking shimmer text effect */
 .thinking-shimmer {
-  background: linear-gradient(
-    90deg,
-    var(--color-pfc-violet) 0%,
-    #E0C4A8 50%,
-    var(--color-pfc-violet) 100%
-  );
+  background: linear-gradient(90deg,
+      var(--color-pfc-violet) 0%,
+      #E0C4A8 50%,
+      var(--color-pfc-violet) 100%);
   background-size: 200% 100%;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -1319,29 +1519,80 @@ select:focus-visible {
 }
 
 @keyframes shimmer {
-  0%, 100% { background-position: 200% center; }
-  50% { background-position: 0% center; }
+
+  0%,
+  100% {
+    background-position: 200% center;
+  }
+
+  50% {
+    background-position: 0% center;
+  }
 }
 
-/* ─── Block editor toolbar pop-in ─── */
+/* ─── Block editor toolbar pop-in (spring overshoot) ─── */
 @keyframes toolbar-in {
-  from { opacity: 0; transform: scale(0.96) translateY(-2px); }
-  to { opacity: 1; transform: scale(1) translateY(0); }
+  0% {
+    opacity: 0;
+    transform: scale(0.92) translateY(4px);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.03) translateY(-1px);
+  }
+
+  75% {
+    transform: scale(0.99) translateY(0.5px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
 /* ─── Thematic wallpaper animations ─── */
 @keyframes wallpaper-drift {
-  0%   { transform: scale(1.06) translate(0%, 0%); }
-  25%  { transform: scale(1.08) translate(-1.5%, -1%); }
-  50%  { transform: scale(1.06) translate(-0.5%, -1.5%); }
-  75%  { transform: scale(1.08) translate(1%, -0.5%); }
-  100% { transform: scale(1.06) translate(0%, 0%); }
+  0% {
+    transform: scale(1.06) translate(0%, 0%);
+  }
+
+  25% {
+    transform: scale(1.08) translate(-1.5%, -1%);
+  }
+
+  50% {
+    transform: scale(1.06) translate(-0.5%, -1.5%);
+  }
+
+  75% {
+    transform: scale(1.08) translate(1%, -0.5%);
+  }
+
+  100% {
+    transform: scale(1.06) translate(0%, 0%);
+  }
 }
 
 @keyframes wallpaper-drift-alt {
-  0%   { transform: scale(1.08) translate(0.5%, -0.5%); }
-  25%  { transform: scale(1.06) translate(1%, 0.5%); }
-  50%  { transform: scale(1.08) translate(-1%, 1%); }
-  75%  { transform: scale(1.06) translate(-0.5%, -1%); }
-  100% { transform: scale(1.08) translate(0.5%, -0.5%); }
+  0% {
+    transform: scale(1.08) translate(0.5%, -0.5%);
+  }
+
+  25% {
+    transform: scale(1.06) translate(1%, 0.5%);
+  }
+
+  50% {
+    transform: scale(1.08) translate(-1%, 1%);
+  }
+
+  75% {
+    transform: scale(1.06) translate(-0.5%, -1%);
+  }
+
+  100% {
+    transform: scale(1.08) translate(0.5%, -0.5%);
+  }
 }

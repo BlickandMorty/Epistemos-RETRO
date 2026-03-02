@@ -62,6 +62,9 @@ pub fn run() {
             system::get_cost_summary,
             system::set_daily_budget,
             system::reset_cost_tracker,
+            system::get_embedding_status,
+            system::embed_text,
+            system::find_similar_nodes,
             physics::start_physics,
             physics::stop_physics,
             physics::pin_node,
@@ -85,7 +88,12 @@ pub fn run() {
         )
         .expect("Failed to export typescript bindings");
 
-    tauri::Builder::default()
+    // Use a shared slot so we can reference AppState in the exit handler.
+    let state_slot: std::sync::Arc<std::sync::Mutex<Option<AppState>>> =
+        std::sync::Arc::new(std::sync::Mutex::new(None));
+    let state_for_exit = state_slot.clone();
+
+    let app = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(builder.invoke_handler())
         .setup(move |app| {
@@ -102,6 +110,11 @@ pub fn run() {
             let state = AppState::new(db);
 
             app.manage(state.clone());
+
+            // Store state reference for graceful shutdown handler.
+            if let Ok(mut slot) = state_slot.lock() {
+                *slot = Some(state.clone());
+            }
 
             // Background: pre-load graph + probe AI services.
             // Both are non-critical for initial render — the window opens immediately.
@@ -120,6 +133,27 @@ pub fn run() {
 
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application");
+
+    app.run(move |_app_handle, event| {
+        if let tauri::RunEvent::Exit = event {
+            // Graceful shutdown: cancel all tracked tasks and wait for cleanup.
+            if let Ok(guard) = state_for_exit.lock() {
+                if let Some(state) = guard.as_ref() {
+                    eprintln!("[shutdown] cancelling background tasks...");
+                    state.shutdown_token.cancel();
+                    // Block briefly to let tasks wind down.
+                    // We can't async-await here, so use a short spin.
+                    let handles_exist = state.task_handles.lock()
+                        .map(|h| !h.is_empty())
+                        .unwrap_or(false);
+                    if handles_exist {
+                        std::thread::sleep(std::time::Duration::from_millis(500));
+                    }
+                    eprintln!("[shutdown] done");
+                }
+            }
+        }
+    });
 }

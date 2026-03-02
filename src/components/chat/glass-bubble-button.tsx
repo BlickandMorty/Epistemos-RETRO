@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
 import { useIsDark } from '@/hooks/use-is-dark';
 
 /* ═══════════════════════════════════════════════════════════
@@ -47,6 +46,7 @@ export function GlassBubbleButton({
 }: GlassBubbleButtonProps) {
   const { isDark, isOled, isSunny, isCosmic } = useIsDark();
   const [hovered, setHovered] = useState(false);
+  const [isTap, setIsTap] = useState(false);
 
   const s = SIZE_MAP[size];
   const isDefaultLight = !isDark && !isSunny;
@@ -56,27 +56,27 @@ export function GlassBubbleButton({
   if (disabled) {
     bg = isOled ? 'rgba(30,30,30,0.6)'
       : isCosmic ? 'rgba(139,159,212,0.02)'
-      : isDark ? 'rgba(244,189,111,0.02)'
-      : isDefaultLight ? 'rgba(0,0,0,0.04)'
-      : 'var(--secondary)';
+        : isDark ? 'rgba(244,189,111,0.02)'
+          : isDefaultLight ? 'rgba(0,0,0,0.04)'
+            : 'var(--secondary)';
   } else if (active) {
     bg = isOled ? 'rgba(255,255,255,0.95)'         // OLED: white pill
       : isCosmic ? 'rgba(22,20,38,0.92)'           // Cosmic: deep indigo
-      : isDark ? 'rgba(16,13,10,0.92)'              // Dark: pitch dark
-      : isDefaultLight ? '#000000'                    // Light: pitch black
-      : 'var(--primary)';
+        : isDark ? 'rgba(16,13,10,0.92)'              // Dark: pitch dark
+          : isDefaultLight ? '#000000'                    // Light: pitch black
+            : 'var(--primary)';
   } else if (hovered) {
     bg = isOled ? 'rgba(50,50,50,0.8)'
       : isCosmic ? 'rgba(50,48,80,0.35)'
-      : isDark ? 'rgba(55,50,45,0.35)'
-      : isDefaultLight ? 'rgba(0,0,0,0.06)'
-      : 'var(--secondary)';
+        : isDark ? 'rgba(55,50,45,0.35)'
+          : isDefaultLight ? 'rgba(0,0,0,0.06)'
+            : 'var(--secondary)';
   } else {
     bg = isOled ? 'rgba(35,35,35,0.7)'              // OLED: dark gray pill
       : isCosmic ? 'rgba(139,159,212,0.06)'          // Cosmic: subtle blue tint
-      : isDark ? 'rgba(244,189,111,0.05)'
-      : isDefaultLight ? 'rgba(0,0,0,0.04)'          // Light: light gray (M3 flat)
-      : 'var(--card)';
+        : isDark ? 'rgba(244,189,111,0.05)'
+          : isDefaultLight ? 'rgba(0,0,0,0.04)'          // Light: light gray (M3 flat)
+            : 'var(--card)';
   }
 
   // ── Text color ──
@@ -84,31 +84,32 @@ export function GlassBubbleButton({
   if (disabled) {
     fg = isOled ? 'rgba(120,120,120,0.4)'
       : isCosmic ? 'rgba(155,150,175,0.35)'
-      : isDark ? 'rgba(156,143,128,0.35)'
-      : isDefaultLight ? 'rgba(0,0,0,0.25)'
-      : 'var(--muted-foreground)';
+        : isDark ? 'rgba(156,143,128,0.35)'
+          : isDefaultLight ? 'rgba(0,0,0,0.25)'
+            : 'var(--muted-foreground)';
   } else if (active) {
     fg = isOled ? 'rgba(0,0,0,0.92)'              // OLED: black on white
       : isCosmic ? 'rgba(200,195,225,0.95)'        // Cosmic: light lavender
-      : isDark ? 'rgba(232,228,222,0.95)'
-      : isDefaultLight ? '#FFFFFF'
-      : 'var(--primary-foreground)';
+        : isDark ? 'rgba(232,228,222,0.95)'
+          : isDefaultLight ? '#FFFFFF'
+            : 'var(--primary-foreground)';
   } else {
     fg = isOled ? 'rgba(200,200,200,0.85)'
       : isCosmic ? 'rgba(155,150,175,0.7)'          // Cosmic: muted indigo
-      : isDark ? 'rgba(156,143,128,0.7)'
-      : isDefaultLight ? 'rgba(0,0,0,0.6)'
-      : 'var(--foreground)';
+        : isDark ? 'rgba(156,143,128,0.7)'
+          : isDefaultLight ? 'rgba(0,0,0,0.6)'
+            : 'var(--foreground)';
   }
 
   return (
-    <motion.button
+    <button
       type={type}
       onClick={onClick}
       disabled={disabled}
-      whileTap={disabled ? undefined : { scale: 0.97 }}
       onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      onMouseLeave={() => { setHovered(false); setIsTap(false); }}
+      onPointerDown={() => setIsTap(true)}
+      onPointerUp={() => setIsTap(false)}
       className={className}
       style={{
         display: 'inline-flex',
@@ -128,15 +129,15 @@ export function GlassBubbleButton({
         boxShadow: 'none',                           // M3 flat: no shadows
         backdropFilter: 'none',
         WebkitBackdropFilter: 'none',
-        transition: 'background 0.15s, color 0.15s, opacity 0.2s',
+        transition: 'background 0.15s, color 0.15s, opacity 0.2s, transform 0.15s',
         opacity: disabled ? 0.35 : 1,
         whiteSpace: 'nowrap',
         overflow: 'hidden',
-        transform: 'translateZ(0)',
+        transform: disabled ? 'translateZ(0)' : (isTap ? 'scale(0.93) translateY(1px) translateZ(0)' : (hovered ? 'scale(1.06) translateY(-2px) translateZ(0)' : 'translateZ(0)')),
         ...styleProp,
       }}
     >
       {children}
-    </motion.button>
+    </button>
   );
 }

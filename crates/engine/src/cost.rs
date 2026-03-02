@@ -278,8 +278,7 @@ mod tests {
 
     #[test]
     fn budget_exceeded_when_over_limit() {
-        let mut tracker = CostTracker::default();
-        tracker.daily_budget_usd = 0.01; // $0.01 budget
+        let mut tracker = CostTracker { daily_budget_usd: 0.01, ..Default::default() };
 
         // Record 1M tokens of claude-opus-4-6 ($15 input + $75 output = $90)
         let usage = make_usage("claude-opus-4-6", 1_000_000, 1_000_000);
@@ -290,8 +289,7 @@ mod tests {
 
     #[test]
     fn tracker_json_roundtrip() {
-        let mut tracker = CostTracker::default();
-        tracker.daily_budget_usd = 5.0;
+        let mut tracker = CostTracker { daily_budget_usd: 5.0, ..Default::default() };
         let usage = make_usage("claude-sonnet-4-6", 1000, 500);
         tracker.record(&usage);
 

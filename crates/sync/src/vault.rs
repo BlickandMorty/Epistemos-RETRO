@@ -170,10 +170,10 @@ pub fn import_vault(db: &Database, vault_path: &Path) -> Result<ImportStats, Syn
 
     // Build a lookup of existing pages by file_path for incremental sync
     let existing_pages = db.list_pages()?;
-    let mut path_to_page: HashMap<String, Page> = HashMap::new();
+    let mut path_to_page: HashMap<&str, &Page> = HashMap::with_capacity(existing_pages.len());
     for page in &existing_pages {
         if let Some(fp) = &page.file_path {
-            path_to_page.insert(fp.clone(), page.clone());
+            path_to_page.insert(fp, page);
         }
     }
 
@@ -205,7 +205,7 @@ fn import_file_incremental(
     db: &Database,
     file_path: &Path,
     vault_path: &Path,
-    existing: &HashMap<String, Page>,
+    existing: &HashMap<&str, &Page>,
 ) -> Result<ImportAction, SyncError> {
     let file_path_str = file_path.to_string_lossy().to_string();
     // Guard: skip files larger than MAX_IMPORT_FILE_SIZE to prevent OOM
@@ -257,7 +257,7 @@ fn import_file_incremental(
         .filter(|s| !s.is_empty());
 
     // Check if page exists by file_path
-    if let Some(existing_page) = existing.get(&file_path_str) {
+    if let Some(&existing_page) = existing.get(file_path_str.as_str()) {
         // Skip if file hasn't changed since last import
         if file_mtime_ms <= existing_page.updated_at {
             return Ok(ImportAction::Skipped);
@@ -376,7 +376,7 @@ fn synthesize_folders(
     vault_path: &Path,
     md_files: &[PathBuf],
 ) -> Result<(), SyncError> {
-    let mut unique_dirs: std::collections::HashSet<String> = std::collections::HashSet::new();
+    let mut unique_dirs: std::collections::HashSet<String> = std::collections::HashSet::with_capacity(md_files.len() / 4);
 
     for file_path in md_files {
         if let Some(parent) = file_path.parent() {
@@ -387,11 +387,10 @@ fn synthesize_folders(
                     let segments: Vec<&str> = rel_str.split('/').filter(|s| !s.is_empty()).collect();
                     let mut current = String::new();
                     for seg in segments {
-                        current = if current.is_empty() {
-                            seg.to_string()
-                        } else {
-                            format!("{}/{}", current, seg)
-                        };
+                        if !current.is_empty() {
+                            current.push('/');
+                        }
+                        current.push_str(seg);
                         unique_dirs.insert(current.clone());
                     }
                 }
@@ -401,8 +400,8 @@ fn synthesize_folders(
 
     // Create folders — skip if they already exist (check by name for simplicity)
     let existing_folders = db.list_folders()?;
-    let existing_names: std::collections::HashSet<String> =
-        existing_folders.iter().map(|f| f.name.clone()).collect();
+    let existing_names: std::collections::HashSet<&str> =
+        existing_folders.iter().map(|f| f.name.as_str()).collect();
 
     for dir_path in &unique_dirs {
         let name = dir_path.rsplit('/').next().unwrap_or(dir_path);

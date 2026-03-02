@@ -119,13 +119,13 @@ pub async fn run_with_context(
                             continue;
                         }
 
-                        if in_thinking {
-                            let _ = tx.send(PipelineEvent::DeliberationDelta(text.clone()));
-                        } else {
-                            let _ = tx.send(PipelineEvent::TextDelta(text.clone()));
-                        }
-
                         direct_answer.push_str(&text);
+
+                        if in_thinking {
+                            let _ = tx.send(PipelineEvent::DeliberationDelta(text));
+                        } else {
+                            let _ = tx.send(PipelineEvent::TextDelta(text));
+                        }
                     }
                     Err(e) => {
                         let _ = tx.send(PipelineEvent::Error(e.user_message()));
@@ -154,14 +154,15 @@ pub async fn run_with_context(
     // Emit Pass 1 completion
     let _ = tx.send(PipelineEvent::Completed(CompletedData {
         direct_answer: direct_answer.clone(),
-        concepts: concepts.clone(),
+        concepts,
     }));
 
     // ── SOAR: Probe learnability after Pass 1 ──────────────
     let probe = soar::probe_learnability(qa, sigs);
-    let _ = tx.send(PipelineEvent::Soar(soar::SoarEvent::ProbeComplete(probe.clone())));
+    let at_edge = probe.at_edge;
+    let _ = tx.send(PipelineEvent::Soar(soar::SoarEvent::ProbeComplete(probe)));
 
-    if probe.at_edge {
+    if at_edge {
         let session = soar::build_session(qa, sigs);
         let _ = tx.send(PipelineEvent::Soar(soar::SoarEvent::TeachingStart {
             stone_count: session.stones.len(),

@@ -798,7 +798,7 @@ mod tests {
         let sigs = signals::generate(&qa, &signals::PipelineControls::default(), None);
 
         let arb = fallback_arbitration(&sigs);
-        assert_eq!(arb.consensus, false);
+        assert!(!arb.consensus);
         assert_eq!(arb.votes.len(), 1);
         assert_eq!(arb.votes[0].engine, "heuristic");
         assert!(!arb.disagreements.is_empty());

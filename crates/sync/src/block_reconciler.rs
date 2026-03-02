@@ -50,7 +50,7 @@ pub fn reconcile(
 
     // Two-pass bipartite matching: collect all candidate pairs above threshold,
     // sort by score descending, then greedily assign best matches first.
-    let mut candidates: Vec<(usize, usize, f64)> = Vec::new();
+    let mut candidates: Vec<(usize, usize, f64)> = Vec::with_capacity(parsed.len().min(existing.len()));
 
     for (pi, parsed_block) in parsed.iter().enumerate() {
         for (ei, existing_block) in existing.iter().enumerate() {
@@ -64,8 +64,8 @@ pub fn reconcile(
     // Sort by score descending — best matches assigned first
     candidates.sort_by(|a, b| b.2.partial_cmp(&a.2).unwrap_or(std::cmp::Ordering::Equal));
 
-    let mut used_parsed = HashSet::new();
-    let mut used_existing = HashSet::new();
+    let mut used_parsed = HashSet::with_capacity(parsed.len());
+    let mut used_existing = HashSet::with_capacity(existing.len());
     let mut matches: Vec<Option<usize>> = vec![None; parsed.len()];
 
     for (pi, ei, _score) in &candidates {

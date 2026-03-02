@@ -82,7 +82,7 @@ pub struct Message {
 
 // ---- Graph ----
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, specta::Type, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, specta::Type, PartialEq, Eq, Hash)]
 pub enum GraphNodeType {
     Note, Chat, Idea, Source, Folder, Quote, Tag, Block,
 }

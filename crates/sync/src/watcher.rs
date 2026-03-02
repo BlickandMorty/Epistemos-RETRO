@@ -104,8 +104,8 @@ impl VaultWatcher {
 fn filter_vault_events(
     events: &[notify_debouncer_full::DebouncedEvent],
 ) -> Vec<VaultChangeKind> {
-    let mut changes = Vec::new();
-    let mut seen = std::collections::HashSet::new();
+    let mut changes = Vec::with_capacity(events.len());
+    let mut seen = std::collections::HashSet::with_capacity(events.len());
 
     for debounced in events {
         let inner = &debounced.event;

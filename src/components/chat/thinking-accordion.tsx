@@ -1,5 +1,4 @@
 import { memo, useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDownIcon, AtomIcon } from 'lucide-react';
 import { PixelBook } from '../decorative/pixel-mascots';
 
@@ -10,9 +9,7 @@ interface ThinkingAccordionProps {
   className?: string;
 }
 
-import { ease } from '@/lib/motion/motion-config';
 
-const CUPERTINO = ease.emphasized;
 
 export const ThinkingAccordion = memo<ThinkingAccordionProps>(function ThinkingAccordion({
   content,
@@ -36,8 +33,8 @@ export const ThinkingAccordion = memo<ThinkingAccordionProps>(function ThinkingA
   const durationText = duration
     ? `Thought for ${(duration / 1000).toFixed(1)}s`
     : isThinking
-    ? 'Thinking'
-    : 'Thought';
+      ? 'Thinking'
+      : 'Thought';
 
   return (
     <div className={`rounded-xl overflow-hidden ${className ?? ''}`}>
@@ -68,42 +65,42 @@ export const ThinkingAccordion = memo<ThinkingAccordionProps>(function ThinkingA
         </span>
 
         {/* Chevron */}
-        <motion.span
-          animate={{ rotate: effectiveExpanded ? 180 : 0 }}
-          transition={{ duration: 0.2, ease: CUPERTINO }}
+        <span
+          style={{
+            transform: `rotate(${effectiveExpanded ? 180 : 0}deg)`,
+            transition: 'transform 0.2s cubic-bezier(0.2, 0, 0, 1)',
+          }}
         >
           <ChevronDownIcon className="w-3.5 h-3.5 text-muted-foreground/40" />
-        </motion.span>
+        </span>
       </button>
 
       {/* Content */}
-      <AnimatePresence initial={false}>
-        {effectiveExpanded && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.25, ease: CUPERTINO }}
-            className="overflow-hidden"
-            style={{ overflow: 'hidden', transform: 'translateZ(0)' }}
-          >
-            <div
-              ref={scrollRef}
-              className="max-h-[200px] overflow-y-auto px-3 py-2
-                         text-xs leading-relaxed text-muted-foreground/70
-                         scrollbar-thin scrollbar-thumb-white/10"
-              style={{ willChange: 'scroll-position', overscrollBehavior: 'contain', transform: 'translateZ(0)' }}
-            >
-              <div className="whitespace-pre-wrap break-words">
-                {content}
-                {isThinking && (
-                  <span className="inline-block w-1.5 h-3 ml-0.5 bg-pfc-violet animate-pulse rounded-sm" />
-                )}
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <div
+        className="overflow-hidden"
+        style={{
+          height: effectiveExpanded ? 'auto' : 0,
+          opacity: effectiveExpanded ? 1 : 0,
+          transition: 'height 0.25s cubic-bezier(0.2, 0, 0, 1), opacity 0.25s cubic-bezier(0.2, 0, 0, 1)',
+          transform: 'translateZ(0)',
+          pointerEvents: effectiveExpanded ? 'auto' : 'none',
+        }}
+      >
+        <div
+          ref={scrollRef}
+          className="max-h-[200px] overflow-y-auto px-3 py-2
+                     text-xs leading-relaxed text-muted-foreground/70
+                     scrollbar-thin scrollbar-thumb-white/10"
+          style={{ willChange: 'scroll-position', overscrollBehavior: 'contain', transform: 'translateZ(0)' }}
+        >
+          <div className="whitespace-pre-wrap break-words">
+            {content}
+            {isThinking && (
+              <span className="inline-block w-1.5 h-3 ml-0.5 bg-pfc-violet animate-pulse rounded-sm" />
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 });

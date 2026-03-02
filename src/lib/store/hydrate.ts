@@ -18,4 +18,6 @@ export function hydrateStore() {
   const store = usePFCStore.getState();
   store.hydrateSOAR();
   store.hydrateLearning();
+  // Initialize vault system → loads pages from Tauri SQLite backend
+  store.loadVaultIndex();
 }

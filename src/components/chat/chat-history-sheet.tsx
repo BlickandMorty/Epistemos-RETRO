@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { type ChatEntry, formatRelativeTime, parseTimestamp } from './recent-chats';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeftIcon, MessageSquareIcon, SearchIcon } from 'lucide-react';
+import { ArrowLeftIcon, MessageSquareIcon, SearchIcon, Trash2Icon } from 'lucide-react';
 
 // ═══════════════════════════════════════════════════════════════════
 // ChatsSidePanel — M3 side panel on landing (like Notes sidebar)
@@ -10,9 +9,7 @@ import { ArrowLeftIcon, MessageSquareIcon, SearchIcon } from 'lucide-react';
 // Typewriter summary reveals on hover per chat card.
 // ═══════════════════════════════════════════════════════════════════
 
-import { physicsSpring } from '@/lib/motion/motion-config';
 
-const PANEL_SPRING = physicsSpring.chatPanel;
 
 /** Typewriter hook for summary text — types out on hover, resets on leave */
 function useSummaryTypewriter(text: string, active: boolean) {
@@ -41,11 +38,8 @@ function ChatCardSummary({ text, active, isDark }: { text: string; active: boole
   const display = useSummaryTypewriter(text, active);
   if (!active && !display) return null;
   return (
-    <motion.div
-      initial={{ opacity: 0, height: 0 }}
-      animate={{ opacity: 1, height: 'auto' }}
-      exit={{ opacity: 0, height: 0 }}
-      transition={{ duration: 0.2, ease: [0.2, 0, 0, 1] }}
+    <div
+      className="animate-spring-down overflow-hidden"
       style={{
         fontSize: '0.6875rem',
         fontWeight: 400,
@@ -68,7 +62,7 @@ function ChatCardSummary({ text, active, isDark }: { text: string; active: boole
           opacity: 0.7,
         }} />
       )}
-    </motion.div>
+    </div>
   );
 }
 
@@ -105,43 +99,40 @@ export function ChatsSidePanel({ isDark, isOled, isCosmic, isSunny, isSunset, on
   // M3 surface colors — flat, no blur
   const panelBg = isOled ? '#0c0c0c'
     : isCosmic ? '#161330'
-    : isSunset ? '#1e1418'
-    : isDark ? 'var(--m3-surface-container-low, #1c1b1f)'
-    : isSunny ? 'var(--card)'
-    : '#f7f2fa';
+      : isSunset ? '#1e1418'
+        : isDark ? 'var(--m3-surface-container-low, #1c1b1f)'
+          : isSunny ? 'var(--card)'
+            : '#f7f2fa';
 
   const cardBg = isOled ? '#161616'
     : isCosmic ? '#1e1b35'
-    : isSunset ? '#261a1e'
-    : isDark ? 'var(--m3-surface-container, #211f26)'
-    : isSunny ? 'var(--secondary)'
-    : '#ece6f0';
+      : isSunset ? '#261a1e'
+        : isDark ? 'var(--m3-surface-container, #211f26)'
+          : isSunny ? 'var(--secondary)'
+            : '#ece6f0';
 
   const cardHoverBg = isOled ? '#202020'
     : isCosmic ? '#26223e'
-    : isSunset ? '#2e2025'
-    : isDark ? 'var(--m3-surface-container-high, #2b2930)'
-    : isSunny ? 'color-mix(in srgb, var(--secondary) 80%, white)'
-    : '#e0dae4';
+      : isSunset ? '#2e2025'
+        : isDark ? 'var(--m3-surface-container-high, #2b2930)'
+          : isSunny ? 'color-mix(in srgb, var(--secondary) 80%, white)'
+            : '#e0dae4';
 
   const textPrimary = isDark ? 'rgba(232,228,222,0.92)' : 'rgba(28,27,31,0.87)';
   const textSecondary = isDark ? 'rgba(155,150,137,0.65)' : 'rgba(73,69,79,0.7)';
   const textTertiary = isDark ? 'rgba(155,150,137,0.4)' : 'rgba(73,69,79,0.45)';
   const searchBg = isOled ? '#1a1a1a'
     : isCosmic ? '#1e1b35'
-    : isSunset ? '#261a1e'
-    : isDark ? 'rgba(255,255,255,0.04)'
-    : isSunny ? 'var(--secondary)'
-    : '#ece6f0';
+      : isSunset ? '#261a1e'
+        : isDark ? 'rgba(255,255,255,0.04)'
+          : isSunny ? 'var(--secondary)'
+            : '#ece6f0';
 
   return (
     <>
       {/* Scrim — flat, no blur */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.2, ease: [0.2, 0, 0, 1] }}
+      <div
+        className="animate-fade-in"
         onClick={onClose}
         style={{
           position: 'absolute',
@@ -152,11 +143,8 @@ export function ChatsSidePanel({ isDark, isOled, isCosmic, isSunny, isSunset, on
       />
 
       {/* Floating side panel — M3 rounded box */}
-      <motion.div
-        initial={{ x: '-110%', opacity: 0.5 }}
-        animate={{ x: 0, opacity: 1 }}
-        exit={{ x: '-110%', opacity: 0 }}
-        transition={PANEL_SPRING}
+      <div
+        className="animate-slide-in-left"
         style={{
           position: 'absolute',
           top: '1rem',
@@ -183,8 +171,13 @@ export function ChatsSidePanel({ isDark, isOled, isCosmic, isSunny, isSunset, on
           alignItems: 'center',
           gap: '0.5rem',
         }}>
-          <motion.button
-            whileTap={{ scale: 0.92 }}
+          <button
+            onPointerDown={(e) => { e.currentTarget.style.transform = 'scale(0.92)'; }}
+            onPointerUp={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+            onPointerLeave={(e) => {
+              e.currentTarget.style.transform = 'scale(1)';
+              e.currentTarget.style.background = 'transparent';
+            }}
             onClick={onClose}
             style={{
               display: 'flex',
@@ -200,10 +193,9 @@ export function ChatsSidePanel({ isDark, isOled, isCosmic, isSunny, isSunset, on
               transition: 'background 0.15s',
             }}
             onMouseEnter={(e) => { e.currentTarget.style.background = cardBg; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
           >
             <ArrowLeftIcon style={{ height: '1.125rem', width: '1.125rem' }} />
-          </motion.button>
+          </button>
           <span style={{
             fontSize: '0.875rem',
             fontWeight: 600,
@@ -278,7 +270,7 @@ export function ChatsSidePanel({ isDark, isOled, isCosmic, isSunny, isSunset, on
               }} />
             </div>
           )}
-          {loaded && filtered.map((chat, idx) => {
+          {loaded && filtered.map((chat) => {
             const isHovered = hoveredId === chat.id;
             const timeStr = formatRelativeTime(parseTimestamp(chat.updatedAt));
             // Build a summary preview from first assistant message
@@ -286,23 +278,18 @@ export function ChatsSidePanel({ isDark, isOled, isCosmic, isSunny, isSunset, on
               ?? chat.title;
 
             return (
-              <motion.button
+              <button
                 key={chat.id}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{
-                  duration: 0.25,
-                  ease: [0.2, 0, 0, 1],
-                  delay: Math.min(idx * 0.025, 0.25),
-                }}
+                className="animate-spring-up"
                 onClick={(e) => {
                   e.stopPropagation();
                   onClose();
                   navigate(`/chat/${chat.id}`);
                 }}
                 onMouseEnter={() => setHoveredId(chat.id)}
-                onMouseLeave={() => setHoveredId(null)}
-                whileTap={{ scale: 0.98 }}
+                onMouseLeave={(e) => { setHoveredId(null); e.currentTarget.style.transform = 'scale(1)'; }}
+                onPointerDown={(e) => { e.currentTarget.style.transform = 'scale(0.98)'; }}
+                onPointerUp={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
                 style={{
                   display: 'flex',
                   flexDirection: 'column',
@@ -362,18 +349,42 @@ export function ChatsSidePanel({ isDark, isOled, isCosmic, isSunny, isSunset, on
                       {timeStr}
                     </div>
                   </div>
+                  {isHovered && (
+                    <button
+                      className="animate-fade-in"
+                      onPointerDown={(e) => { e.currentTarget.style.transform = 'scale(0.85)'; }}
+                      onPointerUp={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+                      onPointerLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        const { commands } = await import('@/lib/bindings');
+                        const res = await commands.deleteChat(chat.id);
+                        if (res.status === 'ok') {
+                          setChats((prev) => prev.filter((c) => c.id !== chat.id));
+                        }
+                      }}
+                      style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        width: '1.375rem', height: '1.375rem', borderRadius: '50%',
+                        border: 'none', cursor: 'pointer', flexShrink: 0,
+                        background: isDark ? 'rgba(255,69,58,0.1)' : 'rgba(255,69,58,0.08)',
+                        color: '#FF453A',
+                      }}
+                      title="Delete chat"
+                    >
+                      <Trash2Icon style={{ height: '0.625rem', width: '0.625rem' }} />
+                    </button>
+                  )}
                 </div>
                 {/* Typewriter summary — reveals on hover */}
-                <AnimatePresence>
-                  {isHovered && summary && (
-                    <ChatCardSummary
-                      text={summary.length > 120 ? summary.slice(0, 120) + '...' : summary}
-                      active={isHovered}
-                      isDark={isDark}
-                    />
-                  )}
-                </AnimatePresence>
-              </motion.button>
+                {isHovered && summary && (
+                  <ChatCardSummary
+                    text={summary.length > 120 ? summary.slice(0, 120) + '...' : summary}
+                    active={isHovered}
+                    isDark={isDark}
+                  />
+                )}
+              </button>
             );
           })}
           {loaded && filtered.length === 0 && (
@@ -387,7 +398,7 @@ export function ChatsSidePanel({ isDark, isOled, isCosmic, isSunny, isSunset, on
             </div>
           )}
         </div>
-      </motion.div>
+      </div>
     </>
   );
 }
@@ -396,8 +407,6 @@ export function ChatsSidePanel({ isDark, isOled, isCosmic, isSunny, isSunset, on
 // ChatsOverlay — M3 standard side sheet (slides from left)
 // Material You: flat surface, no blur, clean elevation, fluid spring
 // ═══════════════════════════════════════════════════════════════════
-
-const SHEET_SPRING = physicsSpring.chatSheet;
 
 export function ChatsOverlay({ isDark, isOled, isCosmic, isSunny, onClose }: {
   isDark: boolean; isOled?: boolean; isCosmic?: boolean; isSunny?: boolean; onClose: () => void;
@@ -431,21 +440,21 @@ export function ChatsOverlay({ isDark, isOled, isCosmic, isSunny, onClose }: {
   // Surface colors — M3 surface-container-low
   const sheetBg = isOled ? '#0a0a0a'
     : isCosmic ? '#1a1730'
-    : isDark ? 'var(--m3-surface-container-low, #1c1b1f)'
-    : isSunny ? 'var(--card)'
-    : '#f7f2fa';
+      : isDark ? 'var(--m3-surface-container-low, #1c1b1f)'
+        : isSunny ? 'var(--card)'
+          : '#f7f2fa';
 
   const itemBg = isOled ? '#141414'
     : isCosmic ? '#221f38'
-    : isDark ? 'var(--m3-surface-container, #211f26)'
-    : isSunny ? 'var(--secondary)'
-    : '#ece6f0';
+      : isDark ? 'var(--m3-surface-container, #211f26)'
+        : isSunny ? 'var(--secondary)'
+          : '#ece6f0';
 
   const itemHoverBg = isOled ? '#1e1e1e'
     : isCosmic ? '#2a2640'
-    : isDark ? 'var(--m3-surface-container-high, #2b2930)'
-    : isSunny ? 'color-mix(in srgb, var(--secondary) 80%, white)'
-    : '#e0dae4';
+      : isDark ? 'var(--m3-surface-container-high, #2b2930)'
+        : isSunny ? 'color-mix(in srgb, var(--secondary) 80%, white)'
+          : '#e0dae4';
 
   const textPrimary = isDark ? 'rgba(232,228,222,0.92)' : 'rgba(28,27,31,0.87)';
   const textSecondary = isDark ? 'rgba(155,150,137,0.65)' : 'rgba(73,69,79,0.7)';
@@ -454,11 +463,8 @@ export function ChatsOverlay({ isDark, isOled, isCosmic, isSunny, onClose }: {
   return (
     <>
       {/* M3 Scrim — flat, no blur */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.2, ease: [0.2, 0, 0, 1] }}
+      <div
+        className="animate-fade-in"
         onClick={onClose}
         style={{
           position: 'absolute',
@@ -469,11 +475,8 @@ export function ChatsOverlay({ isDark, isOled, isCosmic, isSunny, onClose }: {
       />
 
       {/* M3 Floating sheet — slides from left, rounded */}
-      <motion.div
-        initial={{ x: '-110%', opacity: 0.5 }}
-        animate={{ x: 0, opacity: 1 }}
-        exit={{ x: '-110%', opacity: 0 }}
-        transition={SHEET_SPRING}
+      <div
+        className="animate-slide-in-left"
         style={{
           position: 'absolute',
           top: '1rem',
@@ -500,8 +503,13 @@ export function ChatsOverlay({ isDark, isOled, isCosmic, isSunny, onClose }: {
           alignItems: 'center',
           gap: '0.5rem',
         }}>
-          <motion.button
-            whileTap={{ scale: 0.92 }}
+          <button
+            onPointerDown={(e) => { e.currentTarget.style.transform = 'scale(0.92)'; }}
+            onPointerUp={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+            onPointerLeave={(e) => {
+              e.currentTarget.style.transform = 'scale(1)';
+              e.currentTarget.style.background = 'transparent';
+            }}
             onClick={onClose}
             style={{
               display: 'flex',
@@ -517,10 +525,9 @@ export function ChatsOverlay({ isDark, isOled, isCosmic, isSunny, onClose }: {
               transition: 'background 0.15s',
             }}
             onMouseEnter={(e) => { e.currentTarget.style.background = itemBg; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
           >
             <ArrowLeftIcon style={{ height: '1.125rem', width: '1.125rem' }} />
-          </motion.button>
+          </button>
           <span style={{
             fontSize: '0.875rem',
             fontWeight: 600,
@@ -585,28 +592,23 @@ export function ChatsOverlay({ isDark, isOled, isCosmic, isSunny, onClose }: {
           scrollbarWidth: 'thin',
           scrollbarColor: isDark ? 'rgba(155,150,137,0.2) transparent' : 'rgba(0,0,0,0.1) transparent',
         }}>
-          {filtered.map((chat, idx) => {
+          {filtered.map((chat) => {
             const isHovered = hoveredId === chat.id;
             const timeStr = formatRelativeTime(parseTimestamp(chat.updatedAt));
 
             return (
-              <motion.button
+              <button
                 key={chat.id}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{
-                  duration: 0.25,
-                  ease: [0.2, 0, 0, 1],
-                  delay: Math.min(idx * 0.02, 0.2),
-                }}
+                className="animate-spring-up"
                 onClick={(e) => {
                   e.stopPropagation();
                   onClose();
                   navigate(`/chat/${chat.id}`);
                 }}
                 onMouseEnter={() => setHoveredId(chat.id)}
-                onMouseLeave={() => setHoveredId(null)}
-                whileTap={{ scale: 0.98 }}
+                onMouseLeave={(e) => { setHoveredId(null); e.currentTarget.style.transform = 'scale(1)'; }}
+                onPointerDown={(e) => { e.currentTarget.style.transform = 'scale(0.98)'; }}
+                onPointerUp={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -665,7 +667,33 @@ export function ChatsOverlay({ isDark, isOled, isCosmic, isSunny, onClose }: {
                     {timeStr}
                   </div>
                 </div>
-              </motion.button>
+                {isHovered && (
+                  <button
+                    className="animate-fade-in"
+                    onPointerDown={(e) => { e.currentTarget.style.transform = 'scale(0.85)'; }}
+                    onPointerUp={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+                    onPointerLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      const { commands } = await import('@/lib/bindings');
+                      const res = await commands.deleteChat(chat.id);
+                      if (res.status === 'ok') {
+                        setChats((prev) => prev.filter((c) => c.id !== chat.id));
+                      }
+                    }}
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      width: '1.375rem', height: '1.375rem', borderRadius: '50%',
+                      border: 'none', cursor: 'pointer', flexShrink: 0,
+                      background: isDark ? 'rgba(255,69,58,0.1)' : 'rgba(255,69,58,0.08)',
+                      color: '#FF453A',
+                    }}
+                    title="Delete chat"
+                  >
+                    <Trash2Icon style={{ height: '0.625rem', width: '0.625rem' }} />
+                  </button>
+                )}
+              </button>
             );
           })}
           {filtered.length === 0 && !fetchError && (
@@ -689,7 +717,7 @@ export function ChatsOverlay({ isDark, isOled, isCosmic, isSunny, onClose }: {
             </div>
           )}
         </div>
-      </motion.div>
+      </div>
     </>
   );
 }

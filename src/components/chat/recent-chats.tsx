@@ -1,11 +1,6 @@
 import { useState, useEffect, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import { MessageSquareIcon, ClockIcon, ArrowRightIcon } from 'lucide-react';
-
-import { spring } from '@/lib/motion/motion-config';
-
-const ENTER_SPRING = spring.standard;
 
 export interface ChatEntry {
   id: string;
@@ -79,10 +74,8 @@ function RecentChatsBase({ isDark, isOled: _isOled, onShowAll }: RecentChatsProp
   const hasMore = allChats.length > 4;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ ...ENTER_SPRING, delay: 0.28 }}
+    <div
+      className="animate-spring-up"
       style={{
         width: '100%',
         maxWidth: '36rem',
@@ -124,9 +117,8 @@ function RecentChatsBase({ isDark, isOled: _isOled, onShowAll }: RecentChatsProp
 
         {/* "All Chats" pill button — only when overflow */}
         {hasMore && onShowAll && (
-          <motion.button
+          <button
             onClick={() => onShowAll(allChats)}
-            whileTap={{ scale: 0.97 }}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -141,12 +133,15 @@ function RecentChatsBase({ isDark, isOled: _isOled, onShowAll }: RecentChatsProp
               color: isDark ? 'rgba(155,150,137,0.7)' : 'rgba(0,0,0,0.4)',
               fontFamily: 'var(--font-sans)',
               letterSpacing: '0.02em',
-              transition: 'color 0.15s, background 0.15s',
+              transition: 'transform 0.15s, color 0.15s, background 0.15s',
             }}
+            onPointerDown={(e) => { e.currentTarget.style.transform = 'scale(0.97)'; }}
+            onPointerUp={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+            onPointerLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
           >
             All Chats
             <ArrowRightIcon style={{ height: '0.5625rem', width: '0.5625rem' }} />
-          </motion.button>
+          </button>
         )}
       </div>
 
@@ -158,17 +153,15 @@ function RecentChatsBase({ isDark, isOled: _isOled, onShowAll }: RecentChatsProp
           gap: '0.375rem',
         }}
       >
-        {displayChats.map((chat, idx) => {
+        {displayChats.map((chat) => {
           const isHovered = hoveredId === chat.id;
           const updatedDate = parseTimestamp(chat.updatedAt);
           const timeStr = formatRelativeTime(updatedDate);
 
           return (
-            <motion.button
+            <button
               key={chat.id}
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ ...ENTER_SPRING, delay: 0.3 + idx * 0.04 }}
+              className="animate-spring-up"
               onClick={() => navigate(`/chat/${chat.id}`)}
               onMouseEnter={() => setHoveredId(chat.id)}
               onMouseLeave={() => setHoveredId(null)}
@@ -230,11 +223,11 @@ function RecentChatsBase({ isDark, isOled: _isOled, onShowAll }: RecentChatsProp
                   {timeStr}
                 </div>
               </div>
-            </motion.button>
+            </button>
           );
         })}
       </div>
-    </motion.div>
+    </div>
   );
 }
 

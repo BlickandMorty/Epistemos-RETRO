@@ -6,7 +6,6 @@
    ═══════════════════════════════════════════════════════════════════ */
 
 import { useRef, useCallback, useEffect, useState, memo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import {
   ChevronDown,
   Square,
@@ -24,6 +23,7 @@ import type { ApiProvider } from '@/lib/types';
 import type { ChatThread, AssistantMessage } from '@/lib/store/slices/ui';
 import type { ChatEntry } from '@/components/chat/recent-chats';
 import { parseTimestamp, formatRelativeTime } from '@/components/chat/recent-chats';
+import { SoarStoneCard } from '@/components/chat/soar-stone-card';
 
 /* ─── Props ─── */
 
@@ -52,6 +52,8 @@ export interface ChatTabContentProps {
    ═══════════════════════════════════════════════════════════════════ */
 
 export function ChatTabContent({ isDark, glassBorder, textPrimary, textSecondary, btnHover, messages, streamText, isStreaming, thread, sendQuery, abort, saveToNotes, addToast, setThreadProvider, setThreadModel, setThreadLocal, modelReady }: ChatTabContentProps) {
+  const pendingSoarStone = usePFCStore((s) => s.pendingSoarStone);
+  const currentChatId = usePFCStore((s) => s.currentChatId);
   const [inputVal, setInputVal] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const isNearBottom = useRef(true);
@@ -87,8 +89,8 @@ export function ChatTabContent({ isDark, glassBorder, textPrimary, textSecondary
   // Model list for the currently selected provider
   const modelsForProvider = thread?.provider === 'openai' ? OPENAI_MODELS
     : thread?.provider === 'anthropic' ? ANTHROPIC_MODELS
-    : thread?.provider === 'google' ? GOOGLE_MODELS
-    : [];
+      : thread?.provider === 'google' ? GOOGLE_MODELS
+        : [];
 
   // Current model label
   const currentModelLabel = thread?.model
@@ -127,54 +129,50 @@ export function ChatTabContent({ isDark, glassBorder, textPrimary, textSecondary
               {isLocal ? 'Local (Ollama)' : currentProvider?.label || 'Default (Global)'}
               <ChevronDown style={{ width: 10, height: 10 }} />
             </button>
-            <AnimatePresence>
-              {showProviderPicker && (
-                <motion.div
-                  initial={{ opacity: 0, y: -4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -4 }}
-                  style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}
-                >
-                  {API_PROVIDERS.map((p) => (
-                    <button
-                      key={p.value}
-                      onClick={() => {
-                        setThreadProvider(thread.id, p.value);
-                        setShowProviderPicker(false);
-                      }}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: 3,
-                        padding: '2px 6px', borderRadius: 999,
-                        border: `1px solid ${p.color}33`,
-                        background: !isLocal && thread.provider === p.value ? `${p.color}22` : 'transparent',
-                        color: p.color, fontSize: 10, fontWeight: 500, cursor: 'pointer',
-                        fontFamily: 'var(--font-sans)',
-                      }}
-                    >
-                      <span style={{ width: 5, height: 5, borderRadius: '50%', background: p.color }} />
-                      {p.label}
-                    </button>
-                  ))}
+            {showProviderPicker && (
+              <div
+                className="animate-spring-down z-50 origin-top"
+                style={{ display: 'flex', gap: 4, flexWrap: 'wrap', position: 'absolute', top: '100%', left: 0, marginTop: 4 }}
+              >
+                {API_PROVIDERS.map((p) => (
                   <button
+                    key={p.value}
                     onClick={() => {
-                      setThreadLocal(thread.id, !isLocal);
+                      setThreadProvider(thread.id, p.value);
                       setShowProviderPicker(false);
                     }}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 3,
                       padding: '2px 6px', borderRadius: 999,
-                      border: '1px solid #f59e0b33',
-                      background: isLocal ? '#f59e0b22' : 'transparent',
-                      color: '#f59e0b', fontSize: 10, fontWeight: 500, cursor: 'pointer',
+                      border: `1px solid ${p.color}33`,
+                      background: !isLocal && thread.provider === p.value ? `${p.color}22` : 'transparent',
+                      color: p.color, fontSize: 10, fontWeight: 500, cursor: 'pointer',
                       fontFamily: 'var(--font-sans)',
                     }}
                   >
-                    <Server style={{ width: 9, height: 9 }} />
-                    Local
+                    <span style={{ width: 5, height: 5, borderRadius: '50%', background: p.color }} />
+                    {p.label}
                   </button>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                ))}
+                <button
+                  onClick={() => {
+                    setThreadLocal(thread.id, !isLocal);
+                    setShowProviderPicker(false);
+                  }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 3,
+                    padding: '2px 6px', borderRadius: 999,
+                    border: '1px solid #f59e0b33',
+                    background: isLocal ? '#f59e0b22' : 'transparent',
+                    color: '#f59e0b', fontSize: 10, fontWeight: 500, cursor: 'pointer',
+                    fontFamily: 'var(--font-sans)',
+                  }}
+                >
+                  <Server style={{ width: 9, height: 9 }} />
+                  Local
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Row 2: Model selector — only shown when an API provider is selected */}
@@ -196,59 +194,55 @@ export function ChatTabContent({ isDark, glassBorder, textPrimary, textSecondary
                 {currentModelLabel || 'Default'}
                 <ChevronDown style={{ width: 10, height: 10, transform: showModelPicker ? 'rotate(180deg)' : undefined, transition: 'transform 0.15s' }} />
               </button>
-              <AnimatePresence>
-                {showModelPicker && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -4 }}
-                    style={{
-                      position: 'absolute', top: '100%', left: 8, right: 8,
-                      zIndex: 50, padding: '4px 0',
-                      borderRadius: 8,
-                      border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
-                      background: isDark ? 'rgba(20,18,16,0.97)' : 'rgba(255,255,255,0.97)',
-                      backdropFilter: 'blur(12px)',
-                      boxShadow: isDark ? '0 8px 24px rgba(0,0,0,0.5)' : '0 8px 24px rgba(0,0,0,0.12)',
-                      maxHeight: 200, overflowY: 'auto',
-                    }}
-                  >
-                    {modelsForProvider.map((m) => {
-                      const isActive = thread.model === m.value;
-                      return (
-                        <button
-                          key={m.value}
-                          onClick={() => {
-                            setThreadModel(thread.id, m.value);
-                            setShowModelPicker(false);
-                          }}
-                          style={{
-                            display: 'flex', alignItems: 'center', gap: 6,
-                            width: '100%', padding: '5px 10px',
-                            border: 'none', cursor: 'pointer',
-                            background: isActive
-                              ? (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)')
-                              : 'transparent',
-                            color: isActive ? (currentProvider?.color ?? textPrimary) : textPrimary,
-                            fontSize: 11, fontWeight: isActive ? 600 : 400,
-                            fontFamily: 'var(--font-sans)',
-                            textAlign: 'left',
-                          }}
-                          onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)'; }}
-                          onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
-                        >
-                          <span style={{
-                            width: 5, height: 5, borderRadius: '50%',
-                            background: isActive ? (currentProvider?.color ?? '#888') : (isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)'),
-                            flexShrink: 0,
-                          }} />
-                          {m.label}
-                        </button>
-                      );
-                    })}
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              {showModelPicker && (
+                <div
+                  className="animate-spring-down z-50 origin-top"
+                  style={{
+                    position: 'absolute', top: '100%', left: 8, right: 8,
+                    zIndex: 50, padding: '4px 0',
+                    borderRadius: 8,
+                    border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+                    background: isDark ? 'rgba(20,18,16,0.97)' : 'rgba(255,255,255,0.97)',
+                    backdropFilter: 'blur(12px)',
+                    boxShadow: isDark ? '0 8px 24px rgba(0,0,0,0.5)' : '0 8px 24px rgba(0,0,0,0.12)',
+                    maxHeight: 200, overflowY: 'auto',
+                  }}
+                >
+                  {modelsForProvider.map((m) => {
+                    const isActive = thread.model === m.value;
+                    return (
+                      <button
+                        key={m.value}
+                        onClick={() => {
+                          setThreadModel(thread.id, m.value);
+                          setShowModelPicker(false);
+                        }}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 6,
+                          width: '100%', padding: '5px 10px',
+                          border: 'none', cursor: 'pointer',
+                          background: isActive
+                            ? (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)')
+                            : 'transparent',
+                          color: isActive ? (currentProvider?.color ?? textPrimary) : textPrimary,
+                          fontSize: 11, fontWeight: isActive ? 600 : 400,
+                          fontFamily: 'var(--font-sans)',
+                          textAlign: 'left',
+                        }}
+                        onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)'; }}
+                        onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
+                      >
+                        <span style={{
+                          width: 5, height: 5, borderRadius: '50%',
+                          background: isActive ? (currentProvider?.color ?? '#888') : (isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)'),
+                          flexShrink: 0,
+                        }} />
+                        {m.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -287,6 +281,16 @@ export function ChatTabContent({ isDark, glassBorder, textPrimary, textSecondary
           </div>
         )}
       </div>
+
+      {/* SOAR teaching stone card — shown above input when knowledge edge detected */}
+      {pendingSoarStone && (
+        <SoarStoneCard
+          stone={pendingSoarStone}
+          chatId={thread?.id ?? currentChatId ?? undefined}
+          isDark={isDark}
+          glassBorder={glassBorder}
+        />
+      )}
 
       {/* Input area (Material You tonal surface) */}
       <div style={{
@@ -357,7 +361,7 @@ function EmptyStateWithRecent({ textPrimary, textSecondary, btnHover }: {
       commands.listChats()
     ).then((result) => {
       if (!cancelled && result.status === 'ok') setRecentChats((result.data as any[]).slice(0, 5));
-    }).catch(() => {});
+    }).catch(() => { });
     return () => { cancelled = true; };
   }, []);
 

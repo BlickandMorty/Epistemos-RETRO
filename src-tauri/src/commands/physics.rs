@@ -45,11 +45,12 @@ pub async fn start_physics(app: AppHandle, state: State<'_, AppState>) -> Result
     let physics = state.physics.clone();
     let running = state.physics_running.clone();
     let fps_input_buf = state.fps_input_pending.clone();
+    let shutdown = state.shutdown_token.child_token();
 
-    tokio::spawn(async move {
+    state.spawn_tracked("physics_loop", async move {
         let frame_duration = std::time::Duration::from_micros(frame_duration_us);
 
-        while running.load(Ordering::Relaxed) {
+        while running.load(Ordering::Relaxed) && !shutdown.is_cancelled() {
             let start = std::time::Instant::now();
 
             // Drain pending FPS input BEFORE acquiring the physics lock.

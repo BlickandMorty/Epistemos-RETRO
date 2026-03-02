@@ -282,6 +282,90 @@ async fn probe_service(client: &reqwest::Client, name: &str, url: &str) -> Local
     }
 }
 
+// ── Embedding Status & Semantic Search ────────────────────────────────
+
+/// Embedding system status returned to the frontend.
+#[derive(Clone, Serialize, specta::Type)]
+pub struct EmbeddingStatus {
+    pub backend: String,
+    pub dimension: usize,
+    pub node_count: usize,
+    pub model_path: Option<String>,
+}
+
+/// Get current embedding system status (backend type, dimension, node count).
+#[tauri::command]
+#[specta::specta]
+pub async fn get_embedding_status(state: State<'_, AppState>) -> Result<EmbeddingStatus, AppError> {
+    let store = state.lock_embeddings()?;
+    // Currently always BagOfWords — ONNX upgrade sets model_path when model files are present.
+    Ok(EmbeddingStatus {
+        backend: "bag-of-words".into(),
+        dimension: store.dim(),
+        node_count: store.len(),
+        model_path: None,
+    })
+}
+
+/// Generate an embedding vector for arbitrary text using the current embedder.
+#[tauri::command]
+#[specta::specta]
+pub async fn embed_text(text: String) -> Result<Vec<f32>, AppError> {
+    use embeddings::onnx::{BagOfWordsEmbedder, Embedder};
+    let embedder = BagOfWordsEmbedder::new();
+    embedder.embed(&text).map_err(|e| AppError::Internal(format!("embed: {e}")))
+}
+
+/// Semantic search result with node metadata.
+#[derive(Clone, Serialize, specta::Type)]
+pub struct SimilarNode {
+    pub node_id: String,
+    pub label: String,
+    pub node_type: storage::types::GraphNodeType,
+    pub similarity: f32,
+}
+
+/// Find the K most semantically similar graph nodes to a text query.
+/// Embeds the query, then searches the EmbeddingStore via cosine similarity.
+/// Lock ordering: graph (2) then embeddings (3).
+#[tauri::command]
+#[specta::specta]
+pub async fn find_similar_nodes(
+    state: State<'_, AppState>,
+    text: String,
+    k: usize,
+) -> Result<Vec<SimilarNode>, AppError> {
+    use embeddings::onnx::{BagOfWordsEmbedder, Embedder};
+    use crate::commands::graph::node_id_to_index;
+    use rustc_hash::FxHashMap;
+
+    let embedder = BagOfWordsEmbedder::new();
+    let query_vec = embedder.embed(&text)
+        .map_err(|e| AppError::Internal(format!("embed: {e}")))?;
+
+    // Lock order: graph (2) then embeddings (3)
+    let graph_store = state.lock_graph()?;
+    let emb_store = state.lock_embeddings()?;
+
+    let hits = emb_store.search(&query_vec, k, 0.05);
+
+    // Build reverse index: u32 → node_id
+    let index_to_node: FxHashMap<u32, &str> = graph_store.nodes.keys()
+        .map(|id| (node_id_to_index(id), id.as_str()))
+        .collect();
+
+    Ok(hits.into_iter().filter_map(|hit| {
+        let node_id = index_to_node.get(&hit.node_index)?;
+        let n = graph_store.nodes.get(*node_id)?;
+        Some(SimilarNode {
+            node_id: n.id.clone(),
+            label: n.label.clone(),
+            node_type: n.node_type,
+            similarity: hit.similarity,
+        })
+    }).collect())
+}
+
 /// Extract model names from service response JSON.
 fn extract_model_names(body: &serde_json::Value, service: &str) -> Vec<String> {
     match service {

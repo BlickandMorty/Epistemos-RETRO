@@ -3,7 +3,6 @@ import { usePFCStore } from '@/lib/store/use-pfc-store';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import type { PipelineControls } from '@/lib/types';
 import {
@@ -255,14 +254,10 @@ export function LiveControls() {
   };
 
   return (
-    <AnimatePresence>
+    <>
       {open && (
-        <motion.div
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: 'auto' }}
-          exit={{ opacity: 0, height: 0 }}
-          transition={{ duration: 0.2, ease: [0.2, 0, 0, 1] }}
-          className="overflow-hidden"
+        <div
+          className="animate-spring-down overflow-hidden"
           style={{ overflow: 'hidden', transform: 'translateZ(0)' }}
         >
           <div className="mx-auto max-w-3xl px-4 pb-3">
@@ -378,8 +373,8 @@ export function LiveControls() {
               </div>
             </div>
           </div>
-        </motion.div>
+        </div>
       )}
-    </AnimatePresence>
+    </>
   );
 }

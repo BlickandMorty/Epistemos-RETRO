@@ -6,14 +6,13 @@ import { useTypewriter } from '@/hooks/use-typewriter';
 import { usePFCStore, type PFCState } from '@/lib/store/use-pfc-store';
 import {
   HomeIcon,
-  BarChart3Icon,
   SettingsIcon,
   PenLineIcon,
   LibraryIcon,
   ServerIcon,
   WifiIcon,
   ActivityIcon,
-  BotIcon,
+  NetworkIcon,
   MessageSquareIcon,
   type LucideIcon,
 } from 'lucide-react';
@@ -42,8 +41,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/chat', label: 'Chat', icon: MessageSquareIcon, group: 'core', activePrefix: '/chat' },
   { href: '/notes', label: 'Notes', icon: PenLineIcon, group: 'core' },
   { href: '/library', label: 'Library', icon: LibraryIcon, group: 'core' },
-  { href: '/analytics', label: 'Analytics', icon: BarChart3Icon, group: 'tools' },
-  { href: '/daemon', label: 'Daemon', icon: BotIcon, group: 'tools' },
+  { href: '/graph', label: 'Graph', icon: NetworkIcon, group: 'tools' },
   { href: '/settings', label: 'Settings', icon: SettingsIcon, group: 'utility' },
 ];
 
@@ -143,14 +141,18 @@ const NavBubble = memo(function NavBubble({
   return (
     <button
       onClick={() => !disabled && onNavigate(item.href)}
-      onMouseEnter={() => {
+      onMouseEnter={(e) => {
         if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
         hoverTimerRef.current = setTimeout(() => setHovered(true), 120);
+        if (!disabled) e.currentTarget.style.transform = 'scale(1.06) translateY(-1px) translateZ(0)';
       }}
-      onMouseLeave={() => {
+      onMouseLeave={(e) => {
         if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
         setHovered(false);
+        e.currentTarget.style.transform = 'scale(1) translateZ(0)';
       }}
+      onMouseDown={(e) => { if (!disabled) e.currentTarget.style.transform = 'scale(0.94) translateZ(0)'; }}
+      onMouseUp={(e) => { if (!disabled) e.currentTarget.style.transform = 'scale(1.06) translateY(-1px) translateZ(0)'; }}
       title={disabled ? `${item.label} — enable ${disabledReason} in Settings` : item.label}
       aria-label={disabled ? `${item.label} — enable ${disabledReason} in Settings` : item.label}
       aria-disabled={disabled}
@@ -172,7 +174,7 @@ const NavBubble = memo(function NavBubble({
         background: bubbleBg(isActive, isDark, disabled, isOled, isSunny, isSunset, isCosmic),
         whiteSpace: 'nowrap',
         overflow: 'hidden',
-        transition: `${T_SIZE}, ${T_COLOR}`,
+        transition: `${T_SIZE}, ${T_COLOR}, transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)`,
         transform: 'translateZ(0)',
       }}
     >

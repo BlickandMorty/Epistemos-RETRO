@@ -15,7 +15,6 @@
 
 import { useRef, useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
 import {
   Maximize2,
   X,
@@ -48,9 +47,7 @@ import { ResearchTabContent } from './mini-chat-research-tab';
 // const DEFAULT_H = 440;
 const MIN_W = 360;
 const MIN_H = 300;
-import { spring as motionSpring } from '@/lib/motion/motion-config';
 
-const SPRING = motionSpring.standard;
 
 /* ─── Inner tab definitions ─── */
 
@@ -229,31 +226,31 @@ export function MiniChat() {
   /* ─── Per-theme style tokens ─── */
   const surfaceBg = isOled ? '#1A1A1A'
     : isCosmic ? '#0F1528'
-    : isSunset ? '#1E1614'
-    : isSunny ? '#E8EEF6'
-    : isDark ? '#1E1B18'
-    : '#FFFFFF';
+      : isSunset ? '#1E1614'
+        : isSunny ? '#E8EEF6'
+          : isDark ? '#1E1B18'
+            : '#FFFFFF';
 
   const headerBg = isOled ? '#111111'
     : isCosmic ? '#0A0F1E'
-    : isSunset ? '#151010'
-    : isSunny ? '#D8E2EE'
-    : isDark ? '#16140F'
-    : '#111111';
+      : isSunset ? '#151010'
+        : isSunny ? '#D8E2EE'
+          : isDark ? '#16140F'
+            : '#111111';
 
   const headerText = isOled ? '#E0E0E0'
     : isCosmic ? '#B8C8DA'
-    : isSunset ? '#D4B8A8'
-    : isSunny ? '#2A3850'
-    : isDark ? '#E6DCD0'
-    : '#FFFFFF';
+      : isSunset ? '#D4B8A8'
+        : isSunny ? '#2A3850'
+          : isDark ? '#E6DCD0'
+            : '#FFFFFF';
 
   const glassBorder = isOled ? 'rgba(50,50,50,0.4)'
     : isCosmic ? 'rgba(40,55,80,0.35)'
-    : isSunset ? 'rgba(80,50,40,0.3)'
-    : isSunny ? 'rgba(0,0,0,0.06)'
-    : isDark ? 'rgba(60,52,42,0.3)'
-    : 'rgba(0,0,0,0.06)';
+      : isSunset ? 'rgba(80,50,40,0.3)'
+        : isSunny ? 'rgba(0,0,0,0.06)'
+          : isDark ? 'rgba(60,52,42,0.3)'
+            : 'rgba(0,0,0,0.06)';
 
   const textPrimary = isDark ? '#E6E1E5' : isSunny ? '#1A2840' : '#1C1B1F';
   const textSecondary = isDark ? '#CAC4D0' : isSunny ? '#4A5A6E' : '#49454F';
@@ -261,14 +258,11 @@ export function MiniChat() {
   const tabActiveBg = isDark ? 'rgba(var(--pfc-accent-rgb), 0.16)' : 'rgba(var(--pfc-accent-rgb), 0.12)';
 
   return (
-    <AnimatePresence>
+    <>
       {visible && (
-        <motion.div
+        <div
           key="mini-chat"
-          initial={{ opacity: 0, scale: 0.85, y: 30 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.85, y: 30 }}
-          transition={SPRING}
+          className="animate-spring-up"
           style={{
             position: 'fixed',
             left: miniPos.x,
@@ -311,7 +305,7 @@ export function MiniChat() {
               <img src="/pixel-robot.gif" alt="Izmi" style={{ width: 22, height: 22, imageRendering: 'pixelated' }} />
             ) : (
               <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: '50%', background: 'rgba(255,255,255,0.15)', color: '#FFFFFF' }}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4" /><path d="M20 21a8 8 0 0 0-16 0" /></svg>
               </span>
             )}
             <span style={{
@@ -555,8 +549,10 @@ export function MiniChat() {
                 style={{ position: 'absolute', left: 0, bottom: 0, width: 14, height: 14, cursor: 'nesw-resize', touchAction: 'none' }} />
               {/* SE corner — visible grip */}
               <div onPointerDown={(e) => onResizeDown(e, 'se')} onPointerMove={onResizeMove} onPointerUp={onResizeUp}
-                style={{ position: 'absolute', right: 2, bottom: 2, width: 14, height: 14, cursor: 'nwse-resize', touchAction: 'none',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                style={{
+                  position: 'absolute', right: 2, bottom: 2, width: 14, height: 14, cursor: 'nwse-resize', touchAction: 'none',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
                 <svg width="8" height="8" viewBox="0 0 8 8" style={{ opacity: 0.2 }}>
                   <circle cx="6" cy="6" r="1" fill={textSecondary} />
                   <circle cx="3" cy="6" r="1" fill={textSecondary} />
@@ -565,9 +561,9 @@ export function MiniChat() {
               </div>
             </>
           )}
-        </motion.div>
+        </div>
       )}
-    </AnimatePresence>
+    </>
   );
 }
 

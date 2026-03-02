@@ -116,7 +116,7 @@ impl SearchIndex {
         }
 
         // Phase 2: Linear scan with 5-tier scoring.
-        let mut scored: Vec<(usize, f32)> = Vec::new();
+        let mut scored: Vec<(usize, f32)> = Vec::with_capacity(limit.min(self.entries.len()));
 
         for (i, entry) in self.entries.iter().enumerate() {
             let mut score = score_match(&entry.label_lower, &query_lower);
@@ -256,7 +256,7 @@ mod tests {
 
     #[test]
     fn empty_query_returns_nothing() {
-        let nodes = vec![make_node("a", "Hello", GraphNodeType::Note)];
+        let nodes = [make_node("a", "Hello", GraphNodeType::Note)];
         let mut idx = SearchIndex::new();
         idx.build(nodes.iter());
         assert!(idx.search("", 10).is_empty());
@@ -264,10 +264,8 @@ mod tests {
 
     #[test]
     fn exact_match_scores_highest() {
-        let nodes = vec![
-            make_node("a", "Machine Learning", GraphNodeType::Note),
-            make_node("b", "Deep Learning", GraphNodeType::Note),
-        ];
+        let nodes = [make_node("a", "Machine Learning", GraphNodeType::Note),
+            make_node("b", "Deep Learning", GraphNodeType::Note)];
         let mut idx = SearchIndex::new();
         idx.build(nodes.iter());
         let results = idx.search("machine learning", 10);
@@ -278,10 +276,8 @@ mod tests {
 
     #[test]
     fn prefix_match_works() {
-        let nodes = vec![
-            make_node("a", "Quantum Computing", GraphNodeType::Idea),
-            make_node("b", "Classical Music", GraphNodeType::Note),
-        ];
+        let nodes = [make_node("a", "Quantum Computing", GraphNodeType::Idea),
+            make_node("b", "Classical Music", GraphNodeType::Note)];
         let mut idx = SearchIndex::new();
         idx.build(nodes.iter());
         let results = idx.search("quant", 10);
@@ -292,7 +288,7 @@ mod tests {
 
     #[test]
     fn substring_match_works() {
-        let nodes = vec![make_node("a", "Deep Reinforcement Learning", GraphNodeType::Note)];
+        let nodes = [make_node("a", "Deep Reinforcement Learning", GraphNodeType::Note)];
         let mut idx = SearchIndex::new();
         idx.build(nodes.iter());
         let results = idx.search("reinforcement", 10);
@@ -302,7 +298,7 @@ mod tests {
 
     #[test]
     fn fuzzy_subsequence_match_works() {
-        let nodes = vec![make_node("a", "Machine Learning", GraphNodeType::Note)];
+        let nodes = [make_node("a", "Machine Learning", GraphNodeType::Note)];
         let mut idx = SearchIndex::new();
         idx.build(nodes.iter());
         let results = idx.search("mchn", 10);
@@ -314,7 +310,7 @@ mod tests {
     fn invisible_nodes_excluded() {
         let mut node = make_node("a", "Hidden Note", GraphNodeType::Note);
         node.is_visible = false;
-        let nodes = vec![node];
+        let nodes = [node];
         let mut idx = SearchIndex::new();
         idx.build(nodes.iter());
         assert!(idx.search("hidden", 10).is_empty());
@@ -333,10 +329,8 @@ mod tests {
 
     #[test]
     fn word_start_match_scores_correctly() {
-        let nodes = vec![
-            make_node("a", "machine learning", GraphNodeType::Idea),
-            make_node("b", "music library", GraphNodeType::Note),
-        ];
+        let nodes = [make_node("a", "machine learning", GraphNodeType::Idea),
+            make_node("b", "music library", GraphNodeType::Note)];
         let mut idx = SearchIndex::new();
         idx.build(nodes.iter());
         let results = idx.search("ml", 10);
@@ -347,12 +341,10 @@ mod tests {
 
     #[test]
     fn score_ordering_correct() {
-        let nodes = vec![
-            make_node("exact", "rust", GraphNodeType::Note),
+        let nodes = [make_node("exact", "rust", GraphNodeType::Note),
             make_node("prefix", "rust programming", GraphNodeType::Note),
             make_node("contains", "why rust matters", GraphNodeType::Note),
-            make_node("subseq", "xrxuxsxt", GraphNodeType::Note),
-        ];
+            make_node("subseq", "xrxuxsxt", GraphNodeType::Note)];
         let mut idx = SearchIndex::new();
         idx.build(nodes.iter());
         let results = idx.search("rust", 10);
@@ -365,11 +357,9 @@ mod tests {
 
     #[test]
     fn fst_levenshtein_matches_typos() {
-        let nodes = vec![
-            make_node("a", "Quantum Computing", GraphNodeType::Note),
+        let nodes = [make_node("a", "Quantum Computing", GraphNodeType::Note),
             make_node("b", "Machine Learning", GraphNodeType::Note),
-            make_node("c", "Neural Networks", GraphNodeType::Note),
-        ];
+            make_node("c", "Neural Networks", GraphNodeType::Note)];
         let mut idx = SearchIndex::new();
         idx.build(nodes.iter());
         // "quantm" is edit distance 1 from "quantum" — FST should catch it
@@ -383,7 +373,7 @@ mod tests {
 
     #[test]
     fn fst_levenshtein_edit_distance_2() {
-        let nodes = vec![make_node(
+        let nodes = [make_node(
             "a",
             "reinforcement learning",
             GraphNodeType::Note,
@@ -404,10 +394,8 @@ mod tests {
         assert!(idx.is_empty());
         assert_eq!(idx.len(), 0);
 
-        let nodes = vec![
-            make_node("a", "First", GraphNodeType::Note),
-            make_node("b", "Second", GraphNodeType::Note),
-        ];
+        let nodes = [make_node("a", "First", GraphNodeType::Note),
+            make_node("b", "Second", GraphNodeType::Note)];
         idx.build(nodes.iter());
         assert!(!idx.is_empty());
         assert_eq!(idx.len(), 2);

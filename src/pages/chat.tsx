@@ -21,6 +21,11 @@ export default function ChatPage() {
           role: m.role as 'user' | 'system',
           text: m.content,
           timestamp: new Date(m.created_at).getTime(),
+          confidence: m.confidence_score ?? undefined,
+          evidenceGrade: (m.evidence_grade ?? undefined) as 'A' | 'B' | 'C' | 'D' | 'F' | undefined,
+          mode: (m.inference_mode ?? undefined) as 'research' | 'moderate' | 'creative' | undefined,
+          dualMessage: m.dual_message_data ? JSON.parse(m.dual_message_data) : undefined,
+          truthAssessment: m.truth_assessment_data ? JSON.parse(m.truth_assessment_data) : undefined,
         })));
       }
     }).catch(() => {

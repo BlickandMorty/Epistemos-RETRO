@@ -1,5 +1,4 @@
 import { memo, useMemo, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import { useIsDark } from '@/hooks/use-is-dark';
 import { usePFCStore } from '@/lib/store/use-pfc-store';
 import type { Concept, NotePage } from '@/lib/notes/types';
@@ -14,9 +13,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 
-import { ease } from '@/lib/motion/motion-config';
 
-const CUPERTINO = ease.cupertino;
 
 const TYPE_ICONS: Record<string, LucideIcon> = {
   'shared-concept': LinkIcon,
@@ -80,10 +77,8 @@ export const ConceptCorrelationPanel = memo(function ConceptCorrelationPanel({
   const accent = 'var(--pfc-accent)';
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
+    <div
+      className="animate-fade-in"
       style={{
         position: 'fixed',
         inset: 0,
@@ -95,13 +90,9 @@ export const ConceptCorrelationPanel = memo(function ConceptCorrelationPanel({
         backdropFilter: 'blur(8px)',
         WebkitBackdropFilter: 'blur(8px)',
       }}
-      onClick={onClose}
     >
-      <motion.div
-        initial={{ opacity: 0, scale: 0.92, y: 16 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.92, y: 16 }}
-        transition={{ duration: 0.35, ease: CUPERTINO }}
+      <div
+        className="animate-spring-up"
         onClick={(e) => e.stopPropagation()}
         style={{
           width: '100%',
@@ -218,10 +209,9 @@ export const ConceptCorrelationPanel = memo(function ConceptCorrelationPanel({
                 const typeColor = TYPE_COLORS[corr.correlationType] ?? accent;
 
                 return (
-                  <motion.div
+                  <div
                     key={corr.id}
-                    initial={{ opacity: 0, x: -4 }}
-                    animate={{ opacity: 1, x: 0 }}
+                    className="animate-spring-up"
                     style={{
                       display: 'flex',
                       alignItems: 'flex-start',
@@ -290,13 +280,13 @@ export const ConceptCorrelationPanel = memo(function ConceptCorrelationPanel({
                         </span>
                       </div>
                     </div>
-                  </motion.div>
+                  </div>
                 );
               })}
             </div>
           )}
         </div>
-      </motion.div>
-    </motion.div>
+      </div>
+    </div>
   );
 });

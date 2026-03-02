@@ -34,11 +34,11 @@ pub fn parse_mentions(query: &str) -> (Vec<Mention>, String) {
     for cap in matches.iter().rev() {
         let full_match = cap.get(0).expect("full match");
         let title = cap.get(1).expect("title group").as_str().to_string();
-        mentions.push(Mention {
-            title: title.clone(),
-            range: full_match.start()..full_match.end(),
-        });
         cleaned.replace_range(full_match.start()..full_match.end(), &title);
+        mentions.push(Mention {
+            range: full_match.start()..full_match.end(),
+            title,
+        });
     }
 
     mentions.reverse(); // Restore original order
@@ -478,7 +478,7 @@ mod tests {
             title: "Same Note".into(),
             body: "Same body".into(),
         };
-        let ctx = build_notes_context(None, &[note.clone()], &[note]).unwrap();
+        let ctx = build_notes_context(None, std::slice::from_ref(&note), std::slice::from_ref(&note)).unwrap();
         // "Same Note" should appear only once (as mentioned, not as previously loaded)
         let count = ctx.matches("Same Note").count();
         assert_eq!(count, 1, "duplicate note should be deduplicated");

@@ -2,6 +2,7 @@ import { memo, useState, useCallback, useMemo, useEffect, useRef, lazy, Suspense
 import { useIsDark } from '@/hooks/use-is-dark';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePFCStore } from '@/lib/store/use-pfc-store';
+import { commands } from '@/lib/bindings';
 import type { NotePage, NoteBook } from '@/lib/notes/types';
 import {
   FileTextIcon,
@@ -148,7 +149,6 @@ export const NotesSidebar = memo(function NotesSidebar() {
   const renamePage         = usePFCStore((s) => s.renamePage);
   const togglePageFavorite = usePFCStore((s) => s.togglePageFavorite);
   const togglePagePin      = usePFCStore((s) => s.togglePagePin);
-  const searchNotes        = usePFCStore((s) => s.searchNotes);
   const getOrCreateTodayJournal = usePFCStore((s) => s.getOrCreateTodayJournal);
   const createNoteBook     = usePFCStore((s) => s.createNoteBook);
   const movePageToBook     = usePFCStore((s) => s.movePageToBook);
@@ -162,11 +162,42 @@ export const NotesSidebar = memo(function NotesSidebar() {
   const [renameValue, setRenameValue] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
 
-  // Search
-  const searchResults = useMemo(
-    () => (searchQuery.trim() ? searchNotes(searchQuery) : []),
-    [searchQuery, searchNotes],
-  );
+  // Search — debounced FTS5 backend search via Tauri
+  const [searchResults, setSearchResults] = useState<Array<{
+    type: 'page' | 'block';
+    pageId: string;
+    blockId?: string;
+    title: string;
+    snippet: string;
+    score: number;
+  }>>([]);
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const q = searchQuery.trim();
+    if (!q) {
+      setSearchResults([]);
+      return;
+    }
+    // Debounce 300ms before hitting the backend
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(async () => {
+      const res = await commands.searchHybrid(q, 20);
+      if (res.status === 'ok') {
+        setSearchResults(res.data.map((r) => ({
+          type: 'page' as const,
+          pageId: r.page_id,
+          title: r.title,
+          snippet: r.snippet ?? '',
+          score: r.score,
+        })));
+      }
+    }, 300);
+    return () => {
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    };
+  }, [searchQuery]);
+
   const isSearching = searchQuery.trim().length > 0;
 
   // Derived data

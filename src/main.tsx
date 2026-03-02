@@ -5,6 +5,7 @@ import { ThemeProvider } from '@/components/theme-provider';
 import { THEME_LIST } from '@/hooks/use-theme';
 import { AppShell } from '@/components/layout/app-shell';
 import { setupTauriListeners } from '@/lib/tauri-bridge';
+import { initWasm } from '@/lib/wasm-loader';
 import '@/styles/globals.css';
 
 // ── Lazy page components — code-split per route ──
@@ -12,14 +13,16 @@ const LandingPage = lazy(() => import('@/pages/landing'));
 const ChatPage = lazy(() => import('@/pages/chat'));
 const NotesPage = lazy(() => import('@/pages/notes'));
 const LibraryPage = lazy(() => import('@/pages/library'));
-const AnalyticsPage = lazy(() => import('@/pages/analytics'));
-const DaemonPage = lazy(() => import('@/pages/daemon'));
+const GraphPage = lazy(() => import('@/pages/graph'));
 const SettingsPage = lazy(() => import('@/pages/settings'));
 
 function App() {
   useEffect(() => {
     let cleanup: (() => void) | undefined;
     let cancelled = false;
+
+    // Load custom Rust UI physics WASM solver
+    initWasm().catch(console.error);
 
     setupTauriListeners().then((unlisten) => {
       if (cancelled) {
@@ -43,8 +46,7 @@ function App() {
           <Route path="/chat/:chatId" element={<ChatPage />} />
           <Route path="/notes" element={<NotesPage />} />
           <Route path="/library" element={<LibraryPage />} />
-          <Route path="/analytics" element={<AnalyticsPage />} />
-          <Route path="/daemon" element={<DaemonPage />} />
+          <Route path="/graph" element={<GraphPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Routes>
       </Suspense>

@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeftIcon } from 'lucide-react';
 import { useIsDark } from '@/hooks/use-is-dark';
 import { useTypewriter } from '@/hooks/use-typewriter';
-import { motion } from 'framer-motion';
 
 /* ═══════════════════════════════════════════════════════════
    PageShell — full-bleed immersive page wrapper
@@ -14,7 +13,7 @@ import { motion } from 'framer-motion';
    ═══════════════════════════════════════════════════════════ */
 
 /** Pages reachable from the main nav — no back button needed */
-const MAIN_NAV_PATHS = ['/', '/notes', '/library', '/analytics', '/daemon', '/settings'];
+const MAIN_NAV_PATHS = ['/', '/notes', '/library', '/graph', '/settings'];
 
 interface PageShellProps {
   icon: LucideIcon;
@@ -29,24 +28,6 @@ interface PageShellProps {
   backHref?: string;
 }
 
-import { M3_EASE } from '@/lib/motion/motion-config';
-
-const headerVariants = {
-  hidden: { opacity: 0, y: 8, scale: 0.99 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    scale: 1,
-    transition: { duration: 0.3, ease: M3_EASE },
-  },
-};
-
-const contentVariants = {
-  hidden: {},
-  visible: {
-    transition: { staggerChildren: 0.04, delayChildren: 0.08 },
-  },
-};
 
 export function PageShell({
   icon: Icon,
@@ -60,8 +41,7 @@ export function PageShell({
   const { isDark, isOled } = useIsDark();
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  // Auto-detect embedded mode when rendered inside the analytics hub
-  const isEmbedded = embedded || pathname === '/analytics';
+  const isEmbedded = embedded ?? false;
   // Always show header — in embedded mode it's compact
   const showHeader = true;
   // Show back button on sub-pages (not in main nav) unless embedded
@@ -101,10 +81,8 @@ export function PageShell({
         } as React.CSSProperties}
       >
         {/* ── Page header (hidden when embedded in analytics hub) ── */}
-        <motion.div
-          variants={headerVariants}
-          initial="hidden"
-          animate="visible"
+        <div
+          className="animate-spring-up"
           style={{ marginBottom: isEmbedded ? '1rem' : '3rem', transform: 'translateZ(0)' }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: isEmbedded ? '0.75rem' : '1.25rem', marginBottom: '0.25rem' }}>
@@ -199,17 +177,15 @@ export function PageShell({
               )}
             </div>
           </div>
-        </motion.div>
+        </div>
 
         {/* ── Content flow ── */}
-        <motion.div
-          variants={contentVariants}
-          initial="hidden"
-          animate="visible"
+        <div
+          className="animate-fade-in"
           style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem', transform: 'translateZ(0)' }}
         >
           {children}
-        </motion.div>
+        </div>
       </div>
     </div>
   );
@@ -229,22 +205,13 @@ interface SectionProps {
   className?: string;
 }
 
-const sectionVariants = {
-  hidden: { opacity: 0, y: 6 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.3, ease: M3_EASE },
-  },
-};
 
 export function Section({ title, badge, children, className }: SectionProps) {
   const { isDark, isOled } = useIsDark();
 
   return (
-    <motion.div
-      variants={sectionVariants}
-      className={className}
+    <div
+      className={className ? `animate-spring-up ${className}` : "animate-spring-up"}
       style={{
         transform: 'translateZ(0)',
         contain: 'layout style',
@@ -284,7 +251,7 @@ export function Section({ title, badge, children, className }: SectionProps) {
         </div>
       )}
       {children}
-    </motion.div>
+    </div>
   );
 }
 

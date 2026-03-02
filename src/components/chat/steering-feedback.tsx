@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { ThumbsUpIcon, ThumbsDownIcon } from 'lucide-react';
 import { useSteeringStore } from '@/lib/store/use-steering-store';
 import { cn } from '@/lib/utils';
-import { motion, AnimatePresence } from 'framer-motion';
 
 interface SteeringFeedbackProps {
   synthesisKeyId: string | null;
@@ -52,18 +51,13 @@ export function SteeringFeedback({ synthesisKeyId }: SteeringFeedbackProps) {
       >
         <ThumbsDownIcon className="h-3 w-3" />
       </button>
-      <AnimatePresence>
-        {rating !== null && (
-          <motion.span
-            initial={{ opacity: 0, x: -4 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -4 }}
-            className="text-[10px] text-muted-foreground/50 ml-0.5"
-          >
-            {rating === 1 ? 'Steering reinforced' : 'Steering adjusted'}
-          </motion.span>
-        )}
-      </AnimatePresence>
+      {rating !== null && (
+        <span
+          className="animate-fade-in text-[10px] text-muted-foreground/50 ml-0.5"
+        >
+          {rating === 1 ? 'Steering reinforced' : 'Steering adjusted'}
+        </span>
+      )}
     </div>
   );
 }

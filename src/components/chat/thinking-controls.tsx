@@ -1,5 +1,4 @@
 import { memo, useCallback, useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { usePFCStore } from '@/lib/store/use-pfc-store';
 import {
   SquareIcon,
@@ -126,10 +125,8 @@ export const ThinkingControls = memo(function ThinkingControls({ isDark, onStop,
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: 8 }}
+    <div
+      className="animate-spring-up"
       style={{
         display: 'flex',
         alignItems: 'center',
@@ -168,10 +165,8 @@ export const ThinkingControls = memo(function ThinkingControls({ isDark, onStop,
 
       {/* Active reroute indicator */}
       {activeReroute && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0 }}
+        <div
+          className="animate-fade-in"
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -188,7 +183,7 @@ export const ThinkingControls = memo(function ThinkingControls({ isDark, onStop,
         >
           <RouteIcon style={{ height: '0.5rem', width: '0.5rem' }} />
           Redirecting
-        </motion.div>
+        </div>
       )}
 
       {/* Divider */}
@@ -202,19 +197,23 @@ export const ThinkingControls = memo(function ThinkingControls({ isDark, onStop,
       />
 
       {/* Stop — actually aborts the stream */}
-      <motion.button
-        whileTap={{ scale: 0.92 }}
+      <button
+        onPointerDown={(e) => { e.currentTarget.style.transform = 'scale(0.92)'; }}
+        onPointerUp={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+        onPointerLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
         onClick={handleStop}
         style={{ ...btnBase, color: 'var(--color-pfc-red)' }}
         title="Stop thinking"
       >
         <SquareIcon style={{ height: '0.75rem', width: '0.75rem' }} />
-      </motion.button>
+      </button>
 
       {/* Pause/Resume — local mode only, buffers stream events */}
       {features.playPause && (
-        <motion.button
-          whileTap={{ scale: 0.92 }}
+        <button
+          onPointerDown={(e) => { e.currentTarget.style.transform = 'scale(0.92)'; }}
+          onPointerUp={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+          onPointerLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
           onClick={handlePauseResume}
           style={{
             ...btnBase,
@@ -231,7 +230,7 @@ export const ThinkingControls = memo(function ThinkingControls({ isDark, onStop,
             : <PauseIcon style={{ height: '0.75rem', width: '0.75rem' }} />
           }
           <span>{isThinkingPaused ? 'Resume' : 'Pause'}</span>
-        </motion.button>
+        </button>
       )}
 
       {/* Reroute — available on all modes */}
@@ -246,8 +245,10 @@ export const ThinkingControls = memo(function ThinkingControls({ isDark, onStop,
             }}
           />
           <div style={{ position: 'relative' }}>
-            <motion.button
-              whileTap={{ scale: 0.92 }}
+            <button
+              onPointerDown={(e) => { e.currentTarget.style.transform = 'scale(0.92)'; }}
+              onPointerUp={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+              onPointerLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
               onClick={() => setShowReroute(!showReroute)}
               style={{
                 ...btnBase,
@@ -260,85 +261,81 @@ export const ThinkingControls = memo(function ThinkingControls({ isDark, onStop,
             >
               <RouteIcon style={{ height: '0.75rem', width: '0.75rem' }} />
               <span>Reroute</span>
-            </motion.button>
+            </button>
 
-            <AnimatePresence>
-              {showReroute && (
-                <motion.div
-                  initial={{ opacity: 0, y: 4, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 4, scale: 0.95 }}
+            {showReroute && (
+              <div
+                className="animate-spring-down"
+                style={{
+                  position: 'absolute',
+                  bottom: '100%',
+                  left: '50%',
+                  transform: 'translateX(-50%) translateZ(0)',
+                  marginBottom: '0.5rem',
+                  padding: '0.5rem',
+                  borderRadius: '1rem',
+                  background: isDark ? 'rgba(28,27,25,0.95)' : 'rgba(255,255,255,0.95)',
+                  border: isDark ? '1px solid rgba(79,69,57,0.3)' : '1px solid rgba(0,0,0,0.1)',
+                  backdropFilter: 'blur(12px) saturate(1.3)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.25rem',
+                  minWidth: '12rem',
+                  zIndex: 'var(--z-modal)',
+                }}
+              >
+                <p
                   style={{
-                    position: 'absolute',
-                    bottom: '100%',
-                    left: '50%',
-                    transform: 'translateX(-50%) translateZ(0)',
-                    marginBottom: '0.5rem',
-                    padding: '0.5rem',
-                    borderRadius: '1rem',
-                    background: isDark ? 'rgba(28,27,25,0.95)' : 'rgba(255,255,255,0.95)',
-                    border: isDark ? '1px solid rgba(79,69,57,0.3)' : '1px solid rgba(0,0,0,0.1)',
-                    backdropFilter: 'blur(12px) saturate(1.3)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '0.25rem',
-                    minWidth: '12rem',
-                    zIndex: 'var(--z-modal)',
+                    fontSize: '0.5625rem',
+                    fontWeight: 600,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    color: isDark ? 'rgba(156,143,128,0.5)' : 'rgba(0,0,0,0.3)',
+                    padding: '0.25rem 0.375rem',
                   }}
                 >
-                  <p
-                    style={{
-                      fontSize: '0.5625rem',
-                      fontWeight: 600,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.05em',
-                      color: isDark ? 'rgba(156,143,128,0.5)' : 'rgba(0,0,0,0.3)',
-                      padding: '0.25rem 0.375rem',
-                    }}
-                  >
-                    Redirect Thinking
-                  </p>
-                  {REROUTE_OPTIONS.map((opt) => {
-                    const Icon = opt.icon;
-                    return (
-                      <button
-                        key={opt.type}
-                        onClick={() => handleReroute(opt.type, opt.desc)}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.5rem',
-                          padding: '0.375rem',
-                          borderRadius: '9999px',
-                          border: 'none',
-                          cursor: 'pointer',
-                          background: 'transparent',
-                          color: isDark ? 'rgba(237,224,212,0.8)' : 'rgba(0,0,0,0.6)',
-                          textAlign: 'left',
-                          transition: 'background 0.15s',
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.background = isDark
-                            ? 'rgba(244,189,111,0.06)'
-                            : 'rgba(0,0,0,0.04)';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.background = 'transparent';
-                        }}
-                      >
-                        <Icon style={{ height: '0.875rem', width: '0.875rem', flexShrink: 0, color: 'var(--pfc-accent)' }} />
-                        <div>
-                          <p style={{ fontSize: '0.6875rem', fontWeight: 600 }}>{opt.label}</p>
-                          <p style={{ fontSize: '0.5625rem', color: isDark ? 'rgba(156,143,128,0.5)' : 'rgba(0,0,0,0.35)' }}>
-                            {opt.desc}
-                          </p>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </motion.div>
-              )}
-            </AnimatePresence>
+                  Redirect Thinking
+                </p>
+                {REROUTE_OPTIONS.map((opt) => {
+                  const Icon = opt.icon;
+                  return (
+                    <button
+                      key={opt.type}
+                      onClick={() => handleReroute(opt.type, opt.desc)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        padding: '0.375rem',
+                        borderRadius: '9999px',
+                        border: 'none',
+                        cursor: 'pointer',
+                        background: 'transparent',
+                        color: isDark ? 'rgba(237,224,212,0.8)' : 'rgba(0,0,0,0.6)',
+                        textAlign: 'left',
+                        transition: 'background 0.15s',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = isDark
+                          ? 'rgba(244,189,111,0.06)'
+                          : 'rgba(0,0,0,0.04)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'transparent';
+                      }}
+                    >
+                      <Icon style={{ height: '0.875rem', width: '0.875rem', flexShrink: 0, color: 'var(--pfc-accent)' }} />
+                      <div>
+                        <p style={{ fontSize: '0.6875rem', fontWeight: 600 }}>{opt.label}</p>
+                        <p style={{ fontSize: '0.5625rem', color: isDark ? 'rgba(156,143,128,0.5)' : 'rgba(0,0,0,0.35)' }}>
+                          {opt.desc}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </>
       )}
@@ -355,8 +352,10 @@ export const ThinkingControls = memo(function ThinkingControls({ isDark, onStop,
             }}
           />
           <div style={{ position: 'relative' }}>
-            <motion.button
-              whileTap={{ scale: 0.92 }}
+            <button
+              onPointerDown={(e) => { e.currentTarget.style.transform = 'scale(0.92)'; }}
+              onPointerUp={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+              onPointerLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
               onClick={() => setShowSteer(!showSteer)}
               style={{
                 ...btnBase,
@@ -369,88 +368,84 @@ export const ThinkingControls = memo(function ThinkingControls({ isDark, onStop,
             >
               <ActivityIcon style={{ height: '0.75rem', width: '0.75rem' }} />
               <span>Steer</span>
-            </motion.button>
+            </button>
 
-            <AnimatePresence>
-              {showSteer && (
-                <motion.div
-                  initial={{ opacity: 0, y: 4, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 4, scale: 0.95 }}
+            {showSteer && (
+              <div
+                className="animate-spring-down"
+                style={{
+                  position: 'absolute',
+                  bottom: '100%',
+                  left: '50%',
+                  transform: 'translateX(-50%) translateZ(0)',
+                  marginBottom: '0.5rem',
+                  padding: '0.5rem',
+                  borderRadius: '1rem',
+                  background: isDark ? 'rgba(28,27,25,0.95)' : 'rgba(255,255,255,0.95)',
+                  border: isDark ? '1px solid rgba(79,69,57,0.3)' : '1px solid rgba(0,0,0,0.1)',
+                  backdropFilter: 'blur(12px) saturate(1.3)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.25rem',
+                  minWidth: '13rem',
+                  zIndex: 'var(--z-modal)',
+                }}
+              >
+                <p
                   style={{
-                    position: 'absolute',
-                    bottom: '100%',
-                    left: '50%',
-                    transform: 'translateX(-50%) translateZ(0)',
-                    marginBottom: '0.5rem',
-                    padding: '0.5rem',
-                    borderRadius: '1rem',
-                    background: isDark ? 'rgba(28,27,25,0.95)' : 'rgba(255,255,255,0.95)',
-                    border: isDark ? '1px solid rgba(79,69,57,0.3)' : '1px solid rgba(0,0,0,0.1)',
-                    backdropFilter: 'blur(12px) saturate(1.3)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '0.25rem',
-                    minWidth: '13rem',
-                    zIndex: 'var(--z-modal)',
+                    fontSize: '0.5625rem',
+                    fontWeight: 600,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    color: isDark ? 'rgba(156,143,128,0.5)' : 'rgba(0,0,0,0.3)',
+                    padding: '0.25rem 0.375rem',
                   }}
                 >
-                  <p
-                    style={{
-                      fontSize: '0.5625rem',
-                      fontWeight: 600,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.05em',
-                      color: isDark ? 'rgba(156,143,128,0.5)' : 'rgba(0,0,0,0.3)',
-                      padding: '0.25rem 0.375rem',
-                    }}
-                  >
-                    Suggest Changes
-                  </p>
-                  {STEER_SUGGESTIONS.map((sug) => {
-                    const Icon = sug.icon;
-                    return (
-                      <button
-                        key={sug.label}
-                        onClick={() => handleSteer(sug.hint)}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.5rem',
-                          padding: '0.375rem',
-                          borderRadius: '9999px',
-                          border: 'none',
-                          cursor: 'pointer',
-                          background: 'transparent',
-                          color: isDark ? 'rgba(237,224,212,0.8)' : 'rgba(0,0,0,0.6)',
-                          textAlign: 'left',
-                          transition: 'background 0.15s',
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.background = isDark
-                            ? 'rgba(244,189,111,0.06)'
-                            : 'rgba(0,0,0,0.04)';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.background = 'transparent';
-                        }}
-                      >
-                        <Icon style={{ height: '0.875rem', width: '0.875rem', flexShrink: 0, color: '#22D3EE' }} />
-                        <div>
-                          <p style={{ fontSize: '0.6875rem', fontWeight: 600 }}>{sug.label}</p>
-                          <p style={{ fontSize: '0.5625rem', color: isDark ? 'rgba(156,143,128,0.5)' : 'rgba(0,0,0,0.35)' }}>
-                            {sug.hint}
-                          </p>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </motion.div>
-              )}
-            </AnimatePresence>
+                  Suggest Changes
+                </p>
+                {STEER_SUGGESTIONS.map((sug) => {
+                  const Icon = sug.icon;
+                  return (
+                    <button
+                      key={sug.label}
+                      onClick={() => handleSteer(sug.hint)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        padding: '0.375rem',
+                        borderRadius: '9999px',
+                        border: 'none',
+                        cursor: 'pointer',
+                        background: 'transparent',
+                        color: isDark ? 'rgba(237,224,212,0.8)' : 'rgba(0,0,0,0.6)',
+                        textAlign: 'left',
+                        transition: 'background 0.15s',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = isDark
+                          ? 'rgba(244,189,111,0.06)'
+                          : 'rgba(0,0,0,0.04)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'transparent';
+                      }}
+                    >
+                      <Icon style={{ height: '0.875rem', width: '0.875rem', flexShrink: 0, color: '#22D3EE' }} />
+                      <div>
+                        <p style={{ fontSize: '0.6875rem', fontWeight: 600 }}>{sug.label}</p>
+                        <p style={{ fontSize: '0.5625rem', color: isDark ? 'rgba(156,143,128,0.5)' : 'rgba(0,0,0,0.35)' }}>
+                          {sug.hint}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </>
       )}
-    </motion.div>
+    </div>
   );
 });

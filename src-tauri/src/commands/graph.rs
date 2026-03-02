@@ -112,13 +112,13 @@ pub fn build_provider_from_settings(
         .map_err(|e| AppError::Internal(format!("{e}")))?
         .unwrap_or_default();
 
-    let base_url = config.ollama_base_url.clone();
-    let model = config.model.clone();
+    // Destructure to avoid cloning — each field is moved exactly once
+    let storage::types::InferenceConfig { api_provider, model, ollama_base_url } = config;
 
-    let provider: Arc<dyn llm::LlmProvider> = match config.api_provider.as_str() {
+    let provider: Arc<dyn llm::LlmProvider> = match api_provider.as_str() {
         "openai" => Arc::new(llm::openai::OpenAiProvider::new(api_key, model)),
         "google" => Arc::new(llm::google::GoogleProvider::new(api_key, model)),
-        "ollama" => Arc::new(llm::ollama::OllamaProvider::new(model, base_url)),
+        "ollama" => Arc::new(llm::ollama::OllamaProvider::new(model, ollama_base_url)),
         "kimi" => Arc::new(llm::openai::OpenAiProvider::with_base_url(
             api_key, model,
             "https://api.moonshot.ai/v1/chat/completions".into(),
@@ -126,13 +126,13 @@ pub fn build_provider_from_settings(
         )),
         "foundry" => Arc::new(llm::openai::OpenAiProvider::with_base_url(
             String::new(), model,
-            base_url.unwrap_or_else(|| "http://localhost:5272/v1/chat/completions".into()),
+            ollama_base_url.unwrap_or_else(|| "http://localhost:5272/v1/chat/completions".into()),
             "foundry",
         )),
         _ => Arc::new(llm::anthropic::AnthropicProvider::new(api_key, model)),
     };
 
-    Ok((provider, config.api_provider))
+    Ok((provider, api_provider))
 }
 
 /// Build an LLM provider based on triage routing.
@@ -284,9 +284,9 @@ pub async fn extract_entities(
     let total_note_batches = notes.len().div_ceil(extractor::BATCH_SIZE);
     let total_work = total_note_batches + chat_batches.len();
 
-    // Spawn background task (tokio::spawn, not JS workers)
+    // Spawn background task (spawn_tracked, not JS workers)
     let db_state = state.inner().clone();
-    tokio::spawn(async move {
+    state.spawn_tracked("entity_extraction", async move {
         let mut all_nodes = Vec::new();
         let mut all_edges = Vec::new();
 
@@ -470,25 +470,7 @@ pub async fn get_node_details(
     let node = store.nodes.get(&node_id)
         .ok_or_else(|| AppError::Internal(format!("node not found: {node_id}")))?;
 
-    // Collect neighbors with their connecting edge types
-    let edges = store.edges_for(&node_id);
-    let mut neighbors = Vec::new();
-    for edge in &edges {
-        let other_id = if edge.source_node_id == node_id {
-            &edge.target_node_id
-        } else {
-            &edge.source_node_id
-        };
-        if let Some(other) = store.nodes.get(other_id) {
-            neighbors.push(NeighborInfo {
-                node_id: other.id.clone(),
-                label: other.label.clone(),
-                node_type: other.node_type,
-                edge_type: edge.edge_type,
-            });
-        }
-    }
-
+    let neighbors = collect_neighbors(&store, &node_id);
     let link_count = store.link_count(&node_id);
     let source_id = node.source_id.clone();
     let label = node.label.clone();
@@ -699,14 +681,35 @@ fn populate_embeddings(state: &AppState) {
 }
 
 fn truncate(s: &str, max: usize) -> String {
-    if s.len() <= max {
-        s.to_string()
+    if s.chars().count() <= max {
+        s.to_owned()
     } else {
         let end = s.char_indices()
             .nth(max)
             .map_or(s.len(), |(i, _)| i);
         format!("{}...", &s[..end])
     }
+}
+
+/// Collect neighbor info for a node from the graph store.
+/// Shared by get_node_details and summarize_node to avoid duplication.
+fn collect_neighbors(store: &graph::store::GraphStore, node_id: &str) -> Vec<NeighborInfo> {
+    store.edges_for(node_id)
+        .into_iter()
+        .filter_map(|edge| {
+            let other_id = if edge.source_node_id == node_id {
+                &edge.target_node_id
+            } else {
+                &edge.source_node_id
+            };
+            store.nodes.get(other_id).map(|n| NeighborInfo {
+                node_id: n.id.clone(),
+                label: n.label.clone(),
+                node_type: n.node_type,
+                edge_type: edge.edge_type,
+            })
+        })
+        .collect()
 }
 
 /// Event payload for streamed node summary.
@@ -731,19 +734,7 @@ pub async fn summarize_node(
         let store = state.lock_graph()?;
         let node = store.nodes.get(&node_id)
             .ok_or_else(|| AppError::Internal(format!("node not found: {node_id}")))?;
-        let neighbors: Vec<NeighborInfo> = store.edges_for(&node_id).iter().filter_map(|edge| {
-            let other_id = if edge.source_node_id == node_id {
-                &edge.target_node_id
-            } else {
-                &edge.source_node_id
-            };
-            store.nodes.get(other_id).map(|n| NeighborInfo {
-                node_id: n.id.clone(),
-                label: n.label.clone(),
-                node_type: n.node_type,
-                edge_type: edge.edge_type,
-            })
-        }).collect();
+        let neighbors = collect_neighbors(&store, &node_id);
 
         let nt = node.node_type;
         let lbl = node.label.clone();
@@ -786,7 +777,7 @@ pub async fn summarize_node(
     let (provider, _) = build_triaged_provider(&state, &trimmed)?;
 
     let nid = node_id.clone();
-    tokio::spawn(async move {
+    state.spawn_tracked("node_summarize", async move {
         match provider.generate(&prompt, Some(system_prompt), 512).await {
             Ok(response) => {
                 let text = response.text.trim().to_string();

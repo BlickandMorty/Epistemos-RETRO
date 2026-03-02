@@ -18,6 +18,7 @@ import { createPortalSlice } from './slices/portal';
 import { createUISlice } from './slices/ui';
 import { createNotesSlice } from './slices/notes';
 import { createToastSlice } from './slices/toast';
+import { createSOARSlice } from './slices/soar';
 
 // Slice types — local imports for composition
 import type { MessageSliceState, MessageSliceActions } from './slices/message';
@@ -29,6 +30,7 @@ import type { PortalSliceState, PortalSliceActions } from './slices/portal';
 import type { UISliceState, UISliceActions } from './slices/ui';
 import type { NotesSliceState, NotesSliceActions } from './slices/notes';
 import type { ToastSliceState, ToastSliceActions } from './slices/toast';
+import type { SOARSliceState, SOARSliceActions } from './slices/soar';
 
 // Re-export selected slice types used outside the store
 export type { SignalHistoryEntry } from './slices/pipeline';
@@ -55,7 +57,8 @@ export type PFCStoreState =
   & PortalSliceState
   & UISliceState
   & NotesSliceState
-  & ToastSliceState;
+  & ToastSliceState
+  & SOARSliceState;
 
 export type PFCStoreActions =
   & MessageSliceActions
@@ -67,9 +70,9 @@ export type PFCStoreActions =
   & UISliceActions
   & NotesSliceActions
   & ToastSliceActions
+  & SOARSliceActions
   & {
     reset: () => void;
-    hydrateSOAR: () => void;
     hydrateLearning: () => void;
     initScheduler: () => void;
   };
@@ -92,9 +95,9 @@ export const usePFCStore = create<PFCState>()(
     ...createUISlice(set, get),
     ...createNotesSlice(set, get),
     ...createToastSlice(set, get),
+    ...createSOARSlice(set, get),
 
-    // Hydration stubs — will be implemented with SOAR/Learning systems (Phase 7)
-    hydrateSOAR: () => { /* No-op until SOAR system is wired */ },
+    // Learning system stubs — backend commands not yet implemented
     hydrateLearning: () => { /* No-op until Learning system is wired */ },
     initScheduler: () => { /* No-op until Learning scheduler is wired */ },
 

@@ -7,10 +7,10 @@ import { MultimodalInput } from './multimodal-input';
 import { ResearchModeBar } from './research-mode-bar';
 import { ThinkingControls } from './thinking-controls';
 import { ErrorBoundary } from '../layout/error-boundary';
-import { motion, AnimatePresence } from 'framer-motion';
 import { useIsDark } from '@/hooks/use-is-dark';
 import { getInferenceModeFeatures } from '@/lib/types';
-import { CloudIcon, MonitorIcon, ArrowLeftIcon, MessageSquareIcon, ExternalLinkIcon, ZapIcon, DownloadIcon, LockIcon, SettingsIcon } from 'lucide-react';
+import { CloudIcon, MonitorIcon, ArrowLeftIcon, MessageSquareIcon, ExternalLinkIcon, ZapIcon, DownloadIcon, LockIcon, SettingsIcon, SparklesIcon } from 'lucide-react';
+import { commands } from '@/lib/bindings';
 import { GreetingTypewriter, SearchBarPlaceholder } from './greeting-typewriter';
 import { ChatsSidePanel, ChatsOverlay } from './chat-history-sheet';
 
@@ -22,13 +22,9 @@ const LiveControls = lazy(() => import('./live-controls').then((m) => ({ default
 const ConceptHierarchyPanel = lazy(() => import('../viz/concept-hierarchy-panel').then((m) => ({ default: m.ConceptHierarchyPanel })));
 const PortalSidebar = lazy(() => import('../viz/portal-sidebar').then((m) => ({ default: m.PortalSidebar })));
 
-import { physicsSpring } from '@/lib/motion/motion-config';
-
 /* Spring configs — spring physics handle interruption gracefully
    (retarget mid-animation) unlike duration-based easing which
    queues up and glitches on rapid page cycling / All Chats toggle */
-const ENTER_SPRING = physicsSpring.chatEnter;
-const ENTER_SPRING_SNAPPY = physicsSpring.chatEnterSnappy;
 
 
 // ═══════════════════════════════════════════════════════════════════
@@ -39,15 +35,12 @@ function AllChatsBubble({ isDark, isOled, isSunny, isCosmic, onToggle }: {
   isDark: boolean; isOled?: boolean; isSunny?: boolean; isCosmic?: boolean; onToggle: () => void;
 }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ ...ENTER_SPRING_SNAPPY, delay: 0.12 }}
+    <div
+      className="animate-spring-up"
       style={{ display: 'flex', justifyContent: 'center' }}
     >
-      <motion.button
+      <button
         onClick={onToggle}
-        whileTap={{ scale: 0.97 }}
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -57,17 +50,17 @@ function AllChatsBubble({ isDark, isOled, isSunny, isCosmic, onToggle }: {
           border: 'none',
           background: isOled ? 'rgba(35,35,35,0.7)'
             : isCosmic ? 'rgba(14,12,26,0.45)'
-            : isDark ? 'rgba(244,189,111,0.05)'
-            : isSunny ? 'var(--card)'
-            : 'rgba(0,0,0,0.04)',
+              : isDark ? 'rgba(244,189,111,0.05)'
+                : isSunny ? 'var(--card)'
+                  : 'rgba(0,0,0,0.04)',
           cursor: 'pointer',
           fontSize: '0.625rem',
           fontWeight: 500,
           color: isOled ? 'rgba(200,200,200,0.85)'
             : isCosmic ? 'rgba(180,175,200,0.75)'
-            : isDark ? 'rgba(155,150,137,0.7)'
-            : isSunny ? 'var(--muted-foreground)'
-            : 'rgba(0,0,0,0.55)',
+              : isDark ? 'rgba(155,150,137,0.7)'
+                : isSunny ? 'var(--muted-foreground)'
+                  : 'rgba(0,0,0,0.55)',
           fontFamily: 'var(--font-sans)',
           letterSpacing: '0.02em',
           boxShadow: 'none',
@@ -76,8 +69,8 @@ function AllChatsBubble({ isDark, isOled, isSunny, isCosmic, onToggle }: {
       >
         <MessageSquareIcon style={{ height: '0.75rem', width: '0.75rem' }} />
         All Chats
-      </motion.button>
-    </motion.div>
+      </button>
+    </div>
   );
 }
 
@@ -97,10 +90,8 @@ function ActiveThreadsPills({ isDark, isCosmic }: { isDark: boolean; isCosmic?: 
   if (threadsWithMessages.length === 0) return null;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ ...ENTER_SPRING_SNAPPY, delay: 0.16 }}
+    <div
+      className="animate-spring-up"
       style={{
         display: 'flex',
         flexDirection: 'column',
@@ -134,9 +125,8 @@ function ActiveThreadsPills({ isDark, isCosmic }: { isDark: boolean; isCosmic?: 
           const lastMsg = thread.messages[msgCount - 1];
           const preview = lastMsg?.content?.slice(0, 50) || '';
           return (
-            <motion.button
+            <button
               key={thread.id}
-              whileTap={{ scale: 0.97 }}
               onClick={() => {
                 if (thread.chatId) {
                   setChatMinimized(false);
@@ -204,11 +194,11 @@ function ActiveThreadsPills({ isDark, isCosmic }: { isDark: boolean; isCosmic?: 
                   transition: 'color 0.15s',
                 }} />
               </div>
-            </motion.button>
+            </button>
           );
         })}
       </div>
-    </motion.div>
+    </div>
   );
 }
 
@@ -266,6 +256,130 @@ function ModelLockOverlay({ isDark, inferenceMode }: { isDark: boolean; inferenc
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// SoarStoneCard — interactive teaching stone from the SOAR protocol
+// ═══════════════════════════════════════════════════════════════════
+
+function SoarStoneCard({ isDark, chatId }: { isDark: boolean; chatId: string | null }) {
+  const stone = usePFCStore((s) => s.pendingSoarStone);
+  const setSoarStone = usePFCStore((s) => s.setSoarStone);
+  const { sendQuery } = useChatStream();
+  const [attempting, setAttempting] = useState(false);
+
+  if (!stone) return null;
+
+  const handleAttempt = async () => {
+    setAttempting(true);
+    try {
+      if (chatId) {
+        await commands.runSoarStone(chatId, stone.prompt);
+      } else {
+        // Fallback: send the stone prompt as a regular query
+        sendQuery(stone.prompt);
+      }
+    } catch {
+      // Stream errors handled by chat-stream listener
+    }
+    setSoarStone(null);
+    setAttempting(false);
+  };
+
+  const handleDismiss = () => setSoarStone(null);
+
+  return (
+    <div
+      className="animate-spring-up"
+      style={{
+        margin: '0 auto',
+        maxWidth: '48rem',
+        width: '100%',
+        padding: '0.5rem 1rem',
+      }}
+    >
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '0.625rem',
+        padding: '0.875rem 1rem',
+        borderRadius: 'var(--shape-lg)',
+        background: isDark
+          ? 'linear-gradient(135deg, rgba(139,92,246,0.08), rgba(59,130,246,0.06))'
+          : 'linear-gradient(135deg, rgba(139,92,246,0.06), rgba(59,130,246,0.04))',
+        border: isDark
+          ? '1px solid rgba(139,92,246,0.15)'
+          : '1px solid rgba(139,92,246,0.12)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <SparklesIcon style={{
+            height: '0.875rem', width: '0.875rem',
+            color: isDark ? 'rgba(167,139,250,0.9)' : 'rgba(124,58,237,0.8)',
+          }} />
+          <span style={{
+            fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.04em',
+            textTransform: 'uppercase',
+            color: isDark ? 'rgba(167,139,250,0.75)' : 'rgba(124,58,237,0.65)',
+            fontFamily: 'var(--font-sans)',
+          }}>
+            SOAR Stone {stone.index + 1}
+          </span>
+        </div>
+        <div style={{
+          fontSize: '0.875rem', fontWeight: 500, lineHeight: 1.5,
+          color: isDark ? 'rgba(232,228,222,0.9)' : 'rgba(0,0,0,0.75)',
+          fontFamily: 'var(--font-sans)',
+        }}>
+          {stone.name}
+        </div>
+        <div style={{
+          fontSize: '0.8125rem', lineHeight: 1.5,
+          color: isDark ? 'rgba(200,196,190,0.6)' : 'rgba(0,0,0,0.45)',
+          fontFamily: 'var(--font-sans)',
+        }}>
+          {stone.prompt}
+        </div>
+        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
+          <button
+            onClick={handleAttempt}
+            disabled={attempting}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '0.375rem',
+              padding: '0.375rem 0.875rem',
+              borderRadius: 'var(--shape-full)',
+              border: 'none',
+              cursor: attempting ? 'wait' : 'pointer',
+              fontSize: '0.8125rem', fontWeight: 600,
+              fontFamily: 'var(--font-sans)',
+              color: '#fff',
+              background: isDark
+                ? 'linear-gradient(135deg, rgba(139,92,246,0.7), rgba(99,102,241,0.6))'
+                : 'linear-gradient(135deg, rgba(124,58,237,0.85), rgba(79,70,229,0.75))',
+              opacity: attempting ? 0.6 : 1,
+            }}
+          >
+            <SparklesIcon style={{ height: '0.75rem', width: '0.75rem' }} />
+            {attempting ? 'Attempting...' : 'Attempt Stone'}
+          </button>
+          <button
+            onClick={handleDismiss}
+            style={{
+              padding: '0.375rem 0.75rem',
+              borderRadius: 'var(--shape-full)',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '0.8125rem', fontWeight: 500,
+              fontFamily: 'var(--font-sans)',
+              color: isDark ? 'rgba(200,196,190,0.5)' : 'rgba(0,0,0,0.35)',
+              background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)',
+            }}
+          >
+            Dismiss
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // Chat — landing page ↔ chat interface with TOC sidebar
 // ═══════════════════════════════════════════════════════════════════
 
@@ -307,7 +421,6 @@ export function Chat({ mode = 'landing' }: { mode?: 'landing' | 'conversation' }
   const [modeHintDismissed, setModeHintDismissed] = useState(false);
   const [showAllChats, setShowAllChats] = useState(false);
   const [showChatsOverlay, setShowChatsOverlay] = useState(false);
-  const [searchExpanded, setSearchExpanded] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
   const lastBackClickRef = useRef(0);
   const lastChatsClickRef = useRef(0);
@@ -325,49 +438,48 @@ export function Chat({ mode = 'landing' }: { mode?: 'landing' | 'conversation' }
 
   return (
     <ErrorBoundary>
-    <div style={{ position: 'relative', display: 'flex', height: '100%', flexDirection: 'column' }}>
+      <div style={{ position: 'relative', display: 'flex', height: '100%', flexDirection: 'column' }}>
 
-      {/* ═══════════════════════════════════════════════════════════════
+        {/* ═══════════════════════════════════════════════════════════════
           Landing page — greeting + search bar
           Also shown when chat is minimized to floating widget
           ═══════════════════════════════════════════════════════════════ */}
-      {showLanding && (
-        <div
-          style={{
-            position: 'relative',
-            zIndex: 'var(--z-base)',
-            display: 'flex',
-            flex: 1,
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '1.5rem',
-            padding: '0 24px',
-            background: (isOled || isCosmic)
-              ? 'transparent'
-              : isDark
-                ? 'var(--background)'
-                : 'var(--m3-surface)',
-          }}
-        >
-          {/* Wallpaper fade overlay — covers starfield/stars when search focused.
+        {showLanding && (
+          <div
+            style={{
+              position: 'relative',
+              zIndex: 'var(--z-base)',
+              display: 'flex',
+              flex: 1,
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '1.5rem',
+              padding: '0 24px',
+              background: (isOled || isCosmic)
+                ? 'transparent'
+                : isDark
+                  ? 'var(--background)'
+                  : 'var(--m3-surface)',
+            }}
+          >
+            {/* Wallpaper fade overlay — covers starfield/stars when search focused.
               Skipped for cosmic — wallpaper stays visible, search bar uses blur glass instead. */}
-          {!isCosmic && (
-            <div
-              style={{
-                position: 'absolute',
-                inset: 0,
-                zIndex: 0,
-                background: isOled ? '#000' : isDark ? 'var(--background)' : 'var(--m3-surface)',
-                opacity: (searchFocused && !showAllChats) ? 1 : 0,
-                transition: 'opacity 0.3s cubic-bezier(0.2, 0, 0, 1)',
-                pointerEvents: 'none',
-              }}
-            />
-          )}
+            {!isCosmic && (
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  zIndex: 0,
+                  background: isOled ? '#000' : isDark ? 'var(--background)' : 'var(--m3-surface)',
+                  opacity: (searchFocused && !showAllChats) ? 1 : 0,
+                  transition: 'opacity 0.3s cubic-bezier(0.2, 0, 0, 1)',
+                  pointerEvents: 'none',
+                }}
+              />
+            )}
 
-          {/* All Chats side panel — overlay on landing */}
-          <AnimatePresence>
+            {/* All Chats side panel — overlay on landing */}
             {showAllChats && (
               <ChatsSidePanel
                 isDark={isDark}
@@ -378,155 +490,142 @@ export function Chat({ mode = 'landing' }: { mode?: 'landing' | 'conversation' }
                 onClose={() => setShowAllChats(false)}
               />
             )}
-          </AnimatePresence>
 
-          <motion.div
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={ENTER_SPRING_SNAPPY}
-            style={{
-              position: 'relative',
-              zIndex: 'calc(var(--z-base) + 1)',
-              width: '100%',
-              maxWidth: '44rem',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: '1.5rem',
-            }}
-          >
-
-                {/* Mascot + greeting — min-height container, overflow visible
-                   so the mascot/sun never gets clipped when text wraps. */}
-                <div
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'flex-end',
-                    alignItems: 'center',
-                    minHeight: (isDark || isSunny) ? '11rem' : '5.5rem',
-                    gap: '1.5rem',
-                    overflow: 'visible',
-                  }}
-                >
-                  {/* Pixel mascot — sun on sunny, robot on all dark themes, hidden on default light */}
-                  {(isDark || isSunny) && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 14, scale: 0.9 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      transition={{ ...ENTER_SPRING_SNAPPY, delay: 0.0 }}
-                      style={{ display: 'flex', justifyContent: 'center', flexShrink: 0 }}
-                    >
-                      <motion.div
-                        animate={{ y: [0, -6, 0] }}
-                        transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-                      >
-                        <img
-                          src={isSunny ? '/pixel-sun.gif' : '/pixel-robot.gif'}
-                          alt={isSunny ? 'Brainiac Sun' : 'Brainiac Robot'}
-                          style={{
-                            imageRendering: 'pixelated',
-                            width: '4.5rem',
-                            height: '4.5rem',
-                          }}
-                        />
-                      </motion.div>
-                    </motion.div>
-                  )}
-
-                  {/* Greeting title — RetroGaming font with typewriter */}
-                  <motion.div
-                    initial={{ opacity: 0, y: 16, scale: 0.97 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    transition={{ ...ENTER_SPRING_SNAPPY, delay: 0.04 }}
-                    style={{ textAlign: 'center', flexShrink: 0 }}
-                  >
-                    <h1
-                      style={{
-                        fontFamily: "'RetroGaming', var(--font-display)",
-                        fontSize: '1.625rem',
-                        letterSpacing: '-0.01em',
-                        lineHeight: 1.3,
-                        fontWeight: 400,
-                        margin: 0,
-                        color: isDark ? 'rgba(232,228,222,0.95)' : 'rgba(28,27,31,0.9)',
-                      }}
-                    >
-                      <GreetingTypewriter isDark={isDark} isSunny={isSunny} />
-                    </h1>
-                  </motion.div>
-                </div>
-
-              </motion.div>
-
-          {/* Search bar — locked when no model configured */}
-          {(
-            <motion.div
-              data-search-bar
-              initial={{ opacity: 0, y: 18, scale: 0.97 }}
-              animate={{ opacity: 1, y: 0, scale: 1, borderRadius: searchExpanded ? '1.25rem' : '1.625rem' }}
-              transition={{ ...ENTER_SPRING_SNAPPY, delay: 0.08 }}
+            <div
+              className="animate-spring-up"
               style={{
                 position: 'relative',
-                borderRadius: '1.625rem',
-                overflow: 'hidden',
+                zIndex: 'calc(var(--z-base) + 1)',
                 width: '100%',
-                maxWidth: '42rem',
-                background: isDark
-                  ? (isOled ? 'rgba(8,8,8,0.92)' : isCosmic ? '#1a1730' : isSunset ? 'rgba(18,10,20,0.88)' : 'rgba(30,28,25,0.72)')
-                  : 'rgba(255,255,255,0.92)',
-                backdropFilter: isCosmic ? 'none' : 'blur(24px) saturate(1.3)',
-                WebkitBackdropFilter: isCosmic ? 'none' : 'blur(24px) saturate(1.3)',
-                border: isCosmic ? '1px solid rgba(139,159,212,0.08)' : isDark ? '1px solid rgba(255,255,255,0.06)' : 'none',
-                boxShadow: searchFocused
-                  ? (isDark
-                      ? '0 8px 40px -8px rgba(0,0,0,0.25), 0 2px 14px -2px rgba(0,0,0,0.12)'
-                      : '0 8px 40px -8px rgba(0,0,0,0.06), 0 2px 14px -2px rgba(0,0,0,0.03)')
-                  : '0 0px 0px 0px rgba(0,0,0,0)',
-                transition: 'box-shadow 0.3s cubic-bezier(0.2, 0, 0, 1)',
+                maxWidth: '44rem',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '1.5rem',
               }}
             >
-              {modelReady ? (
-                <MultimodalInput
-                  onSubmit={sendQuery}
-                  onStop={abort}
-                  isProcessing={isProcessing}
-                  hero
-                  onExpandChange={setSearchExpanded}
-                  inputStyle={{
-                    fontFamily: 'var(--font-display)',
-                    fontSize: '1rem',
-                    fontWeight: 500,
-                    letterSpacing: '-0.01em',
-                  }}
-                  onFocusChange={setSearchFocused}
-                  placeholderOverlay={mounted ? <SearchBarPlaceholder isDark={isDark} /> : undefined}
-                />
-              ) : (
-                <ModelLockOverlay isDark={isDark} inferenceMode={inferenceMode} />
-              )}
-            </motion.div>
-          )}
 
-          {/* All Chats bubble + Active threads */}
-          {mounted && (
-            <AllChatsBubble isDark={isDark} isOled={isOled} isSunny={isSunny} isCosmic={isCosmic} onToggle={toggleAllChats} />
-          )}
-          {!showAllChats && mounted && <ActiveThreadsPills isDark={isDark} isCosmic={isCosmic} />}
-        </div>
-      )}
+              {/* Mascot + greeting — min-height container, overflow visible
+                   so the mascot/sun never gets clipped when text wraps. */}
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'flex-end',
+                  alignItems: 'center',
+                  minHeight: (isDark || isSunny) ? '11rem' : '5.5rem',
+                  gap: '1.5rem',
+                  overflow: 'visible',
+                }}
+              >
+                {/* Pixel mascot — sun on sunny, robot on all dark themes, hidden on default light */}
+                {(isDark || isSunny) && (
+                  <div
+                    className="animate-spring-up"
+                    style={{ display: 'flex', justifyContent: 'center', flexShrink: 0 }}
+                  >
+                    <div
+                      className="animate-spring-up"
+                    >
+                      <img
+                        src={isSunny ? '/pixel-sun.gif' : '/pixel-robot.gif'}
+                        alt={isSunny ? 'Brainiac Sun' : 'Brainiac Robot'}
+                        style={{
+                          imageRendering: 'pixelated',
+                          width: '4.5rem',
+                          height: '4.5rem',
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
 
-      {/* ═══════════════════════════════════════════════════════════════
+                {/* Greeting title — RetroGaming font with typewriter */}
+                <div
+                  className="animate-spring-up"
+                  style={{ textAlign: 'center', flexShrink: 0 }}
+                >
+                  <h1
+                    style={{
+                      fontFamily: "'RetroGaming', var(--font-display)",
+                      fontSize: '1.625rem',
+                      letterSpacing: '-0.01em',
+                      lineHeight: 1.3,
+                      fontWeight: 400,
+                      margin: 0,
+                      color: isDark ? 'rgba(232,228,222,0.95)' : 'rgba(28,27,31,0.9)',
+                    }}
+                  >
+                    <GreetingTypewriter isDark={isDark} isSunny={isSunny} />
+                  </h1>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Search bar — locked when no model configured */}
+            {(
+              <div
+                data-search-bar
+                className="animate-spring-up"
+                style={{
+                  position: 'relative',
+                  borderRadius: '1.625rem',
+                  overflow: 'hidden',
+                  width: '100%',
+                  maxWidth: '42rem',
+                  background: isDark
+                    ? (isOled ? 'rgba(8,8,8,0.92)' : isCosmic ? '#1a1730' : isSunset ? 'rgba(18,10,20,0.88)' : 'rgba(30,28,25,0.72)')
+                    : 'rgba(255,255,255,0.92)',
+                  backdropFilter: isCosmic ? 'none' : 'blur(24px) saturate(1.3)',
+                  WebkitBackdropFilter: isCosmic ? 'none' : 'blur(24px) saturate(1.3)',
+                  border: isCosmic ? '1px solid rgba(139,159,212,0.08)' : isDark ? '1px solid rgba(255,255,255,0.06)' : 'none',
+                  boxShadow: searchFocused
+                    ? (isDark
+                      ? '0 8px 40px -8px rgba(0,0,0,0.25), 0 2px 14px -2px rgba(0,0,0,0.12)'
+                      : '0 8px 40px -8px rgba(0,0,0,0.06), 0 2px 14px -2px rgba(0,0,0,0.03)')
+                    : '0 0px 0px 0px rgba(0,0,0,0)',
+                  transition: 'box-shadow 0.3s cubic-bezier(0.2, 0, 0, 1)',
+                }}
+              >
+                {modelReady ? (
+                  <MultimodalInput
+                    onSubmit={sendQuery}
+                    onStop={abort}
+                    isProcessing={isProcessing}
+                    hero
+                    onExpandChange={setSearchExpanded}
+                    inputStyle={{
+                      fontFamily: 'var(--font-display)',
+                      fontSize: '1rem',
+                      fontWeight: 500,
+                      letterSpacing: '-0.01em',
+                    }}
+                    onFocusChange={setSearchFocused}
+                    placeholderOverlay={mounted ? <SearchBarPlaceholder isDark={isDark} /> : undefined}
+                  />
+                ) : (
+                  <ModelLockOverlay isDark={isDark} inferenceMode={inferenceMode} />
+                )}
+              </div>
+            )}
+
+            {/* All Chats bubble + Active threads */}
+            {mounted && (
+              <AllChatsBubble isDark={isDark} isOled={isOled} isSunny={isSunny} isCosmic={isCosmic} onToggle={toggleAllChats} />
+            )}
+            {!showAllChats && mounted && <ActiveThreadsPills isDark={isDark} isCosmic={isCosmic} />}
+          </div>
+        )}
+
+        {/* ═══════════════════════════════════════════════════════════════
           Chat interface — messages + chats overlay
           Hidden when chatMinimized (mini-chat widget takes over)
           ═══════════════════════════════════════════════════════════════ */}
-      <AnimatePresence>
         {showFullChat && (
-          <motion.div
+          <div
             key="chat"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={ENTER_SPRING}
+            className="animate-spring-up"
             style={{
               position: 'relative',
               zIndex: 'var(--z-base)',
@@ -538,19 +637,15 @@ export function Chat({ mode = 'landing' }: { mode?: 'landing' | 'conversation' }
             }}
           >
             {/* Chats overlay — domino bubbles */}
-            <AnimatePresence>
-              {showChatsOverlay && (
-                <ChatsOverlay isDark={isDark} isOled={isOled} isCosmic={isCosmic} isSunny={isSunny} onClose={() => setShowChatsOverlay(false)} />
-              )}
-            </AnimatePresence>
+            {showChatsOverlay && (
+              <ChatsOverlay isDark={isDark} isOled={isOled} isCosmic={isCosmic} isSunny={isSunny} onClose={() => setShowChatsOverlay(false)} />
+            )}
 
             {/* Main chat column */}
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, position: 'relative' }}>
               {/* Header — M3 top app bar, frosted glass */}
-              <motion.div
-                initial={{ opacity: 0, y: -16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ ...ENTER_SPRING_SNAPPY, delay: 0.08 }}
+              <div
+                className="animate-fade-in"
                 style={{
                   position: 'absolute',
                   top: 0,
@@ -568,9 +663,7 @@ export function Chat({ mode = 'landing' }: { mode?: 'landing' | 'conversation' }
                 }}
               >
                 {/* Back button — M3 tonal icon button */}
-                <motion.button
-                  whileTap={{ scale: 0.93 }}
-                  whileHover={{ scale: 1.04 }}
+                <button
                   onClick={() => {
                     if (Date.now() - lastBackClickRef.current < 300) return;
                     lastBackClickRef.current = Date.now();
@@ -610,12 +703,10 @@ export function Chat({ mode = 'landing' }: { mode?: 'landing' | 'conversation' }
                 >
                   <ArrowLeftIcon style={{ height: '0.875rem', width: '0.875rem' }} />
                   Back
-                </motion.button>
+                </button>
 
                 {/* Chats overlay toggle */}
-                <motion.button
-                  whileTap={{ scale: 0.93 }}
-                  whileHover={{ scale: 1.04 }}
+                <button
                   onClick={() => {
                     if (Date.now() - lastChatsClickRef.current < 300) return;
                     lastChatsClickRef.current = Date.now();
@@ -663,16 +754,14 @@ export function Chat({ mode = 'landing' }: { mode?: 'landing' | 'conversation' }
                 >
                   <MessageSquareIcon style={{ height: '0.875rem', width: '0.875rem' }} />
                   Chats
-                </motion.button>
+                </button>
 
                 {/* Spacer */}
                 <div style={{ flex: 1 }} />
 
                 {/* Export thread button — right-aligned */}
                 {messages.length > 0 && (
-                  <motion.button
-                    whileTap={{ scale: 0.93 }}
-                    whileHover={{ scale: 1.04 }}
+                  <button
                     onClick={() => {
                       const lines = messages.map((m: { role: string; text?: string; content?: string }) => {
                         const role = m.role === 'user' ? 'You' : 'Assistant';
@@ -722,64 +811,62 @@ export function Chat({ mode = 'landing' }: { mode?: 'landing' | 'conversation' }
                   >
                     <DownloadIcon style={{ height: '0.875rem', width: '0.875rem' }} />
                     Export
-                  </motion.button>
+                  </button>
                 )}
-              </motion.div>
+              </div>
 
               <Messages />
+
+              {/* SOAR teaching stone card */}
+              <SoarStoneCard isDark={isDark} chatId={currentChatId} />
 
               {/* Bottom controls area */}
               <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
 
                 {/* Mode hint — M3 tonal surface */}
-                <AnimatePresence>
-                  {showModeHint && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.18, ease: [0.2, 0, 0, 1] }}
-                      style={{ margin: '0 auto', maxWidth: '48rem', width: '100%', padding: '0.25rem 1rem', overflow: 'hidden', transform: 'translateZ(0)' }}
+                {showModeHint && (
+                  <div
+                    className="animate-spring-up"
+                    style={{ margin: '0 auto', maxWidth: '48rem', width: '100%', padding: '0.25rem 1rem', overflow: 'hidden', transform: 'translateZ(0)' }}
+                  >
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        padding: '0.375rem 0.75rem',
+                        borderRadius: 'var(--shape-full)',
+                        background: isDark ? 'var(--m3-surface-container)' : 'var(--m3-surface-container)',
+                        border: 'none',
+                        fontSize: 'var(--type-label-sm)',
+                        color: isDark ? 'rgba(155,150,137,0.9)' : 'rgba(0,0,0,0.4)',
+                      }}
                     >
-                      <div
+                      {inferenceMode === 'api'
+                        ? <CloudIcon style={{ height: '0.6875rem', width: '0.6875rem', flexShrink: 0, color: 'var(--m3-primary)' }} />
+                        : <MonitorIcon style={{ height: '0.6875rem', width: '0.6875rem', flexShrink: 0, color: 'var(--m3-primary)' }} />
+                      }
+                      <span style={{ flex: 1 }}>
+                        {features.modeHint} — Switch to local inference for full thinking controls.
+                      </span>
+                      <button
+                        onClick={() => setModeHintDismissed(true)}
                         style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.5rem',
-                          padding: '0.375rem 0.75rem',
-                          borderRadius: 'var(--shape-full)',
-                          background: isDark ? 'var(--m3-surface-container)' : 'var(--m3-surface-container)',
                           border: 'none',
+                          background: isDark ? 'rgba(var(--pfc-accent-rgb), 0.08)' : 'rgba(var(--pfc-accent-rgb), 0.06)',
+                          cursor: 'pointer',
                           fontSize: 'var(--type-label-sm)',
-                          color: isDark ? 'rgba(155,150,137,0.9)' : 'rgba(0,0,0,0.4)',
+                          color: 'var(--m3-primary)',
+                          fontWeight: 600,
+                          padding: '0.125rem 0.5rem',
+                          borderRadius: 'var(--shape-full)',
                         }}
                       >
-                        {inferenceMode === 'api'
-                          ? <CloudIcon style={{ height: '0.6875rem', width: '0.6875rem', flexShrink: 0, color: 'var(--m3-primary)' }} />
-                          : <MonitorIcon style={{ height: '0.6875rem', width: '0.6875rem', flexShrink: 0, color: 'var(--m3-primary)' }} />
-                        }
-                        <span style={{ flex: 1 }}>
-                          {features.modeHint} — Switch to local inference for full thinking controls.
-                        </span>
-                        <button
-                          onClick={() => setModeHintDismissed(true)}
-                          style={{
-                            border: 'none',
-                            background: isDark ? 'rgba(var(--pfc-accent-rgb), 0.08)' : 'rgba(var(--pfc-accent-rgb), 0.06)',
-                            cursor: 'pointer',
-                            fontSize: 'var(--type-label-sm)',
-                            color: 'var(--m3-primary)',
-                            fontWeight: 600,
-                            padding: '0.125rem 0.5rem',
-                            borderRadius: 'var(--shape-full)',
-                          }}
-                        >
-                          Got it
-                        </button>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                        Got it
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {/* Thinking Controls */}
                 {(isProcessing || isStreaming) && (
@@ -822,13 +909,13 @@ export function Chat({ mode = 'landing' }: { mode?: 'landing' | 'conversation' }
               </div>
             </div>
 
-          </motion.div>
+          </div>
         )}
-      </AnimatePresence>
 
-      {/* Portal sidebar — code suggestions and artifacts */}
-      {mounted && <Suspense fallback={null}><PortalSidebar /></Suspense>}
-    </div>
+        {/* Portal sidebar — code suggestions and artifacts */}
+        {mounted && <Suspense fallback={null}><PortalSidebar /></Suspense>}
+      </div>
     </ErrorBoundary>
   );
 }
+

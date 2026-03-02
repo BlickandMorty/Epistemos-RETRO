@@ -21,6 +21,8 @@ use crate::error::AppError;
 // 6. cost_tracker
 // Never hold a higher-numbered lock while acquiring a lower-numbered one.
 
+type TaskHandles = Vec<(&'static str, tokio::task::JoinHandle<()>)>;
+
 #[derive(Clone)]
 pub struct AppState {
     pub db: Arc<Mutex<Database>>,
@@ -39,6 +41,14 @@ pub struct AppState {
     /// Cancellation token for the current enrichment pipeline.
     /// Replaced on each new `submit_query` to cancel stale enrichment.
     pub enrichment_cancel: Arc<Mutex<Option<CancellationToken>>>,
+    /// Cancellation token for the current SOAR stone streaming task.
+    pub soar_cancel: Arc<Mutex<Option<CancellationToken>>>,
+    /// Cancellation token for the current note AI streaming task.
+    pub note_ai_cancel: Arc<Mutex<Option<CancellationToken>>>,
+    /// Global shutdown token — cancelled on app exit for graceful cleanup.
+    pub shutdown_token: CancellationToken,
+    /// Tracked background task handles for graceful shutdown.
+    pub task_handles: Arc<Mutex<TaskHandles>>,
     /// Cached inference availability — refreshed by `check_local_services`.
     pub inference_availability: Arc<Mutex<engine::triage::InferenceAvailability>>,
     /// Decoupled FPS input buffer — written by frontend at 60Hz, read by physics
@@ -68,6 +78,10 @@ impl AppState {
             watcher: Arc::new(Mutex::new(None)),
             cost_tracker: Arc::new(Mutex::new(cost_tracker)),
             enrichment_cancel: Arc::new(Mutex::new(None)),
+            soar_cancel: Arc::new(Mutex::new(None)),
+            note_ai_cancel: Arc::new(Mutex::new(None)),
+            shutdown_token: CancellationToken::new(),
+            task_handles: Arc::new(Mutex::new(Vec::new())),
             inference_availability: Arc::new(Mutex::new(engine::triage::InferenceAvailability {
                 has_npu: false,
                 has_gpu: false,
@@ -103,6 +117,16 @@ impl AppState {
 
     pub fn is_physics_running(&self) -> bool {
         self.physics_running.load(Ordering::Relaxed)
+    }
+
+    /// Spawn a tracked background task. The handle is stored for graceful shutdown.
+    pub fn spawn_tracked(&self, name: &'static str, future: impl std::future::Future<Output = ()> + Send + 'static) {
+        let handle = tokio::spawn(future);
+        if let Ok(mut handles) = self.task_handles.lock() {
+            // Remove completed tasks to avoid unbounded growth
+            handles.retain(|(_, h)| !h.is_finished());
+            handles.push((name, handle));
+        }
     }
 
     /// Reload the cached graph store from the database.

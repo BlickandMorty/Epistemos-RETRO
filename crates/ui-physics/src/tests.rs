@@ -1,3 +1,5 @@
+#![cfg(not(target_arch = "wasm32"))]
+
 use graph::store::{EdgeRecord, GraphStore, NodeRecord};
 use storage::types::{GraphEdgeType, GraphNodeType};
 

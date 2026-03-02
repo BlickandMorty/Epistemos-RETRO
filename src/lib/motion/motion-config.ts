@@ -45,6 +45,18 @@ export const physicsSpring = {
   chatSheet:       { type: 'spring' as const, stiffness: 500, damping: 38, mass: 0.8 },
   /** Notes card layout — same as chatSheet but for note grids */
   notesLayout:     { type: 'spring' as const, stiffness: 500, damping: 35, mass: 0.8 },
+  /** Button hover/press — tight, tactile response */
+  button:          { type: 'spring' as const, stiffness: 600, damping: 25, mass: 0.4 },
+  /** Header title entrance — weighty, authoritative slide-in */
+  header:          { type: 'spring' as const, stiffness: 300, damping: 28, mass: 0.8 },
+  /** Link/wikilink hover — light bounce */
+  link:            { type: 'spring' as const, stiffness: 700, damping: 20, mass: 0.3 },
+  /** Nav item — medium weight with slight overshoot */
+  nav:             { type: 'spring' as const, stiffness: 450, damping: 30, mass: 0.5 },
+  /** List item stagger — quick pop-in */
+  listPop:         { type: 'spring' as const, stiffness: 550, damping: 30, mass: 0.4 },
+  /** Card entrance — heavier, dramatic reveal */
+  card:            { type: 'spring' as const, stiffness: 350, damping: 32, mass: 0.7 },
 } as const;
 
 // ── Easing Curves ──
@@ -108,11 +120,33 @@ export const variants = {
     visible: { opacity: 1, y: 0 },
   },
 
-  /** Glass bubble button */
+  /** Glass bubble button — physics spring scale */
   glassBubble: {
+    rest: { scale: 1, y: 0 },
+    hover: { scale: 1.06, y: -2, transition: physicsSpring.button },
+    tap: { scale: 0.93, y: 1, transition: physicsSpring.button },
+  },
+
+  /** Nav pill — responsive spring */
+  navItem: {
+    rest: { scale: 1, y: 0 },
+    hover: { scale: 1.05, y: -1, transition: physicsSpring.nav },
+    tap: { scale: 0.95, y: 0, transition: physicsSpring.nav },
+    active: { scale: 1.02, y: -1, transition: physicsSpring.nav },
+  },
+
+  /** Action button — punchy press */
+  action: {
     rest: { scale: 1 },
-    hover: { scale: 1.04 },
-    tap: { scale: 0.96 },
+    hover: { scale: 1.03, transition: physicsSpring.button },
+    tap: { scale: 0.94, transition: physicsSpring.button },
+  },
+
+  /** Wikilink / internal link — subtle bounce */
+  wikilink: {
+    rest: { scale: 1, color: 'var(--pfc-accent)' },
+    hover: { scale: 1.03, y: -1, transition: physicsSpring.link },
+    tap: { scale: 0.97, transition: physicsSpring.link },
   },
 } as const;
 

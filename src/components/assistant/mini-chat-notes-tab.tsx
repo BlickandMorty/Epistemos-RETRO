@@ -104,10 +104,14 @@ export function NotesTabContent({ isDark, glassBorder, textPrimary, textSecondar
   const updateBlockContent = usePFCStore((s) => s.updateBlockContent);
   const pushTransaction = usePFCStore((s) => s.pushTransaction);
 
-  // Learn actions — stubbed (will come from Rust backend)
+  // Learn actions — backend commands not yet implemented
+  const addToast = usePFCStore((s) => s.addToast);
   const learningSession = null as any;
   const learningStreamText = '';
-  const startLearningSession = (_depth: string, _passes: number) => {};
+  const notifyLearningUnavailable = useCallback(() => {
+    addToast({ message: 'Learning protocol coming soon', type: 'info' });
+  }, [addToast]);
+  const startLearningSession = (_depth: string, _passes: number) => { notifyLearningUnavailable(); };
   const pauseLearningSession = () => {};
   const resumeLearningSession = () => {};
   const stopLearningSession = () => {};

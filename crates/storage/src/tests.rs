@@ -1,4 +1,5 @@
 #[cfg(test)]
+#[allow(clippy::module_inception)]
 mod tests {
     use crate::db::Database;
     use crate::ids::*;
@@ -333,8 +334,8 @@ mod tests {
 
         let msgs = db.get_messages_for_chat(chat.id).unwrap();
         assert_eq!(msgs.len(), 5);
-        for i in 0..5 {
-            assert_eq!(msgs[i].content, format!("msg-{i}"));
+        for (i, msg) in msgs.iter().enumerate().take(5) {
+            assert_eq!(msg.content, format!("msg-{i}"));
         }
         // Timestamps should be non-decreasing
         for w in msgs.windows(2) {
@@ -395,7 +396,7 @@ mod tests {
             target_node_id: n2.id, edge_type: GraphEdgeType::Supports,
             weight: 0.8, metadata_json: None, is_manual: false, created_at: now_ms(),
         };
-        db.insert_graph_edges_batch(&[edge.clone()]).unwrap();
+        db.insert_graph_edges_batch(std::slice::from_ref(&edge)).unwrap();
 
         let nodes = db.get_all_graph_nodes().unwrap();
         let edges = db.get_all_graph_edges().unwrap();

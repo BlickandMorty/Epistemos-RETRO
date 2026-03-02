@@ -54,19 +54,20 @@ impl GraphBuilder {
                 page.title.clone()
             };
             let weight = (page.word_count / 100).max(1) as f64;
+            let page_id_str = page.id.to_string();
 
             let node_id = GraphNodeId::new();
             let node = GraphNode {
                 id: node_id,
                 node_type: GraphNodeType::Note,
                 label,
-                source_id: page.id.to_string(),
+                source_id: page_id_str.clone(),
                 weight,
                 metadata_json: None,
                 is_manual: false,
                 created_at: page.created_at,
             };
-            source_to_node.insert(page.id.to_string(), node_id);
+            source_to_node.insert(page_id_str, node_id);
             nodes.push(node);
 
             // Tags
@@ -106,7 +107,8 @@ impl GraphBuilder {
         // 1b. Blocks (substantial content > 20 chars)
         // ────────────────────────────────────────────
         for page in &active_pages {
-            let note_nid = match source_to_node.get(&page.id.to_string()) {
+            let page_id_str = page.id.to_string();
+            let note_nid = match source_to_node.get(&page_id_str) {
                 Some(&id) => id,
                 None => continue,
             };
@@ -128,18 +130,19 @@ impl GraphBuilder {
                     block.content.clone()
                 };
 
+                let block_id_str = block.id.to_string();
                 let block_nid = GraphNodeId::new();
                 let block_node = GraphNode {
                     id: block_nid,
                     node_type: GraphNodeType::Block,
                     label,
-                    source_id: block.id.to_string(),
+                    source_id: block_id_str.clone(),
                     weight: 1.0,
                     metadata_json: None,
                     is_manual: false,
                     created_at: block.created_at,
                 };
-                source_to_node.insert(block.id.to_string(), block_nid);
+                source_to_node.insert(block_id_str, block_nid);
                 nodes.push(block_node);
 
                 edges.push(GraphEdge {
@@ -159,7 +162,8 @@ impl GraphBuilder {
         // 1c. Block references — ((blockId)) in page bodies
         // ────────────────────────────────────────────
         for page in &active_pages {
-            let note_nid = match source_to_node.get(&page.id.to_string()) {
+            let page_id_str = page.id.to_string();
+            let note_nid = match source_to_node.get(&page_id_str) {
                 Some(&id) => id,
                 None => continue,
             };
@@ -221,8 +225,8 @@ impl GraphBuilder {
                 continue;
             }
             let mut stack = vec![fid.clone()];
-            let mut order = Vec::new();
-            let mut visited = FxHashSet::default();
+            let mut order = Vec::with_capacity(folder_ids.len());
+            let mut visited = FxHashSet::with_capacity_and_hasher(folder_ids.len(), Default::default());
             while let Some(id) = stack.pop() {
                 if !visited.insert(id.clone()) {
                     continue;
@@ -254,19 +258,20 @@ impl GraphBuilder {
                 continue;
             }
 
-            let content_count = content_counts.get(&folder.id.to_string()).copied().unwrap_or(1);
+            let folder_id_str = folder.id.to_string();
+            let content_count = content_counts.get(&folder_id_str).copied().unwrap_or(1);
             let folder_nid = GraphNodeId::new();
             let node = GraphNode {
                 id: folder_nid,
                 node_type: GraphNodeType::Folder,
                 label: folder.name.clone(),
-                source_id: folder.id.to_string(),
+                source_id: folder_id_str.clone(),
                 weight: content_count.max(1) as f64,
                 metadata_json: None,
                 is_manual: false,
                 created_at: folder.created_at,
             };
-            source_to_node.insert(folder.id.to_string(), folder_nid);
+            source_to_node.insert(folder_id_str, folder_nid);
             nodes.push(node);
         }
 
@@ -275,9 +280,11 @@ impl GraphBuilder {
         // ────────────────────────────────────────────
         for folder in &folders {
             if let Some(ref parent_id) = folder.parent_folder_id {
+                let parent_str = parent_id.to_string();
+                let child_str = folder.id.to_string();
                 if let (Some(&parent_nid), Some(&child_nid)) = (
-                    source_to_node.get(&parent_id.to_string()),
-                    source_to_node.get(&folder.id.to_string()),
+                    source_to_node.get(&parent_str),
+                    source_to_node.get(&child_str),
                 ) {
                     edges.push(GraphEdge {
                         id: GraphEdgeId::new(),
@@ -298,9 +305,11 @@ impl GraphBuilder {
         // ────────────────────────────────────────────
         for page in &active_pages {
             if let Some(folder_id) = page.folder_id {
+                let folder_str = folder_id.to_string();
+                let page_str = page.id.to_string();
                 if let (Some(&folder_nid), Some(&note_nid)) = (
-                    source_to_node.get(&folder_id.to_string()),
-                    source_to_node.get(&page.id.to_string()),
+                    source_to_node.get(&folder_str),
+                    source_to_node.get(&page_str),
                 ) {
                     edges.push(GraphEdge {
                         id: GraphEdgeId::new(),
@@ -321,9 +330,11 @@ impl GraphBuilder {
         // ────────────────────────────────────────────
         for page in &active_pages {
             if let Some(parent_id) = page.parent_page_id {
+                let page_str = page.id.to_string();
+                let parent_str = parent_id.to_string();
                 if let (Some(&child_nid), Some(&parent_nid)) = (
-                    source_to_node.get(&page.id.to_string()),
-                    source_to_node.get(&parent_id.to_string()),
+                    source_to_node.get(&page_str),
+                    source_to_node.get(&parent_str),
                 ) {
                     edges.push(GraphEdge {
                         id: GraphEdgeId::new(),
@@ -350,18 +361,19 @@ impl GraphBuilder {
                 continue;
             }
 
+            let chat_id_str = chat.id.to_string();
             let chat_nid = GraphNodeId::new();
             let node = GraphNode {
                 id: chat_nid,
                 node_type: GraphNodeType::Chat,
                 label: chat.title.clone(),
-                source_id: chat.id.to_string(),
+                source_id: chat_id_str.clone(),
                 weight: 1.0,
                 metadata_json: None,
                 is_manual: false,
                 created_at: chat.created_at,
             };
-            source_to_node.insert(chat.id.to_string(), chat_nid);
+            source_to_node.insert(chat_id_str, chat_nid);
             nodes.push(node);
         }
 

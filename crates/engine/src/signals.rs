@@ -161,7 +161,14 @@ fn capitalize_entities(entities: &[String]) -> Vec<String> {
         .map(|e| {
             let mut chars = e.chars();
             match chars.next() {
-                Some(c) => c.to_uppercase().collect::<String>() + chars.as_str(),
+                Some(c) => {
+                    let mut s = String::with_capacity(e.len());
+                    for uc in c.to_uppercase() {
+                        s.push(uc);
+                    }
+                    s.push_str(chars.as_str());
+                    s
+                }
                 None => String::new(),
             }
         })

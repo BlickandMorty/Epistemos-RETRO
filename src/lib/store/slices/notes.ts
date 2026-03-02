@@ -20,7 +20,17 @@ import {
   migrateToSqlite,
   upsertVaultOnServer,
   deleteVaultOnServer,
+  createPageOnBackend,
+  deletePageOnBackend,
+  updatePageTitleOnBackend,
+  updatePageFieldOnBackend,
+  loadPageBlocks,
+  savePageBodyToBackend,
+  createFolderOnBackend,
+  updateFolderOnBackend,
 } from '@/lib/notes/sync-client';
+import { commands } from '@/lib/bindings';
+import { listen } from '@tauri-apps/api/event';
 
 // ── Module-scope abort controller for Note AI SSE (not in Zustand state) ──
 let _noteAIAbortController: AbortController | null = null;
@@ -162,6 +172,8 @@ export interface NotesSliceActions {
   // Persistence
   loadNotesFromStorage: () => void;
   saveNotesToStorage: () => void;
+  loadPageBody: (pageId: string) => void;
+  savePageBody: (pageId: string) => void;
 
   // Backlinks
   rebuildPageLinks: () => void;
@@ -234,22 +246,20 @@ function connectNoteAISSE(set: PFCSet, get: PFCGet) {
   const inferenceConfig = state.getInferenceConfig
     ? state.getInferenceConfig()
     : {
-        mode: state.inferenceMode ?? 'api',
-        apiProvider: state.apiProvider ?? 'openai',
-        apiKey: state.apiKey ?? '',
-        openaiModel: state.openaiModel ?? 'gpt-4o',
-        anthropicModel: state.anthropicModel ?? 'claude-sonnet-4-20250514',
-        ollamaBaseUrl: state.ollamaBaseUrl ?? 'http://localhost:11434',
-        ollamaModel: state.ollamaModel ?? 'llama3.1',
-      };
+      mode: state.inferenceMode ?? 'api',
+      apiProvider: state.apiProvider ?? 'openai',
+      apiKey: state.apiKey ?? '',
+      openaiModel: state.openaiModel ?? 'gpt-4o',
+      anthropicModel: state.anthropicModel ?? 'claude-sonnet-4-20250514',
+      ollamaBaseUrl: state.ollamaBaseUrl ?? 'http://localhost:11434',
+      ollamaModel: state.ollamaModel ?? 'llama3.1',
+    };
 
   (async () => {
     try {
-      const { commands } = await import('@/lib/bindings');
       void notePages; void noteBlocks; void inferenceConfig;
 
       // Listen for streaming tokens from Rust backend
-      const { listen } = await import('@tauri-apps/api/event');
       const unlisten = await listen<{ page_id: string; text: string; done: boolean; error?: boolean }>(
         'note-ai-stream',
         (event) => {
@@ -419,12 +429,12 @@ export const createNotesSlice = (set: PFCSet, get: PFCGet) => ({
           blocks = blocks.map((b: NoteBlock) =>
             b.id === op.blockId
               ? {
-                  ...b,
-                  parentId: op.previousData?.parentId ?? b.parentId,
-                  order: op.previousData?.order ?? b.order,
-                  indent: op.previousData?.indent ?? b.indent,
-                  updatedAt: Date.now(),
-                }
+                ...b,
+                parentId: op.previousData?.parentId ?? b.parentId,
+                order: op.previousData?.order ?? b.order,
+                indent: op.previousData?.indent ?? b.indent,
+                updatedAt: Date.now(),
+              }
               : b
           );
           break;
@@ -474,12 +484,12 @@ export const createNotesSlice = (set: PFCSet, get: PFCGet) => ({
           blocks = blocks.map((b: NoteBlock) =>
             b.id === op.blockId
               ? {
-                  ...b,
-                  parentId: op.data?.parentId ?? b.parentId,
-                  order: op.data?.order ?? b.order,
-                  indent: op.data?.indent ?? b.indent,
-                  updatedAt: Date.now(),
-                }
+                ...b,
+                parentId: op.data?.parentId ?? b.parentId,
+                order: op.data?.order ?? b.order,
+                indent: op.data?.indent ?? b.indent,
+                updatedAt: Date.now(),
+              }
               : b
           );
           break;
@@ -503,6 +513,7 @@ export const createNotesSlice = (set: PFCSet, get: PFCGet) => ({
     const journalDate = isJournal ? getTodayJournalDate() : undefined;
     const page = createNewPage(title, isJournal, journalDate);
     const firstBlock = createEmptyBlock(page.id, null, 'a0');
+    const clientId = page.id;
 
     set((s) => ({
       notePages: [...s.notePages, page],
@@ -512,8 +523,26 @@ export const createNotesSlice = (set: PFCSet, get: PFCGet) => ({
       openTabIds: [...s.openTabIds, page.id],
     }));
 
+    // Persist to Tauri backend — swap client ID with backend ID
+    createPageOnBackend(title).then((backendPage) => {
+      if (!backendPage) return;
+      const backendId = backendPage.id;
+      if (backendId === clientId) return;
+      set((s) => ({
+        notePages: s.notePages.map((p: NotePage) =>
+          p.id === clientId ? { ...p, id: backendId } : p
+        ),
+        noteBlocks: s.noteBlocks.map((b: NoteBlock) =>
+          b.pageId === clientId ? { ...b, pageId: backendId } : b
+        ),
+        activePageId: s.activePageId === clientId ? backendId : s.activePageId,
+        openTabIds: s.openTabIds.map((id) => id === clientId ? backendId : id),
+        navigationHistory: s.navigationHistory.map((id) => id === clientId ? backendId : id),
+      }));
+    }).catch(() => { });
+
     debouncedSave(get);
-    return page.id;
+    return clientId;
   },
 
   deletePage: (pageId: string) => {
@@ -532,6 +561,8 @@ export const createNotesSlice = (set: PFCSet, get: PFCGet) => ({
         openTabIds: newTabs,
       };
     });
+    // Persist deletion to Tauri backend
+    deletePageOnBackend(pageId).catch(() => { });
     debouncedSave(get);
   },
 
@@ -563,6 +594,8 @@ export const createNotesSlice = (set: PFCSet, get: PFCGet) => ({
       };
     });
 
+    // Persist rename to Tauri backend
+    updatePageTitleOnBackend(pageId, newTitle).catch(() => { });
     get().rebuildPageLinks();
     debouncedSave(get);
   },
@@ -581,6 +614,20 @@ export const createNotesSlice = (set: PFCSet, get: PFCGet) => ({
         ? [...s.navigationHistory.slice(-49), prev]  // cap at 50 entries
         : s.navigationHistory,
     }));
+
+    // Lazy-load blocks from Tauri backend when navigating to a page
+    if (pageId) {
+      loadPageBlocks(pageId).then((blocks) => {
+        if (blocks.length > 0) {
+          set((s) => ({
+            noteBlocks: [
+              ...s.noteBlocks.filter((b: NoteBlock) => b.pageId !== pageId),
+              ...blocks,
+            ],
+          }));
+        }
+      }).catch(() => { });
+    }
   },
 
   goBack: () => {
@@ -607,20 +654,26 @@ export const createNotesSlice = (set: PFCSet, get: PFCGet) => ({
   },
 
   togglePageFavorite: (pageId: string) => {
+    const page = get().notePages.find((p: NotePage) => p.id === pageId);
+    const newFav = page ? !page.favorite : true;
     set((s) => ({
       notePages: s.notePages.map((p: NotePage) =>
-        p.id === pageId ? { ...p, favorite: !p.favorite } : p
+        p.id === pageId ? { ...p, favorite: newFav } : p
       ),
     }));
+    updatePageFieldOnBackend(pageId, { is_favorite: newFav }).catch(() => { });
     debouncedSave(get);
   },
 
   togglePagePin: (pageId: string) => {
+    const page = get().notePages.find((p: NotePage) => p.id === pageId);
+    const newPin = page ? !page.pinned : true;
     set((s) => ({
       notePages: s.notePages.map((p: NotePage) =>
-        p.id === pageId ? { ...p, pinned: !p.pinned } : p
+        p.id === pageId ? { ...p, pinned: newPin } : p
       ),
     }));
+    updatePageFieldOnBackend(pageId, { is_pinned: newPin }).catch(() => { });
     debouncedSave(get);
   },
 
@@ -1164,8 +1217,9 @@ export const createNotesSlice = (set: PFCSet, get: PFCGet) => ({
   // ═════════════════════════════════════════════════════════════════
 
   createNoteBook: (title: string, pageIds: string[] = [], parentId: string | null = null): string => {
+    const clientId = `book-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const book: NoteBook = {
-      id: `book-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      id: clientId,
       title,
       pageIds,
       createdAt: Date.now(),
@@ -1175,8 +1229,21 @@ export const createNotesSlice = (set: PFCSet, get: PFCGet) => ({
       parentId: parentId || undefined,
     };
     set((s) => ({ noteBooks: [...s.noteBooks, book] }));
+
+    // Persist to Tauri backend — swap client ID with backend ID
+    createFolderOnBackend(title).then((backendFolder) => {
+      if (!backendFolder) return;
+      const backendId = backendFolder.id;
+      if (backendId === clientId) return;
+      set((s) => ({
+        noteBooks: s.noteBooks.map((b: NoteBook) =>
+          b.id === clientId ? { ...b, id: backendId } : b
+        ),
+      }));
+    }).catch(() => { });
+
     debouncedSave(get);
-    return book.id;
+    return clientId;
   },
 
   addPageToBook: (bookId: string, pageId: string) => {
@@ -1215,6 +1282,8 @@ export const createNotesSlice = (set: PFCSet, get: PFCGet) => ({
       });
       return { noteBooks: updated };
     });
+    // Update page's folder_id on backend
+    updatePageFieldOnBackend(pageId, { folder_id: targetBookId }).catch(() => { });
     debouncedSave(get);
   },
 
@@ -1236,6 +1305,8 @@ export const createNotesSlice = (set: PFCSet, get: PFCGet) => ({
           : b
       ),
     }));
+    // Update folder's parent on backend
+    updateFolderOnBackend(bookId, { parent_folder_id: newParentId }).catch(() => { });
     debouncedSave(get);
   },
 
@@ -1316,6 +1387,8 @@ export const createNotesSlice = (set: PFCSet, get: PFCGet) => ({
             activeVaultId: activeVaultId || (dbVaults[0]?.id ?? null),
             vaultReady: true,
           });
+          // Chain: load pages/blocks for the active vault
+          get().loadNotesFromStorage();
           return;
         }
 
@@ -1351,6 +1424,7 @@ export const createNotesSlice = (set: PFCSet, get: PFCGet) => ({
           activeVaultId: activeVaultId || (vaults[0]?.id ?? null),
           vaultReady: true,
         });
+        get().loadNotesFromStorage();
 
         // ── Async: migrate localStorage vaults to SQLite (one-time) ──
         if (vaults.length > 0) {
@@ -1365,6 +1439,7 @@ export const createNotesSlice = (set: PFCSet, get: PFCGet) => ({
           activeVaultId: activeVaultId || (vaults[0]?.id ?? null),
           vaultReady: true,
         });
+        get().loadNotesFromStorage();
       }
     })();
   },
@@ -1380,7 +1455,7 @@ export const createNotesSlice = (set: PFCSet, get: PFCGet) => ({
     set((s) => ({ vaults: [...s.vaults, vault] }));
     writeVersioned(STORAGE_KEY_VAULTS, VAULTS_VERSION, get().vaults);
     // Async: persist to SQLite
-    upsertVaultOnServer(vault).catch(() => {});
+    upsertVaultOnServer(vault).catch(() => { });
     return vault.id;
   },
 
@@ -1396,7 +1471,7 @@ export const createNotesSlice = (set: PFCSet, get: PFCGet) => ({
       // Async: flush to SQLite before switch
       const oldVault = s.vaults.find((v: Vault) => v.id === oldVid);
       if (oldVault) {
-        syncVaultToServer(oldVid, oldVault, s.notePages, s.noteBlocks, s.noteBooks, s.concepts, s.pageLinks).catch(() => {});
+        syncVaultToServer(oldVid, oldVault, s.notePages, s.noteBlocks, s.noteBooks, s.concepts, s.pageLinks).catch(() => { });
       }
     }
     // Clear current data and switch
@@ -1423,7 +1498,7 @@ export const createNotesSlice = (set: PFCSet, get: PFCGet) => ({
     removeStorage(vaultKey(vaultId, 'books'));
     removeStorage(vaultKey(vaultId, 'concepts'));
     // Async: delete from SQLite (cascade deletes pages, blocks, etc.)
-    deleteVaultOnServer(vaultId).catch(() => {});
+    deleteVaultOnServer(vaultId).catch(() => { });
     set((s) => {
       const vaults = s.vaults.filter((v: Vault) => v.id !== vaultId);
       writeVersioned(STORAGE_KEY_VAULTS, VAULTS_VERSION, vaults);
@@ -1445,7 +1520,7 @@ export const createNotesSlice = (set: PFCSet, get: PFCGet) => ({
       writeVersioned(STORAGE_KEY_VAULTS, VAULTS_VERSION, vaults);
       // Async: persist renamed vault to SQLite
       const updated = vaults.find((v: Vault) => v.id === vaultId);
-      if (updated) upsertVaultOnServer(updated).catch(() => {});
+      if (updated) upsertVaultOnServer(updated).catch(() => { });
       return { vaults };
     });
   },
@@ -1658,8 +1733,30 @@ export const createNotesSlice = (set: PFCSet, get: PFCGet) => ({
     // Async: write-through to SQLite
     const vault = get().vaults.find((v: Vault) => v.id === vid);
     if (vault) {
-      syncVaultToServer(vid, vault, s.notePages, s.noteBlocks, s.noteBooks, s.concepts, s.pageLinks).catch(() => {});
+      syncVaultToServer(vid, vault, s.notePages, s.noteBlocks, s.noteBooks, s.concepts, s.pageLinks).catch(() => { });
     }
+  },
+
+  loadPageBody: (pageId: string) => {
+    (async () => {
+      try {
+        const blocks = await loadPageBlocks(pageId);
+        if (blocks.length > 0) {
+          set((s) => ({
+            noteBlocks: [
+              ...s.noteBlocks.filter((b: NoteBlock) => b.pageId !== pageId),
+              ...blocks,
+            ],
+          }));
+        }
+      } catch {
+        // Backend unavailable — keep existing client-side blocks
+      }
+    })();
+  },
+
+  savePageBody: (pageId: string) => {
+    savePageBodyToBackend(pageId, get().noteBlocks).catch(() => { });
   },
 
   // ── Internal: rebuild page links ──
@@ -1738,6 +1835,11 @@ function debouncedSave(get: PFCGet) {
   _notesSaveTimer = setTimeout(() => {
     _notesSaveTimer = null;
     get().saveNotesToStorage();
+    // Also persist active page body to Tauri backend
+    const activePageId = get().activePageId;
+    if (activePageId) {
+      savePageBodyToBackend(activePageId, get().noteBlocks).catch(() => { });
+    }
   }, 300);
 }
 

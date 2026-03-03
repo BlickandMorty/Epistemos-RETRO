@@ -74,6 +74,7 @@ pub fn run() {
             physics::toggle_fps_mode,
             physics::fps_input,
             physics::get_physics_mode,
+            physics::set_physics_target_fps,
             research::start_research,
             research::advance_research,
             research::get_research_status,

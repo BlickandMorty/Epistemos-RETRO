@@ -362,6 +362,12 @@ async function _setupTauriListeners(): Promise<UnlistenFn> {
       }));
     }),
 
+    // ── Citation events (extracted from responses) ──
+
+    listen<Array<{ title: string; doi: string | null; url: string | null; source: string }>>('pipeline://citations', (event) => {
+      window.dispatchEvent(new CustomEvent('pfc-citations', { detail: event.payload }));
+    }),
+
     // ── Research pipeline events ──
 
     listen<{ page_id: string; stage: string; analysis: string }>('research://analysis', (event) => {

@@ -482,6 +482,14 @@ impl PhysicsWorld {
         self.paused
     }
 
+    /// Update the target FPS (tick rate) for the simulation.
+    /// Takes effect on the next physics loop restart.
+    pub fn set_target_fps(&mut self, fps: u32) {
+        let clamped = fps.max(1);
+        self.config.target_fps = clamped;
+        self.integration_parameters.dt = 1.0 / clamped as f32;
+    }
+
     pub fn integration_parameters(&self) -> &IntegrationParameters {
         &self.integration_parameters
     }

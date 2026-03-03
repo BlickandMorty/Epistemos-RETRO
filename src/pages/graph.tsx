@@ -16,6 +16,15 @@ import { getNodePositions, getPhysicsFrameCount, getFpsCamera } from '@/lib/stor
 import { physicsSpring } from '@/lib/motion/motion-config';
 import type { GraphNode, GraphEdge, NeighborInfo } from '@/lib/bindings';
 import { SpatialGrid } from '@/lib/graph/spatial-index';
+import { PERF_TIER } from '@/lib/perf';
+
+// ── Performance-adaptive quality tiers ─────────────────────────────
+const GRAPH_QUALITY = {
+  low:  { edgeZoomMin: 0.6, labelZoomMin: 2.0, maxEdgesDrawn: 300,  physicsFps: 30 },
+  mid:  { edgeZoomMin: 0.3, labelZoomMin: 0.8, maxEdgesDrawn: 2000, physicsFps: 60 },
+  high: { edgeZoomMin: 0.3, labelZoomMin: 0.8, maxEdgesDrawn: 10000, physicsFps: 90 },
+} as const;
+const QUALITY = GRAPH_QUALITY[PERF_TIER];
 
 // ── Constants ──────────────────────────────────────────────────────
 
@@ -76,7 +85,9 @@ function GraphCanvas({
     if (!canvas || !container) return;
 
     const resize = () => {
-      const dpr = window.devicePixelRatio || 1;
+      // Cap DPR on low-end to reduce pixel fill cost
+      const rawDpr = window.devicePixelRatio || 1;
+      const dpr = PERF_TIER === 'low' ? Math.min(rawDpr, 1) : rawDpr;
       const rect = container.getBoundingClientRect();
       canvas.width = rect.width * dpr;
       canvas.height = rect.height * dpr;
@@ -106,7 +117,8 @@ function GraphCanvas({
       if (currentFrame === lastFrame && !dragRef.current) return;
       lastFrame = currentFrame;
 
-      const dpr = window.devicePixelRatio || 1;
+      const rawDpr = window.devicePixelRatio || 1;
+      const dpr = PERF_TIER === 'low' ? Math.min(rawDpr, 1) : rawDpr;
       const w = canvas.width;
       const h = canvas.height;
       const cam = camRef.current;
@@ -146,12 +158,13 @@ function GraphCanvas({
       // Rebuild spatial index for hit testing
       gridRef.current.rebuild(gridPositions);
 
-      // ── Draw edges (zoom-aware culling) ──
-      if (cam.zoom >= 0.3) {
+      // ── Draw edges (zoom-aware + perf-tier culling) ──
+      if (cam.zoom >= QUALITY.edgeZoomMin) {
         ctx.lineWidth = 0.5 / cam.zoom;
         ctx.strokeStyle = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.08)';
         ctx.beginPath();
 
+        let edgesDrawn = 0;
         if (cam.zoom < 0.8) {
           // Zoomed out: only edges connected to selected/hovered node
           const showEdgesFor = new Set<string>();
@@ -162,13 +175,15 @@ function GraphCanvas({
             const src = posMap.get(edge.source_node_id);
             const tgt = posMap.get(edge.target_node_id);
             if (src && tgt) { ctx.moveTo(src.x, src.y); ctx.lineTo(tgt.x, tgt.y); }
+            if (++edgesDrawn >= QUALITY.maxEdgesDrawn) break;
           }
         } else {
-          // Zoomed in: all visible edges
+          // Zoomed in: all visible edges (capped by perf tier)
           for (const edge of edges) {
             const src = posMap.get(edge.source_node_id);
             const tgt = posMap.get(edge.target_node_id);
             if (src && tgt) { ctx.moveTo(src.x, src.y); ctx.lineTo(tgt.x, tgt.y); }
+            if (++edgesDrawn >= QUALITY.maxEdgesDrawn) break;
           }
         }
         ctx.stroke();
@@ -185,8 +200,8 @@ function GraphCanvas({
         const r = isSelected ? baseRadius * 1.4 : isHovered ? baseRadius * 1.2 : baseRadius;
         const color = NODE_COLORS[node.node_type] ?? '#888';
 
-        // Glow for selected/hovered
-        if (isSelected || isHovered) {
+        // Glow for selected/hovered (skip on low-end to save fill cost)
+        if ((isSelected || isHovered) && PERF_TIER !== 'low') {
           const [cr, cg, cb] = hexToRgb(color);
           ctx.beginPath();
           ctx.arc(pos.x, pos.y, r + 3, 0, Math.PI * 2);
@@ -201,12 +216,11 @@ function GraphCanvas({
         ctx.fill();
         ctx.globalAlpha = 1;
 
-        // ── Label LOD (3 tiers) ──
+        // ── Label LOD (perf-tier adaptive) ──
         if (node.label) {
-          const showLabel = cam.zoom > 1.5
-            || (cam.zoom > 0.8 && (isSelected || isHovered || node.weight > 3))
-            // zoom < 0.8: no labels
-          ;
+          const showLabel = cam.zoom > QUALITY.labelZoomMin
+            ? true
+            : cam.zoom > 0.8 && (isSelected || isHovered || node.weight > 3);
           if (showLabel) {
             const fontSize = Math.max(8, 11 / cam.zoom);
             ctx.font = `500 ${fontSize}px -apple-system, system-ui, sans-serif`;
@@ -379,13 +393,32 @@ export default function GraphPage() {
     setLoading(true);
     const res = await commands.getGraph();
     if (res.status === 'ok') {
+      if (res.data.nodes.length === 0) {
+        // Graph table is empty — auto-build from pages/chats/tags on first visit.
+        // rebuildGraph() returns GraphData directly, no second roundtrip needed.
+        const rebuild = await commands.rebuildGraph();
+        if (rebuild.status === 'ok') {
+          setNodes(rebuild.data.nodes);
+          setEdges(rebuild.data.edges);
+          if (rebuild.data.nodes.length > 0) {
+            addToast({ type: 'success', message: `Graph built: ${rebuild.data.nodes.length} nodes` });
+          }
+          setLoading(false);
+          return;
+        }
+      }
       setNodes(res.data.nodes);
       setEdges(res.data.edges);
     }
     setLoading(false);
-  }, []);
+  }, [addToast]);
 
   useEffect(() => { loadGraph(); }, [loadGraph]);
+
+  // Set physics tick rate based on hardware tier (before starting physics)
+  useEffect(() => {
+    commands.setPhysicsTargetFps(QUALITY.physicsFps);
+  }, []);
 
   // Auto-start physics when graph loads
   useEffect(() => {

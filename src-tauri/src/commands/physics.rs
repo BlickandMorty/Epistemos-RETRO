@@ -186,3 +186,16 @@ pub async fn get_physics_mode(state: State<'_, AppState>) -> Result<String, AppE
     let physics = state.lock_physics()?;
     Ok(format!("{:?}", physics.mode()))
 }
+
+/// Set the physics target FPS (tick rate).
+/// Lower values reduce CPU usage on low-end hardware.
+/// Common values: 30 (low-end), 60 (mid), 90 (high-end).
+/// Requires physics restart to take effect.
+#[tauri::command]
+#[specta::specta]
+pub async fn set_physics_target_fps(state: State<'_, AppState>, fps: u32) -> Result<(), AppError> {
+    let clamped = fps.clamp(15, 144);
+    let mut physics = state.lock_physics()?;
+    physics.set_target_fps(clamped);
+    Ok(())
+}

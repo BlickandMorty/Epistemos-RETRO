@@ -33,6 +33,7 @@ type FilterType = 'all' | GraphNodeType;
 export default function LibraryPage() {
   const { isDark, isOled } = useIsDark();
   const addToast = usePFCStore((s) => s.addToast);
+  const setActivePage = usePFCStore((s) => s.setActivePage);
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState<LibraryTab>('sources');
@@ -122,30 +123,40 @@ export default function LibraryPage() {
     }
   }, [searchQuery, addToast]);
 
-  // Entity extraction
+  // Entity extraction — listen for completion event instead of hardcoded delay
   const handleExtract = useCallback(async () => {
     setExtracting(true);
     const res = await commands.extractEntities(false);
-    setExtracting(false);
     if (res.status === 'ok') {
-      addToast({ type: 'success', message: 'Entity extraction started — graph will update shortly' });
-      // Refresh graph after a brief delay for extraction to process
-      setTimeout(async () => {
-        const graphRes = await commands.getGraph();
-        if (graphRes.status === 'ok') {
-          setNodes(graphRes.data.nodes);
-          setEdges(graphRes.data.edges);
-        }
-      }, 3000);
+      addToast({ type: 'success', message: 'Entity extraction running…' });
     } else {
+      setExtracting(false);
       addToast({ type: 'error', message: 'Entity extraction failed' });
     }
   }, [addToast]);
 
-  // Navigate to a note
+  // Listen for extraction completion to refresh graph
+  useEffect(() => {
+    let unlisten: UnlistenFn | null = null;
+    listen<{ phase: string; current: number; total: number }>('extraction://progress', async (event) => {
+      if (event.payload.phase === 'complete') {
+        setExtracting(false);
+        const graphRes = await commands.getGraph();
+        if (graphRes.status === 'ok') {
+          setNodes(graphRes.data.nodes);
+          setEdges(graphRes.data.edges);
+          addToast({ type: 'success', message: `Graph updated: ${graphRes.data.nodes.length} nodes` });
+        }
+      }
+    }).then((fn) => { unlisten = fn; });
+    return () => { unlisten?.(); };
+  }, [addToast]);
+
+  // Navigate to a note — set active page in store THEN navigate
   const goToNote = useCallback((sourceId: string) => {
-    navigate(`/notes?page=${sourceId}`);
-  }, [navigate]);
+    setActivePage(sourceId);
+    navigate('/notes');
+  }, [setActivePage, navigate]);
 
   // Node inspector — fetch details on click
   const inspectNode = useCallback(async (nodeId: string) => {

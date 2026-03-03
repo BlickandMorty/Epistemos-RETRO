@@ -606,8 +606,8 @@ async fn generate_chat_title(
                 }));
             }
         }
-        Err(_) => {
-            // Title generation is best-effort — don't fail the pipeline
+        Err(e) => {
+            eprintln!("[chat] title generation failed (best-effort, non-blocking): {}", e.user_message());
         }
     }
 }

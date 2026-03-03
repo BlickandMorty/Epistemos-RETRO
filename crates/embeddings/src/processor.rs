@@ -212,6 +212,10 @@ impl NpuLane {
             ));
         }
 
+        // Load model into memory for ort API
+        let model_bytes = std::fs::read(&model_path)
+            .map_err(|e| EmbeddingError::IoError(format!("failed to read model: {e}")))?;
+
         // Create DirectML session — intra_threads=1 (single-threaded constraint)
         let mut session = Session::builder()
             .map_err(ort_err)?
@@ -221,7 +225,7 @@ impl NpuLane {
             .map_err(ort_err)?
             .with_intra_threads(1)
             .map_err(ort_err)?
-            .commit_from_file(&model_path)
+            .commit_from_memory(&model_bytes)
             .map_err(ort_err)?;
 
         let (request_tx, request_rx) = std::sync::mpsc::channel::<NpuRequest>();
@@ -278,6 +282,10 @@ impl GpuLane {
             ));
         }
 
+        // Load model into memory for ort API
+        let model_bytes = std::fs::read(&model_path)
+            .map_err(|e| EmbeddingError::IoError(format!("failed to read model: {e}")))?;
+
         let mut providers = Vec::new();
 
         // TensorRT first (50% faster than raw CUDA on NVIDIA GPUs)
@@ -309,7 +317,7 @@ impl GpuLane {
             .map_err(ort_err)?
             .with_intra_threads(4)
             .map_err(ort_err)?
-            .commit_from_file(&model_path)
+            .commit_from_memory(&model_bytes)
             .map_err(ort_err)?;
 
         Ok(Self {
@@ -349,13 +357,17 @@ impl CpuLane {
             ));
         }
 
+        // Load model into memory for ort API
+        let model_bytes = std::fs::read(&model_path)
+            .map_err(|e| EmbeddingError::IoError(format!("failed to read model: {e}")))?;
+
         let threads = optimal_cpu_threads();
 
         let session = Session::builder()
             .map_err(ort_err)?
             .with_intra_threads(threads)
             .map_err(ort_err)?
-            .commit_from_file(&model_path)
+            .commit_from_memory(&model_bytes)
             .map_err(ort_err)?;
 
         Ok(Self {

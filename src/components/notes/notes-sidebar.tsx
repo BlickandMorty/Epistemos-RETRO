@@ -33,10 +33,9 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 
-// GraphView will be rendered by Bevy + Rapier3D — not a React component
-const GraphView = lazy(() =>
-  Promise.resolve({ default: () => <div className="flex items-center justify-center h-full text-muted-foreground">Graph renders on Bevy surface</div> }),
-);
+// GraphView - Mini graph visualization for sidebar
+// Uses the same data as the main graph page but with a simplified view
+const GraphView = lazy(() => import('./mini-graph-view'));
 
 /* ------------------------------------------------------------------ */
 /*  Constants & Easing                                                  */

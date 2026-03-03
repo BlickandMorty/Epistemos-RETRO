@@ -1,15 +1,16 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
   PenLineIcon, PlusIcon, ImportIcon, CalendarIcon,
   StarIcon, PinIcon, EyeIcon, PencilIcon, NetworkIcon,
   WrenchIcon, XIcon, FileTextIcon, Maximize2Icon, Minimize2Icon,
-  ArrowLeftIcon, SparklesIcon,
+  ArrowLeftIcon, SparklesIcon, ListIcon,
 } from 'lucide-react';
 import { NoteAIChat } from '@/components/notes/note-ai-chat';
 import { NotesSidebar } from '@/components/notes/notes-sidebar';
 import { BlockEditor } from '@/components/notes/block-editor/editor';
+import { TableOfContents } from '@/components/notes/table-of-contents';
 import { GlassBubbleButton } from '@/components/chat/glass-bubble-button';
 import { usePFCStore } from '@/lib/store/use-pfc-store';
 import { commands } from '@/lib/bindings';
@@ -129,6 +130,21 @@ export default function NotesPage() {
   const [editorMode, setEditorMode] = useState<'write' | 'read'>('write');
   const [zenMode, setZenMode] = useState(false);
   const [aiChatOpen, setAiChatOpen] = useState(false);
+  const [tocOpen, setTocOpen] = useState(false);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Cmd/Ctrl+Shift+T: Toggle TOC
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'T') {
+        e.preventDefault();
+        setTocOpen((v) => !v);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Editable title
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -182,247 +198,263 @@ export default function NotesPage() {
         </motion.div>
       )}
 
-      {/* ── Main editor area ────────────────────────────────── */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
-        <div style={{ flex: 1, overflow: 'auto', position: 'relative' }}>
-          <AnimatePresence mode="wait">
-            {activePageId && activePage ? (
-              <motion.div
-                key={activePageId}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={physicsSpring.chatEnter}
-                style={{
-                  maxWidth: zenMode ? '48rem' : '44rem',
-                  margin: '0 auto',
-                  padding: zenMode ? '6rem 2rem 8rem' : '5rem 2rem 6rem',
-                  width: '100%',
-                }}
-              >
-                {/* Journal badge */}
-                {activePage.isJournal && (
-                  <div style={{
-                    display: 'flex', alignItems: 'center', gap: '0.375rem',
-                    fontSize: '0.6875rem', fontWeight: 600, color: '#34D399',
-                    marginBottom: '0.5rem',
-                  }}>
-                    <CalendarIcon style={{ width: '0.625rem', height: '0.625rem' }} />
-                    Journal
-                  </div>
-                )}
-
-                {/* Editable title */}
-                <div style={{ minHeight: '3rem', marginBottom: '1.5rem' }}>
-                  {isEditingTitle ? (
-                    <input
-                      ref={titleRef}
-                      value={titleDraft}
-                      onChange={(e) => setTitleDraft(e.target.value)}
-                      onBlur={handleTitleCommit}
-                      onKeyDown={(e) => { if (e.key === 'Enter') handleTitleCommit(); if (e.key === 'Escape') setIsEditingTitle(false); }}
-                      style={{
-                        fontSize: '1.875rem', fontWeight: 400,
-                        fontFamily: 'var(--font-heading)',
-                        color: 'var(--foreground)', background: 'transparent',
-                        border: 'none', outline: 'none', width: '100%',
-                        letterSpacing: '-0.01em',
-                      }}
-                    />
-                  ) : (
-                    <h1
-                      onClick={handleTitleClick}
-                      style={{
-                        fontSize: '1.875rem', fontWeight: 400,
-                        fontFamily: 'var(--font-heading)',
-                        letterSpacing: '-0.01em', cursor: 'text',
-                        color: 'var(--foreground)',
-                      }}
-                    >
-                      {activePage.title}
-                    </h1>
-                  )}
-                </div>
-
-                {/* Block editor */}
-                <BlockEditor pageId={activePageId} readOnly={editorMode === 'read'} />
-              </motion.div>
-            ) : (
-              /* ── Landing state ─────────────────────────────── */
-              <motion.div
-                key="landing"
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={physicsSpring.header}
-                style={{
-                  display: 'flex', flexDirection: 'column',
-                  alignItems: 'center', justifyContent: 'center',
-                  height: '100%', gap: '1.5rem',
-                  padding: '2rem',
-                }}
-              >
+      {/* ── Main content area (editor + optional TOC) ───────────────── */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'row', minWidth: 0, overflow: 'hidden' }}>
+        {/* Editor content */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
+          <div style={{ flex: 1, overflow: 'auto', position: 'relative' }}>
+            <AnimatePresence mode="wait">
+              {activePageId && activePage ? (
                 <motion.div
-                  initial={{ scale: 0.8, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ ...physicsSpring.card, delay: 0.1 }}
+                  key={activePageId}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={physicsSpring.chatEnter}
+                  style={{
+                    maxWidth: zenMode ? '48rem' : '44rem',
+                    margin: '0 auto',
+                    padding: zenMode ? '6rem 2rem 8rem' : '5rem 2rem 6rem',
+                    width: '100%',
+                  }}
                 >
-                  <PenLineIcon style={{
-                    width: 56, height: 56, opacity: 0.12,
-                    color: isDark ? 'rgba(232,228,222,0.9)' : 'rgba(0,0,0,0.6)',
-                  }} />
-                </motion.div>
-
-                <div style={{ textAlign: 'center' }}>
-                  <h2 style={{
-                    fontFamily: 'var(--font-heading)', fontSize: '1.5rem',
-                    fontWeight: 400, letterSpacing: '-0.01em',
-                    marginBottom: '0.5rem',
-                  }}>
-                    Notes
-                  </h2>
-                  <p style={{
-                    fontSize: '0.875rem', opacity: 0.4,
-                    maxWidth: '24rem', lineHeight: 1.5,
-                  }}>
-                    Create a page or open today's journal to start taking notes.
-                  </p>
-                </div>
-
-                {/* Action buttons */}
-                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-                  <GlassBubbleButton size="sm" onClick={() => createPage('Untitled')}>
-                    <PlusIcon style={{ width: 12, height: 12 }} />
-                    New Page
-                  </GlassBubbleButton>
-                  <GlassBubbleButton size="sm" onClick={() => {
-                    usePFCStore.getState().getOrCreateTodayJournal();
-                  }}>
-                    <CalendarIcon style={{ width: 12, height: 12 }} />
-                    Today's Journal
-                  </GlassBubbleButton>
-                  <GlassBubbleButton size="sm" onClick={() => navigate('/graph')}>
-                    <NetworkIcon style={{ width: 12, height: 12 }} />
-                    Knowledge Graph
-                  </GlassBubbleButton>
-                  <GlassBubbleButton size="sm" onClick={async () => {
-                    const res = await commands.importVault();
-                    if (res.status === 'ok') {
-                      addToast({ message: `Imported ${res.data} notes`, type: 'success' });
-                      usePFCStore.getState().loadNotesFromStorage();
-                    }
-                  }}>
-                    <ImportIcon style={{ width: 12, height: 12 }} />
-                    Import Vault
-                  </GlassBubbleButton>
-                </div>
-
-                {/* Recent pages grid */}
-                {recentPages.length > 0 && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ ...physicsSpring.card, delay: 0.2 }}
-                    style={{ marginTop: '1rem', width: '100%', maxWidth: '32rem' }}
-                  >
-                    <h3 style={{
-                      fontSize: '0.6875rem', fontWeight: 700,
-                      textTransform: 'uppercase', letterSpacing: '0.06em',
-                      color: isDark ? 'rgba(156,143,128,0.4)' : 'rgba(0,0,0,0.25)',
-                      marginBottom: '0.75rem',
-                    }}>
-                      Recent
-                    </h3>
+                  {/* Journal badge */}
+                  {activePage.isJournal && (
                     <div style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fill, minmax(9rem, 1fr))',
-                      gap: '0.5rem',
+                      display: 'flex', alignItems: 'center', gap: '0.375rem',
+                      fontSize: '0.6875rem', fontWeight: 600, color: '#34D399',
+                      marginBottom: '0.5rem',
                     }}>
-                      {recentPages.map((page: NotePage) => (
-                        <motion.button
-                          key={page.id}
-                          onClick={() => setActivePage(page.id)}
-                          whileHover={{ scale: 1.02, y: -1, transition: physicsSpring.button }}
-                          whileTap={{ scale: 0.98, transition: physicsSpring.button }}
-                          style={{
-                            display: 'flex', alignItems: 'center', gap: '0.5rem',
-                            padding: '0.625rem 0.75rem', borderRadius: '0.75rem',
-                            border: isDark ? '1px solid rgba(60,52,42,0.2)' : '1px solid rgba(0,0,0,0.06)',
-                            background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)',
-                            cursor: 'pointer', textAlign: 'left', width: '100%',
-                            color: 'var(--foreground)',
-                          }}
-                        >
-                          <FileTextIcon style={{ width: 14, height: 14, opacity: 0.4, flexShrink: 0 }} />
-                          <span style={{
-                            fontSize: '0.8125rem', fontWeight: 500,
-                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                          }}>
-                            {page.title}
-                          </span>
-                          {page.isJournal && (
-                            <CalendarIcon style={{ width: 10, height: 10, color: '#34D399', flexShrink: 0, marginLeft: 'auto' }} />
-                          )}
-                        </motion.button>
-                      ))}
+                      <CalendarIcon style={{ width: '0.625rem', height: '0.625rem' }} />
+                      Journal
                     </div>
+                  )}
+
+                  {/* Editable title */}
+                  <div style={{ minHeight: '3rem', marginBottom: '1.5rem' }}>
+                    {isEditingTitle ? (
+                      <input
+                        ref={titleRef}
+                        value={titleDraft}
+                        onChange={(e) => setTitleDraft(e.target.value)}
+                        onBlur={handleTitleCommit}
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleTitleCommit(); if (e.key === 'Escape') setIsEditingTitle(false); }}
+                        style={{
+                          fontSize: '1.875rem', fontWeight: 400,
+                          fontFamily: 'var(--font-heading)',
+                          color: 'var(--foreground)', background: 'transparent',
+                          border: 'none', outline: 'none', width: '100%',
+                          letterSpacing: '-0.01em',
+                        }}
+                      />
+                    ) : (
+                      <h1
+                        onClick={handleTitleClick}
+                        style={{
+                          fontSize: '1.875rem', fontWeight: 400,
+                          fontFamily: 'var(--font-heading)',
+                          letterSpacing: '-0.01em', cursor: 'text',
+                          color: 'var(--foreground)',
+                        }}
+                      >
+                        {activePage.title}
+                      </h1>
+                    )}
+                  </div>
+
+                  {/* Block editor */}
+                  <div data-editor-scroll-area style={{ flex: 1, overflow: 'auto' }}>
+                    <BlockEditor pageId={activePageId} readOnly={editorMode === 'read'} />
+                  </div>
+                </motion.div>
+              ) : (
+                /* ── Landing state ─────────────────────────────── */
+                <motion.div
+                  key="landing"
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={physicsSpring.header}
+                  style={{
+                    display: 'flex', flexDirection: 'column',
+                    alignItems: 'center', justifyContent: 'center',
+                    height: '100%', gap: '1.5rem',
+                    padding: '2rem',
+                  }}
+                >
+                  <motion.div
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ ...physicsSpring.card, delay: 0.1 }}
+                  >
+                    <PenLineIcon style={{
+                      width: 56, height: 56, opacity: 0.12,
+                      color: isDark ? 'rgba(232,228,222,0.9)' : 'rgba(0,0,0,0.6)',
+                    }} />
                   </motion.div>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
+
+                  <div style={{ textAlign: 'center' }}>
+                    <h2 style={{
+                      fontFamily: 'var(--font-heading)', fontSize: '1.5rem',
+                      fontWeight: 400, letterSpacing: '-0.01em',
+                      marginBottom: '0.5rem',
+                    }}>
+                      Notes
+                    </h2>
+                    <p style={{
+                      fontSize: '0.875rem', opacity: 0.4,
+                      maxWidth: '24rem', lineHeight: 1.5,
+                    }}>
+                      Create a page or open today's journal to start taking notes.
+                    </p>
+                  </div>
+
+                  {/* Action buttons */}
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+                    <GlassBubbleButton size="sm" onClick={() => createPage('Untitled')}>
+                      <PlusIcon style={{ width: 12, height: 12 }} />
+                      New Page
+                    </GlassBubbleButton>
+                    <GlassBubbleButton size="sm" onClick={() => {
+                      usePFCStore.getState().getOrCreateTodayJournal();
+                    }}>
+                      <CalendarIcon style={{ width: 12, height: 12 }} />
+                      Today's Journal
+                    </GlassBubbleButton>
+                    <GlassBubbleButton size="sm" onClick={() => navigate('/graph')}>
+                      <NetworkIcon style={{ width: 12, height: 12 }} />
+                      Knowledge Graph
+                    </GlassBubbleButton>
+                    <GlassBubbleButton size="sm" onClick={async () => {
+                      const res = await commands.importVault();
+                      if (res.status === 'ok') {
+                        addToast({ message: `Imported ${res.data} notes`, type: 'success' });
+                        usePFCStore.getState().loadNotesFromStorage();
+                      }
+                    }}>
+                      <ImportIcon style={{ width: 12, height: 12 }} />
+                      Import Vault
+                    </GlassBubbleButton>
+                  </div>
+
+                  {/* Recent pages grid */}
+                  {recentPages.length > 0 && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ ...physicsSpring.card, delay: 0.2 }}
+                      style={{ marginTop: '1rem', width: '100%', maxWidth: '32rem' }}
+                    >
+                      <h3 style={{
+                        fontSize: '0.6875rem', fontWeight: 700,
+                        textTransform: 'uppercase', letterSpacing: '0.06em',
+                        color: isDark ? 'rgba(156,143,128,0.4)' : 'rgba(0,0,0,0.25)',
+                        marginBottom: '0.75rem',
+                      }}>
+                        Recent
+                      </h3>
+                      <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fill, minmax(9rem, 1fr))',
+                        gap: '0.5rem',
+                      }}>
+                        {recentPages.map((page: NotePage) => (
+                          <motion.button
+                            key={page.id}
+                            onClick={() => setActivePage(page.id)}
+                            whileHover={{ scale: 1.02, y: -1, transition: physicsSpring.button }}
+                            whileTap={{ scale: 0.98, transition: physicsSpring.button }}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: '0.5rem',
+                              padding: '0.625rem 0.75rem', borderRadius: '0.75rem',
+                              border: isDark ? '1px solid rgba(60,52,42,0.2)' : '1px solid rgba(0,0,0,0.06)',
+                              background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)',
+                              cursor: 'pointer', textAlign: 'left', width: '100%',
+                              color: 'var(--foreground)',
+                            }}
+                          >
+                            <FileTextIcon style={{ width: 14, height: 14, opacity: 0.4, flexShrink: 0 }} />
+                            <span style={{
+                              fontSize: '0.8125rem', fontWeight: 500,
+                              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                            }}>
+                              {page.title}
+                            </span>
+                            {page.isJournal && (
+                              <CalendarIcon style={{ width: 10, height: 10, color: '#34D399', flexShrink: 0, marginLeft: 'auto' }} />
+                            )}
+                          </motion.button>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* ── Bottom tab bar ─────────────────────────────────── */}
+          {openTabIds.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={physicsSpring.chatEnter}
+              style={{
+                position: 'fixed', bottom: '0.625rem',
+                left: zenMode ? 0 : '16rem', right: 0,
+                zIndex: 40, display: 'flex', justifyContent: 'center',
+                pointerEvents: 'none',
+              }}
+            >
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: '0.125rem',
+                borderRadius: '9999px', padding: '0.3125rem',
+                maxWidth: 'calc(100vw - 8rem)', overflowX: 'auto',
+                background: pillBg, backdropFilter: 'blur(20px) saturate(1.4)',
+                pointerEvents: 'auto',
+              }}>
+                {openTabIds.map((tabId: string) => {
+                  const tabPage = notePages.find((p: NotePage) => p.id === tabId);
+                  return (
+                    <TabBubble
+                      key={tabId}
+                      page={tabPage}
+                      isActive={tabId === activePageId}
+                      isDark={isDark}
+                      onClick={() => setActivePage(tabId)}
+                      onClose={() => closeTab(tabId)}
+                    />
+                  );
+                })}
+                <motion.button
+                  onClick={() => createPage('Untitled')}
+                  title="New page"
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    width: '2.125rem', height: '2.125rem', borderRadius: '50%',
+                    border: 'none', cursor: 'pointer', background: 'transparent',
+                    color: 'rgba(255,255,255,0.4)',
+                  }}
+                >
+                  <PlusIcon style={{ width: '0.875rem', height: '0.875rem' }} />
+                </motion.button>
+              </div>
+            </motion.div>
+          )}
         </div>
 
-        {/* ── Bottom tab bar ─────────────────────────────────── */}
-        {openTabIds.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={physicsSpring.chatEnter}
-            style={{
-              position: 'fixed', bottom: '0.625rem',
-              left: zenMode ? 0 : '16rem', right: 0,
-              zIndex: 40, display: 'flex', justifyContent: 'center',
-              pointerEvents: 'none',
-            }}
-          >
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: '0.125rem',
-              borderRadius: '9999px', padding: '0.3125rem',
-              maxWidth: 'calc(100vw - 8rem)', overflowX: 'auto',
-              background: pillBg, backdropFilter: 'blur(20px) saturate(1.4)',
-              pointerEvents: 'auto',
-            }}>
-              {openTabIds.map((tabId: string) => {
-                const tabPage = notePages.find((p: NotePage) => p.id === tabId);
-                return (
-                  <TabBubble
-                    key={tabId}
-                    page={tabPage}
-                    isActive={tabId === activePageId}
-                    isDark={isDark}
-                    onClick={() => setActivePage(tabId)}
-                    onClose={() => closeTab(tabId)}
-                  />
-                );
-              })}
-              <motion.button
-                onClick={() => createPage('Untitled')}
-                title="New page"
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  width: '2.125rem', height: '2.125rem', borderRadius: '50%',
-                  border: 'none', cursor: 'pointer', background: 'transparent',
-                  color: 'rgba(255,255,255,0.4)',
-                }}
-              >
-                <PlusIcon style={{ width: '0.875rem', height: '0.875rem' }} />
-              </motion.button>
-            </div>
-          </motion.div>
-        )}
+        {/* ── Table of Contents (right sidebar) ───────────────── */}
+        <AnimatePresence>
+          {activePageId && tocOpen && (
+            <TableOfContents
+              pageId={activePageId}
+              isOpen={tocOpen}
+              onClose={() => setTocOpen(false)}
+            />
+          )}
+        </AnimatePresence>
       </div>
 
       {/* ── NoteAI Chat (Izmi) ────────────────────────────────── */}
@@ -517,6 +549,12 @@ export default function NotesPage() {
                     label={aiChatOpen ? 'Close AI Chat' : 'AI Chat'}
                     isActive={aiChatOpen} activeColor="#A78BFA"
                     onClick={() => setAiChatOpen((v) => !v)}
+                  />
+                  <ToolBtn
+                    icon={<ListIcon style={{ width: '0.875rem', height: '0.875rem' }} />}
+                    label={tocOpen ? 'Hide Contents' : 'Show Contents'}
+                    isActive={tocOpen} activeColor="var(--pfc-accent)"
+                    onClick={() => setTocOpen((v) => !v)}
                   />
                 </>
               )}

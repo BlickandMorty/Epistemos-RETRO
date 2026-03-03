@@ -5,6 +5,11 @@ use crate::error::StorageError;
 use crate::ids::*;
 use crate::types::*;
 
+// Helper to convert optional BlockId to String for rusqlite
+fn opt_block_id_to_string(id: Option<BlockId>) -> Option<String> {
+    id.map(|b| b.to_string())
+}
+
 pub struct Database {
     conn: Connection,
 }
@@ -20,6 +25,12 @@ impl Database {
     pub fn pragma_i64(&self, pragma: &str) -> Result<i64, StorageError> {
         let sql = format!("PRAGMA {pragma}");
         Ok(self.conn.query_row(&sql, [], |r| r.get::<_, i64>(0))?)
+    }
+    
+    /// Get a reference to the underlying SQLite connection.
+    /// Used by the query runtime for custom SQL execution.
+    pub fn conn(&self) -> &Connection {
+        &self.conn
     }
 }
 
@@ -274,6 +285,20 @@ impl Database {
             .query_map(params![page_id.to_string()], row_to_block)?
             .collect::<Result<Vec<_>, _>>()?;
         Ok(blocks)
+    }
+
+    /// Get a single block by ID.
+    pub fn get_block(&self, block_id: BlockId) -> Result<Block, StorageError> {
+        self.conn
+            .query_row(
+                "SELECT id, page_id, parent_block_id, \"order\", depth, content,
+                 is_collapsed, created_at, updated_at
+                 FROM blocks WHERE id = ?1",
+                params![block_id.to_string()],
+                row_to_block,
+            )
+            .optional()?
+            .ok_or(StorageError::BlockNotFound(block_id))
     }
 
     pub fn update_block(&self, block: &Block) -> Result<(), StorageError> {
@@ -656,27 +681,97 @@ impl Database {
     // Page Versions (content-addressable history)
     // ──────────────────────────────────────────────
 
-    pub fn insert_version(&self, version: &PageVersion) -> Result<(), StorageError> {
+    /// Save a new version snapshot for a page.
+    pub fn save_page_version(&self, version: &PageVersion) -> Result<(), StorageError> {
         self.conn.execute(
-            "INSERT INTO page_versions (id, page_id, hash, parent_hash, timestamp, changes_summary)
-             VALUES (?1,?2,?3,?4,?5,?6)",
+            "INSERT INTO page_versions (id, page_id, title, body, hash, parent_hash, timestamp, word_count, changes_summary)
+             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9)",
             params![
-                version.id, version.page_id.to_string(), version.hash,
-                version.parent_hash, version.timestamp, version.changes_summary,
+                version.id,
+                version.page_id.to_string(),
+                version.title,
+                version.body,
+                version.hash,
+                version.parent_hash,
+                version.timestamp,
+                version.word_count,
+                version.changes_summary,
             ],
         )?;
         Ok(())
     }
 
-    pub fn get_versions_for_page(&self, page_id: PageId) -> Result<Vec<PageVersion>, StorageError> {
+    /// Get all versions for a page, ordered by timestamp descending (newest first).
+    pub fn get_page_versions(&self, page_id: PageId) -> Result<Vec<PageVersion>, StorageError> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, page_id, hash, parent_hash, timestamp, changes_summary
+            "SELECT id, page_id, title, body, hash, parent_hash, timestamp, word_count, changes_summary
              FROM page_versions WHERE page_id = ?1 ORDER BY timestamp DESC",
         )?;
         let versions = stmt
             .query_map(params![page_id.to_string()], row_to_page_version)?
             .collect::<Result<Vec<_>, _>>()?;
         Ok(versions)
+    }
+
+    /// Get a specific version by ID.
+    pub fn get_version(&self, version_id: &str) -> Result<PageVersion, StorageError> {
+        self.conn
+            .query_row(
+                "SELECT id, page_id, title, body, hash, parent_hash, timestamp, word_count, changes_summary
+                 FROM page_versions WHERE id = ?1",
+                params![version_id],
+                row_to_page_version,
+            )
+            .optional()?
+            .ok_or_else(|| StorageError::VersionNotFound(version_id.to_string()))
+    }
+
+    /// Restore a page to a specific version.
+    /// Returns the version data that was restored.
+    pub fn restore_version(&self, version_id: &str) -> Result<PageVersion, StorageError> {
+        let version = self.get_version(version_id)?;
+
+        // Update page body
+        self.conn.execute(
+            "INSERT INTO page_bodies (page_id, body, updated_at) VALUES (?1, ?2, ?3)
+             ON CONFLICT(page_id) DO UPDATE SET body=?2, updated_at=?3",
+            params![version.page_id.to_string(), version.body, now_ms()],
+        )?;
+
+        // Update page metadata (title, word_count)
+        self.conn.execute(
+            "UPDATE pages SET title=?2, word_count=?3, updated_at=?4 WHERE id=?1",
+            params![
+                version.page_id.to_string(),
+                version.title,
+                version.word_count,
+                now_ms(),
+            ],
+        )?;
+
+        Ok(version)
+    }
+
+    /// Get the count of versions for a page.
+    pub fn get_page_version_count(&self, page_id: PageId) -> Result<i64, StorageError> {
+        let count: i64 = self.conn.query_row(
+            "SELECT COUNT(*) FROM page_versions WHERE page_id = ?1",
+            params![page_id.to_string()],
+            |row| row.get(0),
+        )?;
+        Ok(count)
+    }
+
+    /// Delete the oldest versions for a page to keep under a max count.
+    pub fn prune_old_versions(&self, page_id: PageId, keep_count: usize) -> Result<usize, StorageError> {
+        let count = self.conn.execute(
+            "DELETE FROM page_versions WHERE page_id = ?1 AND id IN (
+                SELECT id FROM page_versions WHERE page_id = ?1
+                ORDER BY timestamp ASC LIMIT -1 OFFSET ?2
+            )",
+            params![page_id.to_string(), keep_count as i64],
+        )?;
+        Ok(count)
     }
 
     pub fn delete_version(&self, version_id: &str) -> Result<(), StorageError> {
@@ -693,6 +788,19 @@ impl Database {
             params![page_id.to_string()],
         )?;
         Ok(())
+    }
+
+    /// Get the most recent version for a page, if any exists.
+    pub fn get_latest_version(&self, page_id: PageId) -> Result<Option<PageVersion>, StorageError> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, page_id, title, body, hash, parent_hash, timestamp, word_count, changes_summary
+             FROM page_versions WHERE page_id = ?1 ORDER BY timestamp DESC LIMIT 1",
+        )?;
+        let version = stmt
+            .query_map(params![page_id.to_string()], row_to_page_version)?
+            .next()
+            .transpose()?;
+        Ok(version)
     }
 
     // ──────────────────────────────────────────────
@@ -867,7 +975,8 @@ where
     })
 }
 
-fn row_to_page(row: &rusqlite::Row<'_>) -> Result<Page, rusqlite::Error> {
+/// Convert a database row to a Page struct.
+pub fn row_to_page(row: &rusqlite::Row<'_>) -> Result<Page, rusqlite::Error> {
     let id_str: String = row.get(0)?;
     let tags_json: String = row.get(5)?;
     let parent_str: Option<String> = row.get(21)?;
@@ -921,10 +1030,13 @@ fn row_to_page_version(row: &rusqlite::Row<'_>) -> Result<PageVersion, rusqlite:
     Ok(PageVersion {
         id: row.get(0)?,
         page_id: parse_id(&page_str)?,
-        hash: row.get(2)?,
-        parent_hash: row.get(3)?,
-        timestamp: row.get(4)?,
-        changes_summary: row.get(5)?,
+        title: row.get(2)?,
+        body: row.get(3)?,
+        hash: row.get(4)?,
+        parent_hash: row.get(5)?,
+        timestamp: row.get(6)?,
+        word_count: row.get(7)?,
+        changes_summary: row.get(8)?,
     })
 }
 
@@ -1006,6 +1118,297 @@ fn row_to_graph_edge(row: &rusqlite::Row<'_>) -> Result<GraphEdge, rusqlite::Err
         is_manual: row.get(6)?,
         created_at: row.get(7)?,
     })
+}
+
+fn row_to_transclusion(row: &rusqlite::Row<'_>) -> Result<Transclusion, rusqlite::Error> {
+    let id_str: String = row.get(0)?;
+    let source_str: String = row.get(1)?;
+    let target_str: String = row.get(2)?;
+    let target_block_str: Option<String> = row.get(3)?;
+    Ok(Transclusion {
+        id: parse_id(&id_str)?,
+        source_page_id: parse_id(&source_str)?,
+        target_page_id: parse_id(&target_str)?,
+        target_block_id: target_block_str.and_then(|s| s.parse().ok()),
+        created_at: row.get(4)?,
+    })
+}
+
+/// Parse a page row starting at a given offset (for JOIN queries).
+fn row_to_page_offset(row: &rusqlite::Row<'_>, offset: usize) -> Result<Page, rusqlite::Error> {
+    let id_str: String = row.get(offset)?;
+    let tags_json: String = row.get(offset + 5)?;
+    let parent_str: Option<String> = row.get(offset + 21)?;
+    let folder_str: Option<String> = row.get(offset + 22)?;
+    Ok(Page {
+        id: parse_id(&id_str)?,
+        title: row.get(offset + 1)?,
+        summary: row.get(offset + 2)?,
+        emoji: row.get(offset + 3)?,
+        research_stage: row.get(offset + 4)?,
+        tags: serde_json::from_str(&tags_json).unwrap_or_default(),
+        word_count: row.get(offset + 6)?,
+        is_pinned: row.get(offset + 7)?,
+        is_archived: row.get(offset + 8)?,
+        is_favorite: row.get(offset + 9)?,
+        is_journal: row.get(offset + 10)?,
+        is_locked: row.get(offset + 11)?,
+        sort_order: row.get(offset + 12)?,
+        journal_date: row.get(offset + 13)?,
+        front_matter_data: row.get(offset + 14)?,
+        ideas_data: row.get(offset + 15)?,
+        needs_vault_sync: row.get(offset + 16)?,
+        last_synced_body_hash: row.get(offset + 17)?,
+        last_synced_at: row.get(offset + 18)?,
+        file_path: row.get(offset + 19)?,
+        subfolder: row.get(offset + 20)?,
+        parent_page_id: parent_str.and_then(|s| s.parse().ok()),
+        folder_id: folder_str.and_then(|s| s.parse().ok()),
+        template_id: row.get(offset + 23)?,
+        created_at: row.get(offset + 24)?,
+        updated_at: row.get(offset + 25)?,
+    })
+}
+
+// ──────────────────────────────────────────────
+// Transclusions
+// ──────────────────────────────────────────────
+
+impl Database {
+    /// Create a new transclusion (block reference).
+    /// Returns the created transclusion with generated ID.
+    pub fn create_transclusion(
+        &self,
+        source_page_id: PageId,
+        target_page_id: PageId,
+        target_block_id: Option<BlockId>,
+    ) -> Result<Transclusion, StorageError> {
+        let transclusion = Transclusion::new(source_page_id, target_page_id, target_block_id);
+        self.conn.execute(
+            "INSERT INTO transclusions (id, source_page_id, target_page_id, target_block_id, created_at)
+             VALUES (?1, ?2, ?3, ?4, ?5)",
+            params![
+                transclusion.id.to_string(),
+                transclusion.source_page_id.to_string(),
+                transclusion.target_page_id.to_string(),
+                opt_block_id_to_string(transclusion.target_block_id),
+                transclusion.created_at,
+            ],
+        )?;
+        Ok(transclusion)
+    }
+
+    /// Get a transclusion by ID.
+    pub fn get_transclusion(&self, id: TransclusionId) -> Result<Transclusion, StorageError> {
+        self.conn
+            .query_row(
+                "SELECT id, source_page_id, target_page_id, target_block_id, created_at
+                 FROM transclusions WHERE id = ?1",
+                params![id.to_string()],
+                row_to_transclusion,
+            )
+            .optional()?
+            .ok_or(StorageError::TransclusionNotFound(id))
+    }
+
+    /// Get all transclusions where the given page is the source
+    /// (i.e., all blocks this page has transcluded from elsewhere).
+    pub fn get_transclusions_for_page(&self, page_id: PageId) -> Result<Vec<Transclusion>, StorageError> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, source_page_id, target_page_id, target_block_id, created_at
+             FROM transclusions WHERE source_page_id = ?1 ORDER BY created_at DESC",
+        )?;
+        let transclusions = stmt
+            .query_map(params![page_id.to_string()], row_to_transclusion)?
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(transclusions)
+    }
+
+    /// Get all transclusions that reference a specific block.
+    /// Used when a block is updated to know which transclusions need refresh.
+    pub fn get_transclusions_for_block(&self, block_id: BlockId) -> Result<Vec<Transclusion>, StorageError> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, source_page_id, target_page_id, target_block_id, created_at
+             FROM transclusions WHERE target_block_id = ?1 ORDER BY created_at DESC",
+        )?;
+        let transclusions = stmt
+            .query_map(params![block_id.to_string()], row_to_transclusion)?
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(transclusions)
+    }
+
+    /// Get all pages that transclude content from a specific block.
+    /// Returns page IDs that would need updating when this block changes.
+    pub fn get_pages_transcluding_block(&self, block_id: BlockId) -> Result<Vec<PageId>, StorageError> {
+        let mut stmt = self.conn.prepare(
+            "SELECT DISTINCT source_page_id FROM transclusions WHERE target_block_id = ?1",
+        )?;
+        let pages = stmt
+            .query_map(params![block_id.to_string()], |row| {
+                let s: String = row.get(0)?;
+                parse_id(&s)
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(pages)
+    }
+
+    /// Get all pages that transclude any block from a specific page.
+    pub fn get_pages_transcluding_page(&self, page_id: PageId) -> Result<Vec<PageId>, StorageError> {
+        let mut stmt = self.conn.prepare(
+            "SELECT DISTINCT source_page_id FROM transclusions WHERE target_page_id = ?1",
+        )?;
+        let pages = stmt
+            .query_map(params![page_id.to_string()], |row| {
+                let s: String = row.get(0)?;
+                parse_id(&s)
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(pages)
+    }
+
+    /// Delete a transclusion by ID.
+    pub fn delete_transclusion(&self, id: TransclusionId) -> Result<(), StorageError> {
+        let affected = self.conn.execute(
+            "DELETE FROM transclusions WHERE id = ?1",
+            params![id.to_string()],
+        )?;
+        if affected == 0 {
+            return Err(StorageError::TransclusionNotFound(id));
+        }
+        Ok(())
+    }
+
+    /// Delete all transclusions for a page (used when page is deleted).
+    pub fn delete_transclusions_for_page(&self, page_id: PageId) -> Result<(), StorageError> {
+        self.conn.execute(
+            "DELETE FROM transclusions WHERE source_page_id = ?1 OR target_page_id = ?1",
+            params![page_id.to_string(), page_id.to_string()],
+        )?;
+        Ok(())
+    }
+
+    /// Check if creating a transclusion would create a circular reference.
+    /// Returns true if target_page (or any of its transclusions) transcludes source_page.
+    pub fn would_create_circular_transclusion(
+        &self,
+        source_page_id: PageId,
+        target_page_id: PageId,
+    ) -> Result<bool, StorageError> {
+        // Direct self-reference
+        if source_page_id == target_page_id {
+            return Ok(true);
+        }
+
+        // BFS to check if target_page eventually transcludes source_page
+        let mut visited = std::collections::HashSet::new();
+        let mut queue = vec![target_page_id];
+
+        while let Some(current) = queue.pop() {
+            if !visited.insert(current) {
+                continue;
+            }
+
+            // Get all pages that this page transcludes
+            let mut stmt = self.conn.prepare(
+                "SELECT DISTINCT target_page_id FROM transclusions WHERE source_page_id = ?1"
+            )?;
+            let targets: Vec<PageId> = stmt
+                .query_map(params![current.to_string()], |row| {
+                    let s: String = row.get(0)?;
+                    parse_id(&s)
+                })?
+                .collect::<Result<Vec<_>, _>>()?;
+
+            for target in targets {
+                if target == source_page_id {
+                    return Ok(true); // Found circular reference
+                }
+                if !visited.contains(&target) {
+                    queue.push(target);
+                }
+            }
+        }
+
+        Ok(false)
+    }
+
+    /// Search blocks across all pages for the transclusion autocomplete.
+    /// Returns blocks with content matching the query.
+    pub fn search_blocks_for_transclusion(&self, query: &str, limit: usize) -> Result<Vec<(Block, Page)>, StorageError> {
+        let pattern = format!("%{}%", query.replace('%', "\\%").replace('_', "\\_"));
+        let mut stmt = self.conn.prepare(
+            "SELECT b.id, b.page_id, b.parent_block_id, b.\"order\", b.depth, b.content,
+             b.is_collapsed, b.created_at, b.updated_at,
+             p.id, p.title, p.summary, p.emoji, p.research_stage, p.tags_json,
+             p.word_count, p.is_pinned, p.is_archived, p.is_favorite, p.is_journal,
+             p.is_locked, p.sort_order, p.journal_date, p.front_matter_data, p.ideas_data,
+             p.needs_vault_sync, p.last_synced_body_hash, p.last_synced_at,
+             p.file_path, p.subfolder, p.parent_page_id, p.folder_id, p.template_id,
+             p.created_at, p.updated_at
+             FROM blocks b
+             JOIN pages p ON b.page_id = p.id
+             WHERE b.content LIKE ?1 ESCAPE '\\'
+             ORDER BY b.updated_at DESC
+             LIMIT ?2"
+        )?;
+
+        let results = stmt
+            .query_map(params![pattern, limit as i64], |row| {
+                let block = row_to_block(row)?;
+                // Shift row index by 9 for page fields
+                let page = row_to_page_offset(row, 9)?;
+                Ok((block, page))
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(results)
+    }
+
+    /// Search blocks for block reference autocomplete.
+    /// Triggered by typing `((` in the block editor.
+    /// Returns blocks with fuzzy search on content, ranked by relevance.
+    pub fn search_blocks(&self, query: &str, limit: usize) -> Result<Vec<(Block, Page)>, StorageError> {
+        // Escape LIKE wildcards for security
+        let escaped = query.replace('%', "\\%").replace('_', "\\_");
+        let pattern = format!("%{}%", escaped);
+        
+        // Use FTS5 for better search if available, fallback to LIKE
+        // For now using LIKE with content matching - can be enhanced with FTS5 later
+        let mut stmt = self.conn.prepare(
+            "SELECT b.id, b.page_id, b.parent_block_id, b.\"order\", b.depth, b.content,
+             b.is_collapsed, b.created_at, b.updated_at,
+             p.id, p.title, p.summary, p.emoji, p.research_stage, p.tags_json,
+             p.word_count, p.is_pinned, p.is_archived, p.is_favorite, p.is_journal,
+             p.is_locked, p.sort_order, p.journal_date, p.front_matter_data, p.ideas_data,
+             p.needs_vault_sync, p.last_synced_body_hash, p.last_synced_at,
+             p.file_path, p.subfolder, p.parent_page_id, p.folder_id, p.template_id,
+             p.created_at, p.updated_at
+             FROM blocks b
+             JOIN pages p ON b.page_id = p.id
+             WHERE b.content LIKE ?1 ESCAPE '\\'
+             ORDER BY 
+                 CASE 
+                     WHEN LOWER(b.content) LIKE LOWER(?2) THEN 1
+                     WHEN LOWER(p.title) LIKE LOWER(?2) THEN 2
+                     ELSE 3
+                 END,
+                 b.updated_at DESC
+             LIMIT ?3"
+        )?;
+
+        let exact_pattern = format!("%{}%", query.to_lowercase());
+        
+        let results = stmt
+            .query_map(params![pattern, exact_pattern, limit as i64], |row| {
+                let block = row_to_block(row)?;
+                // Shift row index by 9 for page fields
+                let page = row_to_page_offset(row, 9)?;
+                Ok((block, page))
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(results)
+    }
 }
 
 // ──────────────────────────────────────────────
@@ -1119,15 +1522,26 @@ CREATE TABLE IF NOT EXISTS folders (
 CREATE TABLE IF NOT EXISTS page_versions (
     id TEXT PRIMARY KEY,
     page_id TEXT NOT NULL,
+    title TEXT NOT NULL DEFAULT '',
+    body TEXT NOT NULL DEFAULT '',
     hash TEXT NOT NULL,
     parent_hash TEXT,
     timestamp INTEGER NOT NULL,
+    word_count INTEGER NOT NULL DEFAULT 0,
     changes_summary TEXT
 );
 
 CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS transclusions (
+    id TEXT PRIMARY KEY,
+    source_page_id TEXT NOT NULL,
+    target_page_id TEXT NOT NULL,
+    target_block_id TEXT,
+    created_at INTEGER NOT NULL
 );
 
 -- Indexes
@@ -1139,6 +1553,9 @@ CREATE INDEX IF NOT EXISTS idx_graph_nodes_type ON graph_nodes(node_type);
 CREATE INDEX IF NOT EXISTS idx_graph_edges_source ON graph_edges(source_node_id);
 CREATE INDEX IF NOT EXISTS idx_graph_edges_target ON graph_edges(target_node_id);
 CREATE INDEX IF NOT EXISTS idx_page_versions_page ON page_versions(page_id);
+CREATE INDEX IF NOT EXISTS idx_transclusions_source ON transclusions(source_page_id);
+CREATE INDEX IF NOT EXISTS idx_transclusions_target_page ON transclusions(target_page_id);
+CREATE INDEX IF NOT EXISTS idx_transclusions_target_block ON transclusions(target_block_id);
 
 -- FTS5 for full-text search — BM25-ranked, Unicode tokenizer
 -- Weights: title=5x, body=1x, tags=2x (applied in BM25 query)

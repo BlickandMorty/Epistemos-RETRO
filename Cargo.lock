@@ -498,8 +498,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c673075a2e0e5f4a1dde27ce9dee1ea4558c7ffe648f576438a20ca1d2acc4b0"
 dependencies = [
  "iana-time-zone",
+ "js-sys",
  "num-traits",
  "serde",
+ "wasm-bindgen",
  "windows-link 0.2.1",
 ]
 
@@ -1024,12 +1026,15 @@ name = "engine"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "chrono",
  "futures",
  "regex",
  "reqwest 0.12.28",
+ "rusqlite",
  "rustc-hash",
  "serde",
  "serde_json",
+ "specta",
  "storage",
  "thiserror 2.0.18",
  "tokio",
@@ -4624,6 +4629,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e320a6c5ad31d271ad523dcf3ad13e2767ad8b1cb8f047f75a8aeaf8da139da2"
 
 [[package]]
+name = "similar"
+version = "2.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bbbb5d9659141646ae647b42fe094daf6c6192d1620870b449d9557f748b2daa"
+
+[[package]]
 name = "siphasher"
 version = "0.3.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4794,6 +4805,7 @@ dependencies = [
  "rusqlite",
  "serde",
  "serde_json",
+ "similar",
  "specta",
  "thiserror 2.0.18",
  "uuid",

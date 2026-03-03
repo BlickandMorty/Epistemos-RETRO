@@ -15,6 +15,7 @@ import { ToastContainer } from '../shared/toast-container';
 import { MiniChat } from '../assistant/mini-chat';
 import { PageTransition } from './page-transition';
 import { hydrateStore } from '@/lib/store/hydrate';
+import { CommandPaletteProvider } from '@/components/command-palette';
 
 import { readString } from '@/lib/storage-versioning';
 
@@ -155,14 +156,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className={`relative h-screen overflow-hidden ${isThematic ? '' : 'bg-background'}`}>
-      {showStars && <StarField theme={starTheme} />}
-      {showCosmic && <Suspense fallback={null}><ThematicWallpaper blurred={cosmicBlurred} /></Suspense>}
-      {showSunny && <Suspense fallback={null}><SunnyWallpaper blurred={sunnyBlurred} /></Suspense>}
-      {/* Sunset uses plain CSS background — no wallpaper component */}
-      <TopNav />
-      <PageTransition>{children}</PageTransition>
-      <MiniChat />
+    <CommandPaletteProvider>
+      <div className={`relative h-screen overflow-hidden ${isThematic ? '' : 'bg-background'}`}>
+        {showStars && <StarField theme={starTheme} />}
+        {showCosmic && <Suspense fallback={null}><ThematicWallpaper blurred={cosmicBlurred} /></Suspense>}
+        {showSunny && <Suspense fallback={null}><SunnyWallpaper blurred={sunnyBlurred} /></Suspense>}
+        {/* Sunset uses plain CSS background — no wallpaper component */}
+        <TopNav />
+        <PageTransition>{children}</PageTransition>
+        <MiniChat />
 
       {/* Floating GIF trigger — hidden on landing page (which already has its own chat input) */}
       {!miniChatOpen && pathname !== '/' && (
@@ -251,6 +253,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           50% { opacity: 0.5; transform: scale(0.8); }
         }
       `}</style>
-    </div>
+      </div>
+    </CommandPaletteProvider>
   );
 }

@@ -1,10 +1,13 @@
 use serde::Serialize;
 use storage::error::StorageError;
+use engine::query::QueryError;
 
 #[derive(Debug, thiserror::Error)]
 pub enum AppError {
     #[error(transparent)]
     Storage(#[from] StorageError),
+    #[error(transparent)]
+    Query(#[from] QueryError),
     #[error("not implemented: {0}")]
     #[allow(dead_code)] // Used by stub commands during phased implementation
     NotImplemented(String),
@@ -18,8 +21,10 @@ impl Serialize for AppError {
         let kind = match self {
             Self::Storage(StorageError::PageNotFound(_)) => "not_found",
             Self::Storage(StorageError::FolderNotFound(_)) => "not_found",
+            Self::Storage(StorageError::VersionNotFound(_)) => "not_found",
             Self::Storage(StorageError::Database(_)) => "database",
             Self::Storage(_) => "storage",
+            Self::Query(_) => "query",
             Self::NotImplemented(_) => "not_implemented",
             Self::Internal(_) => "internal",
         };

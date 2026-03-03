@@ -1,8 +1,10 @@
 use serde::Serialize;
 use tauri::State;
-use storage::types::SearchResult;
+use storage::types::{Page, SearchResult};
+use storage::ids::PageId;
 use crate::error::AppError;
 use crate::state::AppState;
+use engine::query::{self, QueryError, SavedQuery};
 
 #[tauri::command]
 #[specta::specta]
@@ -113,4 +115,203 @@ pub async fn search_hybrid(
     results.truncate(max);
 
     Ok(results)
+}
+
+// =============================================================================
+// Structured Query System Commands
+// =============================================================================
+
+/// Execute a structured search query with the advanced query language.
+///
+/// Query syntax:
+/// - Field filters: `tag:work`, `created:>2024-01-01`, `title:"hello world"`
+/// - Boolean operators: `AND`, `OR`, `NOT`
+/// - Comparison: `=`, `!=`, `<`, `>`, `<=`, `>=`, `~` (contains)
+/// - Grouping: `(tag:work OR tag:urgent) AND created:>2024-01-01`
+/// - Tag shorthand: `#work` is equivalent to `tag:work`
+///
+/// # Examples
+/// - `tag:work AND created:>2024-01-01`
+/// - `(title:"Project" OR tag:urgent) AND NOT is_archived:true`
+/// - `word_count:>500 AND updated:>last_week`
+#[tauri::command]
+#[specta::specta]
+pub async fn structured_search(
+    state: State<'_, AppState>,
+    query: String,
+    limit: Option<u32>,
+) -> Result<Vec<Page>, AppError> {
+    let db = state.lock_db()?;
+    
+    let runtime = query::QueryRuntime::new(&db);
+    let pages = runtime.query_pages(&query)?;
+    
+    // Apply additional limit if specified
+    let max = limit.map(|l| l as usize).unwrap_or(pages.len());
+    let mut result = pages;
+    if result.len() > max {
+        result.truncate(max);
+    }
+    
+    Ok(result)
+}
+
+/// Validate a structured query without executing it.
+/// Returns Ok if valid, or an error with position info.
+#[tauri::command]
+#[specta::specta]
+pub async fn validate_query(
+    query: String,
+) -> Result<(), QueryError> {
+    query::validate(&query)
+}
+
+/// Get all saved queries.
+#[tauri::command]
+#[specta::specta]
+pub async fn get_saved_queries(
+    state: State<'_, AppState>,
+) -> Result<Vec<SavedQuery>, AppError> {
+    let db = state.lock_db()?;
+    Ok(query::get_saved_queries(&db)?)
+}
+
+/// Save a query with a name.
+#[tauri::command]
+#[specta::specta]
+pub async fn save_query(
+    state: State<'_, AppState>,
+    name: String,
+    query_str: String,
+) -> Result<SavedQuery, AppError> {
+    let db = state.lock_db()?;
+    Ok(query::save_query(&db, name, query_str)?)
+}
+
+/// Delete a saved query by name.
+#[tauri::command]
+#[specta::specta]
+pub async fn delete_query(
+    state: State<'_, AppState>,
+    name: String,
+) -> Result<(), AppError> {
+    let db = state.lock_db()?;
+    Ok(query::delete_query(&db, &name)?)
+}
+
+/// Execute a saved query by name.
+/// Increments the use count and updates last_used_at.
+#[tauri::command]
+#[specta::specta]
+pub async fn execute_saved_query(
+    state: State<'_, AppState>,
+    name: String,
+    limit: Option<u32>,
+) -> Result<Vec<Page>, AppError> {
+    let db = state.lock_db()?;
+    
+    // Get the saved query
+    let saved = query::get_saved_query(&db, &name)?
+        .ok_or_else(|| AppError::Internal(format!("Saved query '{}' not found", name)))?;
+    
+    // Record usage
+    query::record_query_use(&db, &name)?;
+    
+    // Execute the query
+    let runtime = query::QueryRuntime::new(&db);
+    let pages = runtime.query_pages(&saved.query)?;
+    
+    // Apply limit
+    let max = limit.map(|l| l as usize).unwrap_or(pages.len());
+    let mut result = pages;
+    if result.len() > max {
+        result.truncate(max);
+    }
+    
+    Ok(result)
+}
+
+/// Rename a saved query.
+#[tauri::command]
+#[specta::specta]
+pub async fn rename_query(
+    state: State<'_, AppState>,
+    old_name: String,
+    new_name: String,
+) -> Result<SavedQuery, AppError> {
+    let db = state.lock_db()?;
+    Ok(query::rename_query(&db, &old_name, new_name)?)
+}
+
+/// Get the most frequently used queries.
+#[tauri::command]
+#[specta::specta]
+pub async fn get_popular_queries(
+    state: State<'_, AppState>,
+    limit: Option<u32>,
+) -> Result<Vec<SavedQuery>, AppError> {
+    let db = state.lock_db()?;
+    let max = limit.map(|l| l as usize).unwrap_or(10);
+    Ok(query::get_popular_queries(&db, max)?)
+}
+
+/// Get recently used queries.
+#[tauri::command]
+#[specta::specta]
+pub async fn get_recent_queries(
+    state: State<'_, AppState>,
+    limit: Option<u32>,
+) -> Result<Vec<SavedQuery>, AppError> {
+    let db = state.lock_db()?;
+    let max = limit.map(|l| l as usize).unwrap_or(10);
+    Ok(query::get_recent_queries(&db, max)?)
+}
+
+/// Search result from structured query execution.
+#[derive(Clone, Serialize, specta::Type)]
+pub struct StructuredSearchResult {
+    pub pages: Vec<Page>,
+    pub total_count: usize,
+    pub execution_time_ms: u64,
+}
+
+/// Execute a structured search and return detailed results including metadata.
+#[tauri::command]
+#[specta::specta]
+pub async fn structured_search_detailed(
+    state: State<'_, AppState>,
+    query: String,
+    limit: Option<u32>,
+) -> Result<StructuredSearchResult, AppError> {
+    let db = state.lock_db()?;
+    
+    let runtime = query::QueryRuntime::new(&db);
+    let expr = query::parse(&query)?;
+    let compiled = query::compile(&expr)?;
+    
+    let start = std::time::Instant::now();
+    let query_result = runtime.execute(&compiled)?;
+    let execution_time_ms = start.elapsed().as_millis() as u64;
+    
+    // Fetch full pages for the results
+    let mut pages = Vec::with_capacity(query_result.page_ids.len());
+    for page_id_str in &query_result.page_ids {
+        if let Ok(page_id) = page_id_str.parse::<PageId>() {
+            if let Ok(page) = db.get_page(page_id) {
+                pages.push(page);
+            }
+        }
+    }
+    
+    // Apply additional limit
+    let max = limit.map(|l| l as usize).unwrap_or(pages.len());
+    if pages.len() > max {
+        pages.truncate(max);
+    }
+    
+    Ok(StructuredSearchResult {
+        pages,
+        total_count: query_result.total_count,
+        execution_time_ms,
+    })
 }

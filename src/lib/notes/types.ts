@@ -91,6 +91,32 @@ export interface PageLink {
   context: string;
 }
 
+// ── Transclusion ──
+
+export interface Transclusion {
+  id: string;
+  source_page_id: string;
+  target_page_id: string;
+  target_block_id: string | null;
+  created_at: number;
+}
+
+export interface TransclusionSearchResult {
+  block_id: string;
+  block_content: string;
+  page_id: string;
+  page_title: string;
+}
+
+// ── Block Reference Search Result ──
+
+export interface BlockSearchResult {
+  block_id: string;
+  preview_text: string;
+  page_title: string;
+  page_id: string;
+}
+
 // ── Search ──
 
 export interface NoteSearchResult {

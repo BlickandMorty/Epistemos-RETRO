@@ -49,3 +49,4 @@ define_id!(MessageId);
 define_id!(GraphNodeId);
 define_id!(GraphEdgeId);
 define_id!(FolderId);
+define_id!(TransclusionId);

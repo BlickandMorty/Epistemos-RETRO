@@ -1,6 +1,34 @@
 use serde::{Deserialize, Serialize};
 use crate::ids::*;
 
+// ---- Transclusion ----
+
+/// A transclusion embeds content from one block/page into another.
+/// This enables live-updating references ("block references" in Roam/Obsidian parlance).
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+pub struct Transclusion {
+    pub id: TransclusionId,
+    /// The page containing this transclusion
+    pub source_page_id: PageId,
+    /// The page being transcluded from
+    pub target_page_id: PageId,
+    /// The specific block being transcluded (null = entire page)
+    pub target_block_id: Option<BlockId>,
+    pub created_at: i64,
+}
+
+impl Transclusion {
+    pub fn new(source_page_id: PageId, target_page_id: PageId, target_block_id: Option<BlockId>) -> Self {
+        Self {
+            id: TransclusionId::new(),
+            source_page_id,
+            target_page_id,
+            target_block_id,
+            created_at: now_ms(),
+        }
+    }
+}
+
 // ---- Page ----
 
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
@@ -136,9 +164,12 @@ pub struct Folder {
 pub struct PageVersion {
     pub id: String,
     pub page_id: PageId,
+    pub title: String,
+    pub body: String,
     pub hash: String,
     pub parent_hash: Option<String>,
     pub timestamp: i64,
+    pub word_count: i32,
     pub changes_summary: Option<String>,
 }
 
@@ -150,6 +181,64 @@ pub struct SearchResult {
     pub title: String,
     pub snippet: String,
     pub score: f64,
+}
+
+// ---- Diff ----
+
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, PartialEq)]
+#[serde(tag = "kind", content = "content")]
+pub enum DiffLineKind {
+    Unchanged(String),
+    Added(String),
+    Removed(String),
+    Modified { old: String, new: String },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, PartialEq)]
+pub struct DiffStats {
+    pub added: usize,
+    pub removed: usize,
+    pub modified: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+pub struct LineDiff {
+    pub lines: Vec<DiffLineKind>,
+    pub stats: DiffStats,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+pub struct IndexedLine {
+    pub index: usize,
+    #[serde(flatten)]
+    pub line: DiffLineKind,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+#[serde(tag = "kind")]
+pub enum DiffSectionKind {
+    Visible { items: Vec<IndexedLine> },
+    Collapsed { items: Vec<IndexedLine> },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+pub struct DiffSection {
+    pub id: usize,
+    #[serde(flatten)]
+    pub kind: DiffSectionKind,
+}
+
+/// Word-level change for highlighting modified lines.
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+pub struct WordChange {
+    pub start: usize,
+    pub end: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+pub struct WordDiffResult {
+    pub removed: Vec<WordChange>,
+    pub added: Vec<WordChange>,
 }
 
 // ---- Inference Config ----
@@ -303,4 +392,36 @@ impl Folder {
             parent_folder_id: None, created_at: now_ms(),
         }
     }
+}
+
+impl PageVersion {
+    pub fn new(page_id: PageId, title: String, body: String) -> Self {
+        let word_count = body.split_whitespace().count() as i32;
+        let hash = sha256_hash(&body);
+        Self {
+            id: uuid::Uuid::new_v4().to_string(),
+            page_id,
+            title,
+            body,
+            hash,
+            parent_hash: None,
+            timestamp: now_ms(),
+            word_count,
+            changes_summary: None,
+        }
+    }
+
+    pub fn with_parent(page_id: PageId, title: String, body: String, parent_hash: String) -> Self {
+        let mut version = Self::new(page_id, title, body);
+        version.parent_hash = Some(parent_hash);
+        version
+    }
+}
+
+fn sha256_hash(input: &str) -> String {
+    use std::hash::{Hash, Hasher};
+    use std::collections::hash_map::DefaultHasher;
+    let mut hasher = DefaultHasher::new();
+    input.hash(&mut hasher);
+    format!("{:016x}", hasher.finish())
 }

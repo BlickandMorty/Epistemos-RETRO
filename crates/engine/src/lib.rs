@@ -5,6 +5,7 @@ pub mod llm;
 pub mod orchestrator;
 pub mod pipeline;
 pub mod prompts;
+pub mod query;
 pub mod query_analyzer;
 pub mod signals;
 pub mod soar;

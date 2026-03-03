@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
 import { usePFCStore } from '@/lib/store/use-pfc-store';
-import type { NoteBlock, NotePage, SlashCommand } from '@/lib/notes/types';
+import type { NoteBlock, NotePage, SlashCommand, TransclusionSearchResult, BlockSearchResult } from '@/lib/notes/types';
 import {
   GripVerticalIcon,
   PlusIcon,
@@ -12,6 +12,8 @@ import {
   SparklesIcon,
 } from 'lucide-react';
 import { SlashMenu } from './slash-menu';
+import { TransclusionAutocomplete } from '../transclusion/transclusion-autocomplete';
+import { BlockRefAutocomplete } from '../block-ref-autocomplete';
 
 import { cssEase } from '@/lib/motion/motion-config';
 
@@ -298,6 +300,20 @@ export const BlockItem = memo(function BlockItem({
   const [bracketIdx, setBracketIdx] = useState(0);
   const bracketStartRef = useRef<number>(-1);
 
+  // (( transclusion autocomplete state
+  const [transclusionOpen, setTransclusionOpen] = useState(false);
+  const [transclusionQuery, setTransclusionQuery] = useState('');
+  const [transclusionPos, setTransclusionPos] = useState({ top: 0, left: 0 });
+  const [transclusionIdx, setTransclusionIdx] = useState(0);
+  const transclusionStartRef = useRef<number>(-1);
+
+  // (( block reference autocomplete state (inline link, no transclusion storage)
+  const [blockRefOpen, setBlockRefOpen] = useState(false);
+  const [blockRefQuery, setBlockRefQuery] = useState('');
+  const [blockRefPos, setBlockRefPos] = useState({ top: 0, left: 0 });
+  const [blockRefIdx, setBlockRefIdx] = useState(0);
+  const blockRefStartRef = useRef<number>(-1);
+
   // Hover state
   const [hovered, setHovered] = useState(false);
 
@@ -462,9 +478,32 @@ export const BlockItem = memo(function BlockItem({
           setBracketIdx(0);
           bracketStartRef.current = textBefore.length - 2;
         }
+
+        // Detect (( being typed — open block reference autocomplete
+        if (textBefore.endsWith('((')) {
+          const rect = range.getBoundingClientRect();
+          const safeLeft = Math.max(8, Math.min(rect.left, window.innerWidth - 360));
+          setBlockRefPos({ top: rect.bottom + 4, left: safeLeft });
+          setBlockRefOpen(true);
+          setBlockRefQuery('');
+          setBlockRefIdx(0);
+          blockRefStartRef.current = textBefore.length - 2;
+        }
       }
     }
-  }, [block.id, updateBlockContent, bracketOpen]);
+
+    // (( block reference tracking
+    if (blockRefOpen) {
+      const text = contentRef.current.textContent ?? '';
+      const afterParen = text.slice(blockRefStartRef.current + 2);
+      if (afterParen.includes('))')) {
+        setBlockRefOpen(false);
+      } else {
+        setBlockRefQuery(afterParen);
+        setBlockRefIdx(0);
+      }
+    }
+  }, [block.id, updateBlockContent, bracketOpen, blockRefOpen]);
 
   // ── Apply inline formatting (SiYuan keyboard shortcuts) ──
   // Pushes a transaction so Cmd+Z can undo format changes
@@ -649,6 +688,71 @@ export const BlockItem = memo(function BlockItem({
     });
   }, [block.id, block.type, bracketQuery, updateBlockContent]);
 
+  // ── Transclusion autocomplete select ──
+  const handleTransclusionSelect = useCallback((result: TransclusionSearchResult) => {
+    setTransclusionOpen(false);
+    if (!contentRef.current) return;
+
+    const text = contentRef.current.textContent ?? '';
+    const beforeParen = text.slice(0, transclusionStartRef.current);
+    const afterQuery = text.slice(transclusionStartRef.current + 2 + transclusionQuery.length);
+    
+    // Insert block reference: ((block-id))
+    const newContent = beforeParen + '((' + result.block_id + '))' + afterQuery;
+    suppressInputRef.current = true;
+    contentRef.current.innerHTML = newContent;
+    updateBlockContent(block.id, newContent);
+
+    // Store transclusion in backend
+    if (pageId) {
+      import('@tauri-apps/api/core').then(({ invoke }) => {
+        invoke('create_transclusion', {
+          sourcePageId: pageId,
+          targetPageId: result.page_id,
+          targetBlockId: result.block_id,
+        }).catch(console.error);
+      });
+    }
+
+    // Place cursor after the closing ))
+    requestAnimationFrame(() => {
+      if (!contentRef.current) return;
+      const sel = window.getSelection();
+      const range = document.createRange();
+      range.selectNodeContents(contentRef.current);
+      range.collapse(false);
+      sel?.removeAllRanges();
+      sel?.addRange(range);
+    });
+  }, [block.id, pageId, transclusionQuery, updateBlockContent]);
+
+  // ── Block reference autocomplete select (inline link, no backend transclusion) ──
+  const handleBlockRefSelect = useCallback((result: BlockSearchResult) => {
+    setBlockRefOpen(false);
+    if (!contentRef.current) return;
+
+    const text = contentRef.current.textContent ?? '';
+    const beforeParen = text.slice(0, blockRefStartRef.current);
+    const afterQuery = text.slice(blockRefStartRef.current + 2 + blockRefQuery.length);
+    
+    // Insert block reference: ((block-id))
+    const newContent = beforeParen + '((' + result.block_id + '))' + afterQuery;
+    suppressInputRef.current = true;
+    contentRef.current.innerHTML = newContent;
+    updateBlockContent(block.id, newContent);
+
+    // Place cursor after the closing ))
+    requestAnimationFrame(() => {
+      if (!contentRef.current) return;
+      const sel = window.getSelection();
+      const range = document.createRange();
+      range.selectNodeContents(contentRef.current);
+      range.collapse(false);
+      sel?.removeAllRanges();
+      sel?.addRange(range);
+    });
+  }, [block.id, blockRefQuery, updateBlockContent]);
+
   // ── Click handler for page links ──
   const handleContentClick = useCallback((e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
@@ -703,6 +807,14 @@ export const BlockItem = memo(function BlockItem({
         return;
       }
       if (e.key === 'Escape') { e.preventDefault(); setBracketOpen(false); return; }
+    }
+
+    // ── (( block reference autocomplete nav ──
+    if (blockRefOpen) {
+      if (e.key === 'ArrowDown') { e.preventDefault(); setBlockRefIdx((i) => i + 1); return; }
+      if (e.key === 'ArrowUp') { e.preventDefault(); setBlockRefIdx((i) => Math.max(i - 1, 0)); return; }
+      if (e.key === 'Escape') { e.preventDefault(); setBlockRefOpen(false); return; }
+      // Enter handled by BlockRefAutocomplete component
     }
 
     // ── Enter — split block at cursor ──
@@ -871,6 +983,7 @@ export const BlockItem = memo(function BlockItem({
   }, [
     block, pageId, blockIndex,
     bracketOpen, bracketQuery, bracketIdx, handleBracketSelect,
+    transclusionOpen, transclusionQuery, transclusionIdx,
     createBlock, deleteBlock, indentBlock, outdentBlock, setEditingBlock,
     changeBlockType, splitBlock, mergeBlockUp,
     applyFormat, undo, redo, onNavigate,
@@ -1338,6 +1451,28 @@ export const BlockItem = memo(function BlockItem({
           onSelect={handleBracketSelect}
           onClose={() => setBracketOpen(false)}
           selectedIndex={bracketIdx}
+        />
+      )}
+
+      {/* ── (( Transclusion autocomplete ── */}
+      {transclusionOpen && (
+        <TransclusionAutocomplete
+          query={transclusionQuery}
+          position={transclusionPos}
+          onSelect={handleTransclusionSelect}
+          onClose={() => setTransclusionOpen(false)}
+          selectedIndex={transclusionIdx}
+        />
+      )}
+
+      {/* ── (( Block reference autocomplete ── */}
+      {blockRefOpen && (
+        <BlockRefAutocomplete
+          query={blockRefQuery}
+          position={blockRefPos}
+          onSelect={handleBlockRefSelect}
+          onClose={() => setBlockRefOpen(false)}
+          selectedIndex={blockRefIdx}
         />
       )}
     </div>

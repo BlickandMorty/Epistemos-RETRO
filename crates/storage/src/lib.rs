@@ -1,4 +1,5 @@
 pub mod db;
+pub mod diff;
 pub mod error;
 pub mod ids;
 pub mod types;

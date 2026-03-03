@@ -83,6 +83,108 @@ async generateNoteAi(pageId: string, prompt: string) : Promise<Result<null, any>
     else return { status: "error", error: e  as any };
 }
 },
+/**
+ * Get all versions for a page, ordered by timestamp descending (newest first).
+ */
+async getPageVersions(pageId: string) : Promise<Result<PageVersion[], any>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_page_versions", { pageId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Get a specific version by ID.
+ */
+async getVersion(versionId: string) : Promise<Result<PageVersion, any>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_version", { versionId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Restore a page to a specific version.
+ * The current state is automatically saved as a new version before restoring.
+ */
+async restoreVersion(versionId: string) : Promise<Result<PageVersion, any>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("restore_version", { versionId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Compare two versions and return the diff.
+ */
+async compareVersions(versionAId: string, versionBId: string) : Promise<Result<LineDiff, any>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("compare_versions", { versionAId, versionBId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Compare a specific version with the current page content.
+ */
+async compareVersionWithCurrent(pageId: string, versionId: string) : Promise<Result<LineDiff, any>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("compare_version_with_current", { pageId, versionId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Save a manual version snapshot.
+ */
+async saveManualVersion(pageId: string, description: string | null) : Promise<Result<PageVersion, any>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("save_manual_version", { pageId, description }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Get sectioned diff for UI rendering with context folding.
+ */
+async getSectionedDiff(versionAId: string, versionBId: string, contextLines: number | null) : Promise<Result<[LineDiff, DiffSection[]], any>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_sectioned_diff", { versionAId, versionBId, contextLines }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Delete a specific version.
+ */
+async deleteVersion(versionId: string) : Promise<Result<null, any>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("delete_version", { versionId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Search blocks for block reference autocomplete.
+ * Triggered when user types `((` in the block editor.
+ * Returns fuzzy search results with block preview and page context.
+ */
+async searchBlocks(query: string, limit: number | null) : Promise<Result<BlockSearchResult[], any>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("search_blocks", { query, limit }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async createChat(title: string | null) : Promise<Result<Chat, any>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("create_chat", { title }) };
@@ -710,6 +812,11 @@ async getResearchStatus(pageId: string) : Promise<Result<ResearchStatus, any>> {
 
 export type Block = { id: BlockId; page_id: PageId; parent_block_id: BlockId | null; order: number; depth: number; content: string; is_collapsed: boolean; created_at: number; updated_at: number }
 export type BlockId = string
+/**
+ * Result type for block reference autocomplete
+ * Triggered by typing `((` in the block editor
+ */
+export type BlockSearchResult = { block_id: string; preview_text: string; page_title: string; page_id: string }
 export type Chat = { id: ChatId; title: string; chat_type: string; page_context_id: PageId | null; created_at: number; updated_at: number }
 export type ChatId = string
 export type ConnectionTestResult = { success: boolean; message: string; latency_ms: number | null }
@@ -717,6 +824,9 @@ export type ConnectionTestResult = { success: boolean; message: string; latency_
  * Cost summary returned to the frontend.
  */
 export type CostSummary = { daily_input_tokens: number; daily_output_tokens: number; daily_call_count: number; daily_cost_usd: number; daily_budget_usd: number; budget_exceeded: boolean; provider_breakdown: ProviderCost[] }
+export type DiffLineKind = { kind: "Unchanged"; content: string } | { kind: "Added"; content: string } | { kind: "Removed"; content: string } | { kind: "Modified"; content: { old: string; new: string } }
+export type DiffSection = ({ kind: "Visible"; items: IndexedLine[] } | { kind: "Collapsed"; items: IndexedLine[] }) & { id: number }
+export type DiffStats = { added: number; removed: number; modified: number }
 /**
  * Embedding system status returned to the frontend.
  */
@@ -774,8 +884,10 @@ source: string }
  * Import result returned to the frontend.
  */
 export type ImportResult = { imported: number; updated: number; skipped: number; errors: number }
+export type IndexedLine = ({ kind: "Unchanged"; content: string } | { kind: "Added"; content: string } | { kind: "Removed"; content: string } | { kind: "Modified"; content: { old: string; new: string } }) & { index: number }
 export type InferenceConfig = { api_provider: string; model: string; ollama_base_url: string | null }
 export type JsonValue = null | boolean | number | string | JsonValue[] | Partial<{ [key in string]: JsonValue }>
+export type LineDiff = { lines: DiffLineKind[]; stats: DiffStats }
 /**
  * Configuration for local AI services (Foundry Local + Ollama).
  * These settings are used by the triage router when routing to NPU/GPU.
@@ -813,6 +925,7 @@ export type NodeDetails = { node_id: string; label: string; node_type: GraphNode
 content_preview: string }
 export type Page = { id: PageId; title: string; summary: string; emoji: string | null; research_stage: number; tags: string[]; word_count: number; is_pinned: boolean; is_archived: boolean; is_favorite: boolean; is_journal: boolean; is_locked: boolean; sort_order: number; journal_date: string | null; front_matter_data: string | null; ideas_data: string | null; needs_vault_sync: boolean; last_synced_body_hash: string | null; last_synced_at: number | null; file_path: string | null; subfolder: string | null; parent_page_id: PageId | null; folder_id: FolderId | null; template_id: string | null; created_at: number; updated_at: number }
 export type PageId = string
+export type PageVersion = { id: string; page_id: PageId; title: string; body: string; hash: string; parent_hash: string | null; timestamp: number; word_count: number; changes_summary: string | null }
 /**
  * Per-provider cost breakdown.
  */
@@ -832,8 +945,7 @@ export type SimilarNode = { node_id: string; label: string; node_type: GraphNode
 
 import {
 	invoke as TAURI_INVOKE,
-	// @ts-ignore - Channel may be used by generated code
-	Channel as _TAURI_CHANNEL,
+	Channel as TAURI_CHANNEL,
 } from "@tauri-apps/api/core";
 import * as TAURI_API_EVENT from "@tauri-apps/api/event";
 import { type WebviewWindow as __WebviewWindow__ } from "@tauri-apps/api/webviewWindow";
@@ -854,7 +966,6 @@ export type Result<T, E> =
 	| { status: "ok"; data: T }
 	| { status: "error"; error: E };
 
-// @ts-ignore - Used by generated event proxies
 function __makeEvents__<T extends Record<string, any>>(
 	mappings: Record<keyof T, string>,
 ) {

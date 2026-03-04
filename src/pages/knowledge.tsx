@@ -152,6 +152,7 @@ export default function KnowledgePage() {
   const [physicsRunning, setPhysicsRunning] = useState(false);
   const [graphSidebarOpen, setGraphSidebarOpen] = useState(true);
   const [fpsMode, setFpsMode] = useState(false);
+  const [graphSplitPageId, setGraphSplitPageId] = useState<string | null>(null);
   const fpsKeysRef = useRef<Record<string, boolean>>({});
 
   const mutedColor = isOled ? 'rgba(160,160,160,0.6)' : isDark ? 'rgba(156,143,128,0.6)' : 'rgba(0,0,0,0.4)';
@@ -183,17 +184,33 @@ export default function KnowledgePage() {
   }, [addToast]);
 
   const handleSelectNode = useCallback(async (node: GraphNode | null) => {
+    if (!node) {
+      setSelectedNode(null);
+      setNodeDetails(null);
+      setGraphSplitPageId(null);
+      return;
+    }
     setSelectedNode(node);
     setNodeDetails(null);
-    if (!node) return;
-    const res = await commands.getNodeDetails(node.id);
-    if (res.status === 'ok') {
-      setNodeDetails({
-        content: res.data.content_preview ?? '',
-        neighbors: res.data.neighbors ?? [],
-      });
+
+    // For Note nodes, open split editor
+    if (node.node_type === 'Note' && node.source_id) {
+      setGraphSplitPageId(node.source_id);
+      setActivePage(node.source_id);
+    } else {
+      setGraphSplitPageId(null);
     }
-  }, []);
+
+    try {
+      const details = await commands.getNodeDetails(node.id);
+      if (details.status === 'ok') {
+        setNodeDetails({
+          content: details.data.content_preview ?? '',
+          neighbors: details.data.neighbors ?? [],
+        });
+      }
+    } catch { /* ignore */ }
+  }, [setActivePage]);
 
   const handleTogglePhysics = useCallback(async () => {
     if (physicsRunning) {
@@ -850,9 +867,93 @@ export default function KnowledgePage() {
             selectedNodeId={selectedNode?.id ?? null}
             typeFilter={typeFilter}
             onSelectNode={handleSelectNode}
+            onDoubleClickNode={(node) => {
+              if (node.node_type === 'Note' && node.source_id) {
+                setMode('notes');
+                setActivePage(node.source_id);
+              }
+            }}
             isDark={isDark}
           />
         )}
+
+        {/* Split editor panel (slides in from right for Note nodes) */}
+        <AnimatePresence>
+          {graphSplitPageId && (
+            <motion.div
+              key="graph-split-editor"
+              initial={{ width: 0, opacity: 0 }}
+              animate={{ width: 400, opacity: 1 }}
+              exit={{ width: 0, opacity: 0 }}
+              transition={physicsSpring.chatPanel}
+              style={{
+                position: 'absolute', top: 0, right: 0, bottom: 0,
+                overflow: 'hidden',
+                background: panelBg,
+                borderLeft: panelBorder,
+                backdropFilter: 'blur(24px) saturate(1.5)',
+                display: 'flex', flexDirection: 'column',
+                zIndex: 20,
+              }}
+            >
+              {/* Header */}
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '12px 16px',
+                borderBottom: panelBorder,
+                minHeight: 44,
+              }}>
+                <span style={{
+                  fontSize: '0.875rem', fontWeight: 600,
+                  color: 'var(--foreground)',
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  flex: 1,
+                }}>
+                  {notePages.find((p: NotePage) => p.id === graphSplitPageId)?.title ?? 'Note'}
+                </span>
+                <div style={{ display: 'flex', gap: 4, marginLeft: 8 }}>
+                  <button
+                    onClick={() => { setMode('notes'); setActivePage(graphSplitPageId); }}
+                    title="Open in Notes mode"
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      width: 28, height: 28, borderRadius: 6,
+                      border: 'none', cursor: 'pointer',
+                      background: 'transparent',
+                      color: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.4)',
+                      transition: 'background 0.12s ease',
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                  >
+                    <Maximize2Icon size={14} />
+                  </button>
+                  <button
+                    onClick={() => setGraphSplitPageId(null)}
+                    title="Close editor"
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      width: 28, height: 28, borderRadius: 6,
+                      border: 'none', cursor: 'pointer',
+                      background: 'transparent',
+                      color: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.4)',
+                      transition: 'background 0.12s ease',
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                  >
+                    <XIcon size={14} />
+                  </button>
+                </div>
+              </div>
+
+              {/* BlockEditor */}
+              <div style={{ flex: 1, overflow: 'auto', padding: '8px 0' }}>
+                <BlockEditor pageId={graphSplitPageId} />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Left sidebar (search + node list) */}
         <AnimatePresence>
@@ -871,17 +972,19 @@ export default function KnowledgePage() {
           )}
         </AnimatePresence>
 
-        {/* Right inspector panel */}
-        <GraphInspector
-          node={selectedNode}
-          details={nodeDetails}
-          nodes={graphNodes}
-          onClose={() => setSelectedNode(null)}
-          onSelectNeighbor={handleSelectNode}
-          onOpenNote={handleOpenNote}
-          isDark={isDark}
-          isOled={isOled}
-        />
+        {/* Right inspector panel (hidden when split editor is open for Note nodes) */}
+        {!graphSplitPageId && (
+          <GraphInspector
+            node={selectedNode}
+            details={nodeDetails}
+            nodes={graphNodes}
+            onClose={() => setSelectedNode(null)}
+            onSelectNeighbor={handleSelectNode}
+            onOpenNote={handleOpenNote}
+            isDark={isDark}
+            isOled={isOled}
+          />
+        )}
 
         {/* Bottom floating controls */}
         <GraphControls

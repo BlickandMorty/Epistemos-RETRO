@@ -47,6 +47,7 @@ export function GraphCanvas({
   selectedNodeId,
   typeFilter,
   onSelectNode,
+  onDoubleClickNode,
   isDark,
 }: {
   nodes: GraphNode[];
@@ -54,6 +55,7 @@ export function GraphCanvas({
   selectedNodeId: string | null;
   typeFilter: string | null;
   onSelectNode: (node: GraphNode | null) => void;
+  onDoubleClickNode?: (node: GraphNode) => void;
   isDark: boolean;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -64,6 +66,7 @@ export function GraphCanvas({
   const dragRef = useRef<{ startX: number; startY: number; camX: number; camY: number } | null>(null);
   const nodeDragRef = useRef<{ nodeId: string } | null>(null);
   const hoveredRef = useRef<string | null>(null);
+  const lastClickRef = useRef<{ nodeId: string; time: number } | null>(null);
   const gridRef = useRef(new SpatialGrid(80));
 
   // Build lookup maps
@@ -309,11 +312,20 @@ export function GraphCanvas({
       if (dx < 4 && dy < 4) {
         const { x, y } = worldFromScreen(e.clientX, e.clientY);
         const hit = findNodeAt(x, y);
-        onSelectNode(hit);
+        const now = Date.now();
+        const last = lastClickRef.current;
+        if (hit && last && last.nodeId === hit.id && now - last.time < 300) {
+          // Double-click on same node
+          lastClickRef.current = null;
+          onDoubleClickNode?.(hit);
+        } else {
+          lastClickRef.current = hit ? { nodeId: hit.id, time: now } : null;
+          onSelectNode(hit);
+        }
       }
       dragRef.current = null;
     }
-  }, [worldFromScreen, findNodeAt, onSelectNode]);
+  }, [worldFromScreen, findNodeAt, onSelectNode, onDoubleClickNode]);
 
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();

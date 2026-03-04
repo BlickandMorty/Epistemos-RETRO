@@ -418,7 +418,6 @@ export default function KnowledgePage() {
 
   // Recent pages for landing state
   const recentPages = notePages
-    .filter(() => true)
     .sort((a: NotePage, b: NotePage) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0))
     .slice(0, 6);
 

@@ -1,10 +1,11 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   PenLineIcon, PlusIcon, ImportIcon, CalendarIcon,
   StarIcon, PinIcon, EyeIcon, PencilIcon, NetworkIcon,
   WrenchIcon, XIcon, FileTextIcon, Maximize2Icon, Minimize2Icon,
   ArrowLeftIcon, SparklesIcon, ListIcon, HistoryIcon,
+  LoaderIcon, SearchIcon,
 } from 'lucide-react';
 import { NoteAIChat } from '@/components/notes/note-ai-chat';
 import { NotesSidebar } from '@/components/notes/notes-sidebar';
@@ -17,7 +18,16 @@ import { commands } from '@/lib/bindings';
 import { useIsDark } from '@/hooks/use-is-dark';
 import { physicsSpring } from '@/lib/motion/motion-config';
 import { SegmentedToggle, type KnowledgeMode } from '@/components/knowledge/segmented-toggle';
+import { GraphCanvas, GRAPH_QUALITY } from '@/components/graph/graph-canvas';
+import { GraphControls } from '@/components/graph/graph-controls';
+import { GraphInspector } from '@/components/graph/graph-inspector';
+import { GraphSidebar } from '@/components/graph/graph-sidebar';
+import { getNodePositions, getFpsCamera } from '@/lib/store/physics-positions';
+import { PERF_TIER } from '@/lib/perf';
 import type { NotePage } from '@/lib/notes/types';
+import type { GraphNode, GraphEdge, NeighborInfo } from '@/lib/bindings';
+
+const QUALITY = GRAPH_QUALITY[PERF_TIER];
 
 // ── Tools icon button (right sidebar) ──────────────────────────
 
@@ -113,7 +123,7 @@ function TabBubble({ page, isActive, isDark, onClick, onClose }: {
 // ── Knowledge page (Notes + Graph modes) ──────────────────────────
 
 export default function KnowledgePage() {
-  const { isDark } = useIsDark();
+  const { isDark, isOled } = useIsDark();
   const [mode, setMode] = useState<KnowledgeMode>('notes');
 
   // ── Notes state ─────────────────────────────────────────────────
@@ -130,6 +140,218 @@ export default function KnowledgePage() {
 
   const activePage = notePages.find((p: NotePage) => p.id === activePageId) ?? null;
 
+  // ── Graph state ─────────────────────────────────────────────────
+  const [graphNodes, setGraphNodes] = useState<GraphNode[]>([]);
+  const [graphEdges, setGraphEdges] = useState<GraphEdge[]>([]);
+  const [graphLoading, setGraphLoading] = useState(true);
+  const [graphSearchQuery, setGraphSearchQuery] = useState('');
+  const [graphSearchResults, setGraphSearchResults] = useState<GraphNode[]>([]);
+  const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
+  const [nodeDetails, setNodeDetails] = useState<{ content: string; neighbors: NeighborInfo[] } | null>(null);
+  const [typeFilter, setTypeFilter] = useState<string | null>(null);
+  const [physicsRunning, setPhysicsRunning] = useState(false);
+  const [graphSidebarOpen, setGraphSidebarOpen] = useState(true);
+  const [fpsMode, setFpsMode] = useState(false);
+  const fpsKeysRef = useRef<Record<string, boolean>>({});
+
+  const mutedColor = isOled ? 'rgba(160,160,160,0.6)' : isDark ? 'rgba(156,143,128,0.6)' : 'rgba(0,0,0,0.4)';
+  const panelBg = isDark ? 'rgba(20,19,24,0.85)' : 'rgba(255,255,255,0.88)';
+  const panelBorder = isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(0,0,0,0.08)';
+
+  // ── Graph callbacks ─────────────────────────────────────────────
+
+  const loadGraph = useCallback(async () => {
+    setGraphLoading(true);
+    const res = await commands.getGraph();
+    if (res.status === 'ok') {
+      if (res.data.nodes.length === 0) {
+        const rebuild = await commands.rebuildGraph();
+        if (rebuild.status === 'ok') {
+          setGraphNodes(rebuild.data.nodes);
+          setGraphEdges(rebuild.data.edges);
+          if (rebuild.data.nodes.length > 0) {
+            addToast({ type: 'success', message: `Graph built: ${rebuild.data.nodes.length} nodes` });
+          }
+          setGraphLoading(false);
+          return;
+        }
+      }
+      setGraphNodes(res.data.nodes);
+      setGraphEdges(res.data.edges);
+    }
+    setGraphLoading(false);
+  }, [addToast]);
+
+  const handleSelectNode = useCallback(async (node: GraphNode | null) => {
+    setSelectedNode(node);
+    setNodeDetails(null);
+    if (!node) return;
+    const res = await commands.getNodeDetails(node.id);
+    if (res.status === 'ok') {
+      setNodeDetails({
+        content: res.data.content_preview ?? '',
+        neighbors: res.data.neighbors ?? [],
+      });
+    }
+  }, []);
+
+  const handleTogglePhysics = useCallback(async () => {
+    if (physicsRunning) {
+      await commands.stopPhysics();
+      setPhysicsRunning(false);
+    } else {
+      await commands.startPhysics();
+      setPhysicsRunning(true);
+    }
+  }, [physicsRunning]);
+
+  const handleRebuild = useCallback(async () => {
+    const res = await commands.rebuildGraph();
+    if (res.status === 'ok') {
+      addToast({ type: 'success', message: 'Graph rebuilt' });
+      await loadGraph();
+    }
+  }, [addToast, loadGraph]);
+
+  const handleZoomToFit = useCallback(() => {
+    const positions = getNodePositions();
+    if (positions.length === 0) return;
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const p of positions) {
+      if (p.x < minX) minX = p.x;
+      if (p.x > maxX) maxX = p.x;
+      if (p.y < minY) minY = p.y;
+      if (p.y > maxY) maxY = p.y;
+    }
+    window.dispatchEvent(new CustomEvent('graph-zoom-to-fit', {
+      detail: { minX, maxX, minY, maxY },
+    }));
+  }, []);
+
+  const toggleFps = useCallback(async () => {
+    const res = await commands.toggleFpsMode();
+    if (res.status === 'ok') {
+      const isFps = res.data === 'Fps';
+      setFpsMode(isFps);
+      const canvas = document.querySelector('canvas');
+      if (isFps && canvas) canvas.requestPointerLock();
+      else document.exitPointerLock();
+    }
+  }, []);
+
+  const handleOpenNote = useCallback((sourceId: string) => {
+    usePFCStore.getState().setActivePage(sourceId);
+    setMode('notes');
+  }, [setMode]);
+
+  // Type distribution
+  const typeCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const n of graphNodes) counts[n.node_type] = (counts[n.node_type] ?? 0) + 1;
+    return Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  }, [graphNodes]);
+
+  // ── Graph effects ───────────────────────────────────────────────
+
+  // Initial load
+  useEffect(() => { loadGraph(); }, [loadGraph]);
+
+  // Set physics tick rate based on hardware tier
+  useEffect(() => {
+    commands.setPhysicsTargetFps(QUALITY.physicsFps);
+  }, []);
+
+  // Start/stop physics based on mode
+  useEffect(() => {
+    if (mode === 'graph' && graphNodes.length > 0) {
+      commands.startPhysics().then((res) => {
+        if (res.status === 'ok') setPhysicsRunning(true);
+      });
+    } else if (mode === 'notes') {
+      commands.stopPhysics().catch(() => {});
+      setPhysicsRunning(false);
+    }
+    return () => {
+      commands.stopPhysics().catch(() => {});
+    };
+  }, [mode, graphNodes.length]);
+
+  // Poll physics status
+  useEffect(() => {
+    if (mode !== 'graph') return;
+    const interval = setInterval(async () => {
+      const res = await commands.isPhysicsRunning();
+      if (res.status === 'ok') setPhysicsRunning(res.data);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [mode]);
+
+  // Search handler
+  useEffect(() => {
+    if (!graphSearchQuery.trim()) { setGraphSearchResults([]); return; }
+    const timeout = setTimeout(async () => {
+      const res = await commands.searchHybrid(graphSearchQuery, 20);
+      if (res.status === 'ok') {
+        const pageIds = new Set(res.data.map((r) => r.page_id));
+        setGraphSearchResults(graphNodes.filter((n) => pageIds.has(n.source_id) || n.label.toLowerCase().includes(graphSearchQuery.toLowerCase())));
+      }
+    }, 300);
+    return () => clearTimeout(timeout);
+  }, [graphSearchQuery, graphNodes]);
+
+  // FPS input loop
+  useEffect(() => {
+    if (!fpsMode || mode !== 'graph') return;
+    const keys = fpsKeysRef.current;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'f' || e.key === 'F') return;
+      keys[e.key.toLowerCase()] = e.type === 'keydown';
+    };
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('keyup', onKey);
+
+    let raf: number;
+    let mouseDx = 0, mouseDy = 0;
+    const onMouse = (e: MouseEvent) => {
+      mouseDx += e.movementX;
+      mouseDy += e.movementY;
+    };
+    document.addEventListener('mousemove', onMouse);
+
+    const tick = () => {
+      raf = requestAnimationFrame(tick);
+      const forward = (keys['w'] ? 1 : 0) + (keys['s'] ? -1 : 0);
+      const strafe = (keys['d'] ? 1 : 0) + (keys['a'] ? -1 : 0);
+      const vertical = (keys[' '] ? 1 : 0) + (keys['shift'] ? -1 : 0);
+      commands.fpsInput({ forward, strafe, vertical, mouse_dx: mouseDx, mouse_dy: mouseDy, toggle_stabilization: false });
+      mouseDx = 0;
+      mouseDy = 0;
+    };
+    raf = requestAnimationFrame(tick);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('keyup', onKey);
+      document.removeEventListener('mousemove', onMouse);
+      for (const k in keys) delete keys[k];
+    };
+  }, [fpsMode, mode]);
+
+  // Global F key for FPS toggle (only in graph mode)
+  useEffect(() => {
+    if (mode !== 'graph') return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'f' || e.key === 'F') {
+        if (document.activeElement?.tagName === 'INPUT') return;
+        toggleFps();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [toggleFps, mode]);
+
+  // ── Notes state (continued) ─────────────────────────────────────
   const [toolsOpen, setToolsOpen] = useState(false);
   const [editorMode, setEditorMode] = useState<'write' | 'read'>('write');
   const [zenMode, setZenMode] = useState(false);
@@ -605,13 +827,119 @@ export default function KnowledgePage() {
       <div style={{
         display: mode === 'graph' ? 'block' : 'none',
         flex: 1, overflow: 'hidden', position: 'relative',
+        background: isDark ? '#0a0a0e' : '#f5f5f7',
       }}>
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          height: '100%',
-        }}>
-          <span style={{ fontSize: '0.875rem', opacity: 0.4 }}>Graph mode</span>
-        </div>
+        {/* Canvas / loading / empty */}
+        {graphLoading ? (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', gap: '0.75rem' }}>
+            <LoaderIcon style={{ width: 20, height: 20, animation: 'spin 1s linear infinite', color: mutedColor }} />
+            <span style={{ fontSize: '0.875rem', color: mutedColor }}>Loading graph...</span>
+          </div>
+        ) : graphNodes.length === 0 ? (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: '1rem' }}>
+            <NetworkIcon style={{ width: 48, height: 48, opacity: 0.15, color: mutedColor }} />
+            <p style={{ fontSize: '0.875rem', color: mutedColor }}>No nodes in graph yet</p>
+            <GlassBubbleButton size="sm" onClick={() => setMode('notes')}>
+              <FileTextIcon style={{ width: 12, height: 12 }} /> Create notes to populate the graph
+            </GlassBubbleButton>
+          </div>
+        ) : (
+          <GraphCanvas
+            nodes={graphNodes}
+            edges={graphEdges}
+            selectedNodeId={selectedNode?.id ?? null}
+            typeFilter={typeFilter}
+            onSelectNode={handleSelectNode}
+            isDark={isDark}
+          />
+        )}
+
+        {/* Left sidebar (search + node list) */}
+        <AnimatePresence>
+          {graphSidebarOpen && (
+            <GraphSidebar
+              nodes={graphNodes}
+              searchQuery={graphSearchQuery}
+              onSearchChange={setGraphSearchQuery}
+              searchResults={graphSearchResults}
+              selectedNodeId={selectedNode?.id ?? null}
+              onSelectNode={handleSelectNode}
+              isDark={isDark}
+              isOled={isOled}
+              edgeCount={graphEdges.length}
+            />
+          )}
+        </AnimatePresence>
+
+        {/* Right inspector panel */}
+        <GraphInspector
+          node={selectedNode}
+          details={nodeDetails}
+          nodes={graphNodes}
+          onClose={() => setSelectedNode(null)}
+          onSelectNeighbor={handleSelectNode}
+          onOpenNote={handleOpenNote}
+          isDark={isDark}
+          isOled={isOled}
+        />
+
+        {/* Bottom floating controls */}
+        <GraphControls
+          typeCounts={typeCounts}
+          typeFilter={typeFilter}
+          onTypeFilter={setTypeFilter}
+          physicsRunning={physicsRunning}
+          onTogglePhysics={handleTogglePhysics}
+          onRebuild={handleRebuild}
+          onZoomToFit={handleZoomToFit}
+          fpsMode={fpsMode}
+          onToggleFps={toggleFps}
+          isDark={isDark}
+        />
+
+        {/* FPS HUD */}
+        {fpsMode && (
+          <div style={{
+            position: 'absolute', top: '0.75rem', left: '50%', transform: 'translateX(-50%)',
+            zIndex: 25, display: 'flex', alignItems: 'center', gap: '0.75rem',
+            padding: '0.375rem 0.75rem', borderRadius: '0.5rem',
+            background: 'rgba(0,0,0,0.7)', color: '#fff', fontSize: '0.6875rem',
+            fontFamily: 'monospace', backdropFilter: 'blur(8px)',
+          }}>
+            <span>FPS MODE</span>
+            <span style={{ opacity: 0.6 }}>WASD move · Mouse look · Space/Shift up/down · F exit</span>
+            {(() => {
+              const cam = getFpsCamera();
+              if (!cam) return null;
+              return (
+                <>
+                  <span style={{ opacity: 0.6 }}>|</span>
+                  <span>Speed: {cam.speed.toFixed(1)}</span>
+                  {cam.proximityNode && (
+                    <span style={{ color: '#5E9EFF' }}>Near: {cam.proximityNode.node_id.slice(0, 8)}…</span>
+                  )}
+                </>
+              );
+            })()}
+          </div>
+        )}
+
+        {/* Sidebar toggle (when hidden) */}
+        {!graphSidebarOpen && (
+          <button
+            onClick={() => setGraphSidebarOpen(true)}
+            style={{
+              position: 'absolute', top: '4rem', left: '0.75rem', zIndex: 20,
+              width: '2rem', height: '2rem', borderRadius: '0.5rem',
+              background: panelBg, backdropFilter: 'blur(20px)',
+              border: panelBorder, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: mutedColor,
+            }}
+          >
+            <SearchIcon style={{ width: 14, height: 14 }} />
+          </button>
+        )}
       </div>
     </div>
   );

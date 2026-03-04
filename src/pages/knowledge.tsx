@@ -368,6 +368,13 @@ export default function KnowledgePage() {
     return () => window.removeEventListener('keydown', onKey);
   }, [toggleFps, mode]);
 
+  // Sync split editor with active page changes (e.g., wikilink clicks in split editor)
+  useEffect(() => {
+    if (mode === 'graph' && graphSplitPageId && activePageId && activePageId !== graphSplitPageId) {
+      setGraphSplitPageId(activePageId);
+    }
+  }, [activePageId, mode, graphSplitPageId]);
+
   // ── Notes state (continued) ─────────────────────────────────────
   const [toolsOpen, setToolsOpen] = useState(false);
   const [editorMode, setEditorMode] = useState<'write' | 'read'>('write');
@@ -801,7 +808,13 @@ export default function KnowledgePage() {
                     <ToolBtn
                       icon={<NetworkIcon style={{ width: '0.875rem', height: '0.875rem' }} />}
                       label="Knowledge Graph" activeColor="var(--pfc-accent)"
-                      onClick={() => setMode('graph')}
+                      onClick={() => {
+                        setMode('graph');
+                        if (activePageId) {
+                          const noteNode = graphNodes.find((n: GraphNode) => n.source_id === activePageId && n.node_type === 'Note');
+                          if (noteNode) handleSelectNode(noteNode);
+                        }
+                      }}
                     />
                     <ToolBtn
                       icon={<SparklesIcon style={{ width: '0.875rem', height: '0.875rem' }} />}

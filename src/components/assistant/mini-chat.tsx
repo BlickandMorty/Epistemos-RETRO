@@ -95,7 +95,7 @@ export function MiniChat() {
   // Wrap to also navigate to /notes after saving
   const saveMessageToNotes = useCallback((content: string) => {
     const pageId = _saveMessageToNotes(content);
-    if (pageId) navigate('/notes');
+    if (pageId) navigate('/knowledge');
     return pageId;
   }, [_saveMessageToNotes, navigate]);
   const expandThreadToChat = usePFCStore((s) => s.expandThreadToChat);

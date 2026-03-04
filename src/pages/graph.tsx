@@ -226,7 +226,7 @@ export default function GraphPage() {
 
   const handleOpenNote = useCallback((sourceId: string) => {
     usePFCStore.getState().setActivePage(sourceId);
-    navigate('/notes');
+    navigate('/knowledge');
   }, [navigate]);
 
   return (
@@ -241,7 +241,7 @@ export default function GraphPage() {
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: '1rem' }}>
           <NetworkIcon style={{ width: 48, height: 48, opacity: 0.15, color: mutedColor }} />
           <p style={{ fontSize: '0.875rem', color: mutedColor }}>No nodes in graph yet</p>
-          <GlassBubbleButton size="sm" onClick={() => navigate('/notes')}>
+          <GlassBubbleButton size="sm" onClick={() => navigate('/knowledge')}>
             <FileTextIcon style={{ width: 12, height: 12 }} /> Create notes to populate the graph
           </GlassBubbleButton>
         </div>

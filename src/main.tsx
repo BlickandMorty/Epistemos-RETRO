@@ -1,6 +1,6 @@
 import React, { lazy, Suspense, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from '@/components/theme-provider';
 import { THEME_LIST } from '@/hooks/use-theme';
 import { AppShell } from '@/components/layout/app-shell';
@@ -12,9 +12,8 @@ import '@/styles/globals.css';
 // ── Lazy page components — code-split per route ──
 const LandingPage = lazy(() => import('@/pages/landing'));
 const ChatPage = lazy(() => import('@/pages/chat'));
-const NotesPage = lazy(() => import('@/pages/notes'));
+const KnowledgePage = lazy(() => import('@/pages/knowledge'));
 const LibraryPage = lazy(() => import('@/pages/library'));
-const GraphPage = lazy(() => import('@/pages/graph'));
 const SettingsPage = lazy(() => import('@/pages/settings'));
 
 function App() {
@@ -45,9 +44,10 @@ function App() {
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/chat/:chatId" element={<ChatPage />} />
-          <Route path="/notes" element={<NotesPage />} />
+          <Route path="/knowledge" element={<KnowledgePage />} />
+          <Route path="/notes" element={<Navigate to="/knowledge" replace />} />
+          <Route path="/graph" element={<Navigate to="/knowledge" replace />} />
           <Route path="/library" element={<LibraryPage />} />
-          <Route path="/graph" element={<GraphPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Routes>
       </Suspense>

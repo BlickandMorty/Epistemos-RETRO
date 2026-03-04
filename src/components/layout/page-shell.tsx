@@ -13,7 +13,7 @@ import { useTypewriter } from '@/hooks/use-typewriter';
    ═══════════════════════════════════════════════════════════ */
 
 /** Pages reachable from the main nav — no back button needed */
-const MAIN_NAV_PATHS = ['/', '/notes', '/library', '/graph', '/settings'];
+const MAIN_NAV_PATHS = ['/', '/knowledge', '/library', '/settings'];
 
 interface PageShellProps {
   icon: LucideIcon;

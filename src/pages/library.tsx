@@ -155,7 +155,7 @@ export default function LibraryPage() {
   // Navigate to a note — set active page in store THEN navigate
   const goToNote = useCallback((sourceId: string) => {
     setActivePage(sourceId);
-    navigate('/notes');
+    navigate('/knowledge');
   }, [setActivePage, navigate]);
 
   // Node inspector — fetch details on click
@@ -682,7 +682,7 @@ export default function LibraryPage() {
               : <NetworkIcon style={{ width: 12, height: 12 }} />}
             Extract Entities
           </GlassBubbleButton>
-          <GlassBubbleButton onClick={() => navigate('/graph')} size="sm">
+          <GlassBubbleButton onClick={() => navigate('/knowledge')} size="sm">
             <ExternalLinkIcon style={{ width: 12, height: 12 }} />
             Open Graph View
           </GlassBubbleButton>

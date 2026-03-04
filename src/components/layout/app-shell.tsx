@@ -65,7 +65,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const showCosmic = themeMounted && isCosmic && pathname === '/';
   const showSunny = themeMounted && isSunny;
   // Pages where wallpaper stays clear — landing page and notes
-  const isWallpaperClearPage = pathname === '/' || pathname === '/notes';
+  const isWallpaperClearPage = pathname === '/' || pathname === '/knowledge';
   // Cosmic blur: activates when user has messages and chat is not minimized (actively chatting)
   const cosmicBlurred = isCosmic && chatMessages.length > 0 && !chatMinimized;
   const sunnyBlurred = showSunny && (!isWallpaperClearPage || (chatMessages.length > 0 && !chatMinimized));

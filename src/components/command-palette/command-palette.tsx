@@ -234,7 +234,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
             action: () => {
               addRecentItem({ id: item.id, type: 'note', title: item.title });
               setActivePage(item.id);
-              navigate('/notes');
+              navigate('/knowledge');
               onClose();
             },
           });
@@ -268,7 +268,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
           action: () => {
             addRecentItem({ id: result.page_id, type: 'note', title: result.title });
             setActivePage(result.page_id);
-            navigate('/notes');
+            navigate('/knowledge');
             onClose();
           },
         });
@@ -295,7 +295,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
         action: () => {
           addRecentItem({ id: page.id, type: 'note', title: page.title });
           setActivePage(page.id);
-          navigate('/notes');
+          navigate('/knowledge');
           onClose();
         },
       });
@@ -339,7 +339,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
           const title = q || 'Untitled Note';
           const pageId = createPage(title);
           addRecentItem({ id: pageId, type: 'note', title });
-          navigate('/notes');
+          navigate('/knowledge');
           addToast({ type: 'success', message: `Created note: ${title}` });
           onClose();
         },
@@ -399,26 +399,14 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
         },
       },
       {
-        id: 'nav-notes',
-        title: 'Go to Notes',
-        subtitle: 'Note library',
+        id: 'nav-knowledge',
+        title: 'Go to Knowledge',
+        subtitle: 'Notes & knowledge graph',
         category: 'navigation',
         icon: FileTextIcon,
-        shortcut: 'G N',
+        shortcut: 'G K',
         action: () => {
-          navigate('/notes');
-          onClose();
-        },
-      },
-      {
-        id: 'nav-graph',
-        title: 'Go to Graph',
-        subtitle: 'Knowledge graph view',
-        category: 'navigation',
-        icon: HashIcon,
-        shortcut: 'G G',
-        action: () => {
-          navigate('/graph');
+          navigate('/knowledge');
           onClose();
         },
       },

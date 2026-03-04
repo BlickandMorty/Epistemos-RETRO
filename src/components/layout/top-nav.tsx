@@ -7,12 +7,11 @@ import { usePFCStore, type PFCState } from '@/lib/store/use-pfc-store';
 import {
   HomeIcon,
   SettingsIcon,
-  PenLineIcon,
+  BookOpenIcon,
   LibraryIcon,
   ServerIcon,
   WifiIcon,
   ActivityIcon,
-  NetworkIcon,
   MessageSquareIcon,
   type LucideIcon,
 } from 'lucide-react';
@@ -39,9 +38,8 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { href: '/', label: 'Home', icon: HomeIcon, group: 'core' },
   { href: '/chat', label: 'Chat', icon: MessageSquareIcon, group: 'core', activePrefix: '/chat' },
-  { href: '/notes', label: 'Notes', icon: PenLineIcon, group: 'core' },
+  { href: '/knowledge', label: 'Knowledge', icon: BookOpenIcon, group: 'core' },
   { href: '/library', label: 'Library', icon: LibraryIcon, group: 'core' },
-  { href: '/graph', label: 'Graph', icon: NetworkIcon, group: 'tools' },
   { href: '/settings', label: 'Settings', icon: SettingsIcon, group: 'utility' },
 ];
 

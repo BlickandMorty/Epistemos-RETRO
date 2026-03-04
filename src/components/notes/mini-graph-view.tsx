@@ -142,7 +142,7 @@ export default function MiniGraphView() {
           No graph nodes yet
         </div>
         <button
-          onClick={() => navigate('/graph')}
+          onClick={() => navigate('/knowledge')}
           style={{
             padding: '6px 12px',
             fontSize: '11px',
@@ -185,7 +185,7 @@ export default function MiniGraphView() {
             {stats.totalNodes} nodes · {stats.totalEdges} edges
           </span>
           <button
-            onClick={() => navigate('/graph')}
+            onClick={() => navigate('/knowledge')}
             style={{
               padding: '4px 8px',
               fontSize: '10px',

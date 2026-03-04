@@ -5,12 +5,13 @@ import {
   PenLineIcon, PlusIcon, ImportIcon, CalendarIcon,
   StarIcon, PinIcon, EyeIcon, PencilIcon, NetworkIcon,
   WrenchIcon, XIcon, FileTextIcon, Maximize2Icon, Minimize2Icon,
-  ArrowLeftIcon, SparklesIcon, ListIcon,
+  ArrowLeftIcon, SparklesIcon, ListIcon, HistoryIcon,
 } from 'lucide-react';
 import { NoteAIChat } from '@/components/notes/note-ai-chat';
 import { NotesSidebar } from '@/components/notes/notes-sidebar';
 import { BlockEditor } from '@/components/notes/block-editor/editor';
 import { TableOfContents } from '@/components/notes/table-of-contents';
+import { DiffSheet } from '@/components/notes/diff-sheet';
 import { GlassBubbleButton } from '@/components/chat/glass-bubble-button';
 import { usePFCStore } from '@/lib/store/use-pfc-store';
 import { commands } from '@/lib/bindings';
@@ -131,6 +132,7 @@ export default function NotesPage() {
   const [zenMode, setZenMode] = useState(false);
   const [aiChatOpen, setAiChatOpen] = useState(false);
   const [tocOpen, setTocOpen] = useState(false);
+  const [diffSheetOpen, setDiffSheetOpen] = useState(false);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -321,7 +323,7 @@ export default function NotesPage() {
                       <CalendarIcon style={{ width: 12, height: 12 }} />
                       Today's Journal
                     </GlassBubbleButton>
-                    <GlassBubbleButton size="sm" onClick={() => navigate('/graph')}>
+                    <GlassBubbleButton size="sm" onClick={() => navigate('/knowledge')}>
                       <NetworkIcon style={{ width: 12, height: 12 }} />
                       Knowledge Graph
                     </GlassBubbleButton>
@@ -542,7 +544,7 @@ export default function NotesPage() {
                   <ToolBtn
                     icon={<NetworkIcon style={{ width: '0.875rem', height: '0.875rem' }} />}
                     label="Knowledge Graph" activeColor="var(--pfc-accent)"
-                    onClick={() => navigate('/graph')}
+                    onClick={() => navigate('/knowledge')}
                   />
                   <ToolBtn
                     icon={<SparklesIcon style={{ width: '0.875rem', height: '0.875rem' }} />}
@@ -556,11 +558,28 @@ export default function NotesPage() {
                     isActive={tocOpen} activeColor="var(--pfc-accent)"
                     onClick={() => setTocOpen((v) => !v)}
                   />
+                  <ToolBtn
+                    icon={<HistoryIcon style={{ width: '0.875rem', height: '0.875rem' }} />}
+                    label="Version History"
+                    isActive={diffSheetOpen} activeColor="var(--pfc-accent)"
+                    onClick={() => setDiffSheetOpen(true)}
+                  />
                 </>
               )}
             </AnimatePresence>
           </motion.div>
         </div>
+      )}
+
+      {/* ── Version History (Diff Sheet) ─────────────────────── */}
+      {activePageId && activePage && (
+        <DiffSheet
+          isOpen={diffSheetOpen}
+          onClose={() => setDiffSheetOpen(false)}
+          pageId={activePageId}
+          pageTitle={activePage.title}
+          currentBody=""
+        />
       )}
     </div>
   );

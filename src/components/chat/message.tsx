@@ -340,7 +340,7 @@ function MessageInner({ message }: MessageProps) {
 
     store.setActivePage(pageId);
     store.saveNotesToStorage();
-    navigate('/notes');
+    navigate('/knowledge');
   }, [cleanText, safeText, safeDualMessage, message, responseHeading, navigate]);
 
   // ── Export single message as full doc (includes research analysis) ──

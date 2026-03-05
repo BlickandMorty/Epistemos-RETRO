@@ -1,0 +1,3 @@
+[build]
+# Limit parallel rustc jobs to prevent OOM on 16GB machines
+jobs = 2

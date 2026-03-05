@@ -111,8 +111,8 @@ function UnifiedDiffLine({ line, lineNumber }: DiffLineProps) {
       case 'Modified':
         return (
           <div className="flex flex-col gap-0.5">
-            <span className={diffColors.removed.text}>{line.old}</span>
-            <span className={diffColors.added.text}>{line.new}</span>
+            <span className={diffColors.removed.text}>{line.content.old}</span>
+            <span className={diffColors.added.text}>{line.content.new}</span>
           </div>
         );
       default:
@@ -156,9 +156,9 @@ function SplitDiffLine({
         return isLeft ? <span>{line.content}</span> : <span className="text-slate-300"> </span>;
       case 'Modified':
         return isLeft ? (
-          <span className={diffColors.removed.text}>{line.old}</span>
+          <span className={diffColors.removed.text}>{line.content.old}</span>
         ) : (
-          <span className={diffColors.added.text}>{line.new}</span>
+          <span className={diffColors.added.text}>{line.content.new}</span>
         );
       default:
         return null;

@@ -1,10 +1,8 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTheme } from '@/hooks/use-theme';
 import { invoke } from '@tauri-apps/api/core';
 import type { BlockSearchResult } from '@/lib/notes/types';
 import { FileTextIcon, Loader2Icon, TextIcon } from 'lucide-react';
-
-export type { BlockSearchResult };
 
 // ═══════════════════════════════════════════════════════════════════
 // BlockRefAutocomplete — Fuzzy search for block references when typing ((
@@ -308,5 +306,3 @@ export function BlockRefAutocomplete({
     </div>
   );
 }
-
-export type { BlockSearchResult };

@@ -10,23 +10,17 @@ use engine::llm;
 #[specta::specta]
 pub async fn get_inference_config(state: State<'_, AppState>) -> Result<InferenceConfig, AppError> {
     let db = state.lock_db()?;
-    let json = db.get_setting("inference_config")?;
-    match json {
-        Some(s) => serde_json::from_str(&s).map_err(|e| AppError::Internal(format!("{e}"))),
-        None => Ok(InferenceConfig {
-            api_provider: "anthropic".into(),
-            model: "claude-sonnet-4-20250514".into(),
-            ollama_base_url: None,
-        }),
-    }
+    // Try loading from individual settings keys first (new format),
+    // fall back to legacy JSON blob, then defaults.
+    let config = db.load_inference_config().map_err(|e| AppError::Internal(format!("{e}")))?;
+    Ok(config)
 }
 
 #[tauri::command]
 #[specta::specta]
 pub async fn set_inference_config(state: State<'_, AppState>, config: InferenceConfig) -> Result<(), AppError> {
     let db = state.lock_db()?;
-    let json = serde_json::to_string(&config).map_err(|e| AppError::Internal(format!("{e}")))?;
-    db.set_setting("inference_config", &json)?;
+    db.save_inference_config(&config).map_err(|e| AppError::Internal(format!("{e}")))?;
     Ok(())
 }
 

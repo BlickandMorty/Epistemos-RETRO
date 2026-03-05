@@ -1,7 +1,8 @@
 pub mod anthropic;
-pub mod openai;
+pub mod factory;
 pub mod google;
 pub mod ollama;
+pub mod openai;
 
 mod error;
 pub use error::LlmError;

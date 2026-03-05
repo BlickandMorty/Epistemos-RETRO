@@ -18,13 +18,13 @@ interface TransclusionOverlayProps {
 }
 
 interface OverlayData {
-  block: Block | null;
+  block: NoteBlock | null;
   transcludingPages: string[];
 }
 
 export function TransclusionOverlay({
   blockId,
-  sourcePageId,
+  sourcePageId: _sourcePageId,
   isOpen,
   onClose,
   onNavigateToSource,

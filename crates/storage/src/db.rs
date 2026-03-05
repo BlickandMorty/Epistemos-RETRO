@@ -68,6 +68,13 @@ impl Database {
         let _ = self.conn.execute_batch(
             "ALTER TABLE pages ADD COLUMN entity_hash TEXT;"
         );
+        // V2: block_type and is_checked columns on blocks
+        let _ = self.conn.execute_batch(
+            "ALTER TABLE blocks ADD COLUMN block_type TEXT NOT NULL DEFAULT 'paragraph';"
+        );
+        let _ = self.conn.execute_batch(
+            "ALTER TABLE blocks ADD COLUMN is_checked INTEGER NOT NULL DEFAULT 0;"
+        );
         Ok(())
     }
 
@@ -263,12 +270,13 @@ impl Database {
     pub fn insert_block(&self, block: &Block) -> Result<(), StorageError> {
         self.conn.execute(
             "INSERT INTO blocks (id, page_id, parent_block_id, \"order\", depth,
-             content, is_collapsed, created_at, updated_at)
-             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9)",
+             block_type, content, is_collapsed, is_checked, created_at, updated_at)
+             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11)",
             params![
                 block.id.to_string(), block.page_id.to_string(),
                 block.parent_block_id.map(|b| b.to_string()),
-                block.order, block.depth, block.content, block.is_collapsed,
+                block.order, block.depth, block.block_type.as_str(),
+                block.content, block.is_collapsed, block.is_checked,
                 block.created_at, block.updated_at,
             ],
         )?;
@@ -277,8 +285,8 @@ impl Database {
 
     pub fn get_blocks_for_page(&self, page_id: PageId) -> Result<Vec<Block>, StorageError> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, page_id, parent_block_id, \"order\", depth, content,
-             is_collapsed, created_at, updated_at
+            "SELECT id, page_id, parent_block_id, \"order\", depth, block_type,
+             content, is_collapsed, is_checked, created_at, updated_at
              FROM blocks WHERE page_id = ?1 ORDER BY \"order\"",
         )?;
         let blocks = stmt
@@ -291,8 +299,8 @@ impl Database {
     pub fn get_block(&self, block_id: BlockId) -> Result<Block, StorageError> {
         self.conn
             .query_row(
-                "SELECT id, page_id, parent_block_id, \"order\", depth, content,
-                 is_collapsed, created_at, updated_at
+                "SELECT id, page_id, parent_block_id, \"order\", depth, block_type,
+                 content, is_collapsed, is_checked, created_at, updated_at
                  FROM blocks WHERE id = ?1",
                 params![block_id.to_string()],
                 row_to_block,
@@ -304,12 +312,14 @@ impl Database {
     pub fn update_block(&self, block: &Block) -> Result<(), StorageError> {
         self.conn.execute(
             "UPDATE blocks SET parent_block_id=?2, \"order\"=?3, depth=?4,
-             content=?5, is_collapsed=?6, updated_at=?7 WHERE id=?1",
+             block_type=?5, content=?6, is_collapsed=?7, is_checked=?8,
+             updated_at=?9 WHERE id=?1",
             params![
                 block.id.to_string(),
                 block.parent_block_id.map(|b| b.to_string()),
-                block.order, block.depth, block.content,
-                block.is_collapsed, block.updated_at,
+                block.order, block.depth, block.block_type.as_str(),
+                block.content, block.is_collapsed, block.is_checked,
+                block.updated_at,
             ],
         )?;
         Ok(())
@@ -326,19 +336,44 @@ impl Database {
         Ok(())
     }
 
-    /// Update a block's content, depth, and order by ID.
+    /// Update a block's content, depth, order, type, and checked state by ID.
     pub fn update_block_fields(
         &self,
         block_id: &str,
         content: &str,
         depth: i32,
         order: i32,
+        block_type: &str,
+        is_checked: bool,
     ) -> Result<(), StorageError> {
         let now = now_ms();
         self.conn.execute(
-            "UPDATE blocks SET content=?2, depth=?3, \"order\"=?4, updated_at=?5 WHERE id=?1",
-            params![block_id, content, depth, order, now],
+            "UPDATE blocks SET content=?2, depth=?3, \"order\"=?4, block_type=?5,
+             is_checked=?6, updated_at=?7 WHERE id=?1",
+            params![block_id, content, depth, order, block_type, is_checked, now],
         )?;
+        Ok(())
+    }
+
+    /// Update just the title field on a page (optimized for title-only saves).
+    pub fn update_page_title(&self, page_id: PageId, title: &str) -> Result<(), StorageError> {
+        self.conn.execute(
+            "UPDATE pages SET title = ?2, updated_at = ?3 WHERE id = ?1",
+            params![page_id.to_string(), title, now_ms()],
+        )?;
+        Ok(())
+    }
+
+    /// Toggle a boolean flag on a page — single-column UPDATE.
+    pub fn toggle_page_flag(&self, page_id: PageId, column: &str, value: bool) -> Result<(), StorageError> {
+        let allowed = ["is_pinned", "is_archived", "is_favorite", "is_locked"];
+        if !allowed.contains(&column) {
+            return Err(StorageError::Database(
+                rusqlite::Error::InvalidParameterName(format!("Invalid column: {column}"))
+            ));
+        }
+        let sql = format!("UPDATE pages SET {column} = ?2, updated_at = ?3 WHERE id = ?1");
+        self.conn.execute(&sql, params![page_id.to_string(), value, now_ms()])?;
         Ok(())
     }
 
@@ -821,9 +856,40 @@ impl Database {
     pub fn set_setting(&self, key: &str, value: &str) -> Result<(), StorageError> {
         self.conn.execute(
             "INSERT INTO settings (key, value) VALUES (?1, ?2)
-             ON CONFLICT(key) DO UPDATE SET value=?2",
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value",
             params![key, value],
         )?;
+        Ok(())
+    }
+
+    pub fn delete_setting(&self, key: &str) -> Result<(), StorageError> {
+        self.conn.execute("DELETE FROM settings WHERE key = ?1", params![key])?;
+        Ok(())
+    }
+
+    /// Load inference config from settings KV with defaults.
+    pub fn load_inference_config(&self) -> Result<InferenceConfig, StorageError> {
+        let def = InferenceConfig::default();
+        Ok(InferenceConfig {
+            api_provider: self.get_setting("inference_provider")?.unwrap_or(def.api_provider),
+            api_key: self.get_setting("inference_api_key")?.unwrap_or(def.api_key),
+            model: self.get_setting("inference_model")?.unwrap_or(def.model),
+            ollama_base_url: self.get_setting("inference_ollama_url")?.unwrap_or(def.ollama_base_url),
+            token_cap: self.get_setting("inference_token_cap")?
+                .and_then(|s| s.parse().ok()).unwrap_or(def.token_cap),
+            daily_budget_cents: self.get_setting("inference_daily_budget")?
+                .and_then(|s| s.parse().ok()).unwrap_or(def.daily_budget_cents),
+        })
+    }
+
+    /// Persist inference config to settings KV.
+    pub fn save_inference_config(&self, config: &InferenceConfig) -> Result<(), StorageError> {
+        self.set_setting("inference_provider", &config.api_provider)?;
+        self.set_setting("inference_api_key", &config.api_key)?;
+        self.set_setting("inference_model", &config.model)?;
+        self.set_setting("inference_ollama_url", &config.ollama_base_url)?;
+        self.set_setting("inference_token_cap", &config.token_cap.to_string())?;
+        self.set_setting("inference_daily_budget", &config.daily_budget_cents.to_string())?;
         Ok(())
     }
 
@@ -1044,16 +1110,19 @@ fn row_to_block(row: &rusqlite::Row<'_>) -> Result<Block, rusqlite::Error> {
     let id_str: String = row.get(0)?;
     let page_str: String = row.get(1)?;
     let parent_str: Option<String> = row.get(2)?;
+    let bt_str: String = row.get(5)?;
     Ok(Block {
         id: parse_id(&id_str)?,
         page_id: parse_id(&page_str)?,
         parent_block_id: parent_str.and_then(|s| s.parse().ok()),
         order: row.get(3)?,
         depth: row.get(4)?,
-        content: row.get(5)?,
-        is_collapsed: row.get(6)?,
-        created_at: row.get(7)?,
-        updated_at: row.get(8)?,
+        block_type: BlockType::from_str_or_default(&bt_str),
+        content: row.get(6)?,
+        is_collapsed: row.get(7)?,
+        is_checked: row.get(8)?,
+        created_at: row.get(9)?,
+        updated_at: row.get(10)?,
     })
 }
 
@@ -1337,8 +1406,8 @@ impl Database {
     pub fn search_blocks_for_transclusion(&self, query: &str, limit: usize) -> Result<Vec<(Block, Page)>, StorageError> {
         let pattern = format!("%{}%", query.replace('%', "\\%").replace('_', "\\_"));
         let mut stmt = self.conn.prepare(
-            "SELECT b.id, b.page_id, b.parent_block_id, b.\"order\", b.depth, b.content,
-             b.is_collapsed, b.created_at, b.updated_at,
+            "SELECT b.id, b.page_id, b.parent_block_id, b.\"order\", b.depth, b.block_type,
+             b.content, b.is_collapsed, b.is_checked, b.created_at, b.updated_at,
              p.id, p.title, p.summary, p.emoji, p.research_stage, p.tags_json,
              p.word_count, p.is_pinned, p.is_archived, p.is_favorite, p.is_journal,
              p.is_locked, p.sort_order, p.journal_date, p.front_matter_data, p.ideas_data,
@@ -1355,8 +1424,8 @@ impl Database {
         let results = stmt
             .query_map(params![pattern, limit as i64], |row| {
                 let block = row_to_block(row)?;
-                // Shift row index by 9 for page fields
-                let page = row_to_page_offset(row, 9)?;
+                // Shift row index by 11 for page fields (block now has 11 columns)
+                let page = row_to_page_offset(row, 11)?;
                 Ok((block, page))
             })?
             .collect::<Result<Vec<_>, _>>()?;
@@ -1375,8 +1444,8 @@ impl Database {
         // Use FTS5 for better search if available, fallback to LIKE
         // For now using LIKE with content matching - can be enhanced with FTS5 later
         let mut stmt = self.conn.prepare(
-            "SELECT b.id, b.page_id, b.parent_block_id, b.\"order\", b.depth, b.content,
-             b.is_collapsed, b.created_at, b.updated_at,
+            "SELECT b.id, b.page_id, b.parent_block_id, b.\"order\", b.depth, b.block_type,
+             b.content, b.is_collapsed, b.is_checked, b.created_at, b.updated_at,
              p.id, p.title, p.summary, p.emoji, p.research_stage, p.tags_json,
              p.word_count, p.is_pinned, p.is_archived, p.is_favorite, p.is_journal,
              p.is_locked, p.sort_order, p.journal_date, p.front_matter_data, p.ideas_data,
@@ -1386,8 +1455,8 @@ impl Database {
              FROM blocks b
              JOIN pages p ON b.page_id = p.id
              WHERE b.content LIKE ?1 ESCAPE '\\'
-             ORDER BY 
-                 CASE 
+             ORDER BY
+                 CASE
                      WHEN LOWER(b.content) LIKE LOWER(?2) THEN 1
                      WHEN LOWER(p.title) LIKE LOWER(?2) THEN 2
                      ELSE 3
@@ -1401,8 +1470,8 @@ impl Database {
         let results = stmt
             .query_map(params![pattern, exact_pattern, limit as i64], |row| {
                 let block = row_to_block(row)?;
-                // Shift row index by 9 for page fields
-                let page = row_to_page_offset(row, 9)?;
+                // Shift row index by 11 for page fields (block now has 11 columns)
+                let page = row_to_page_offset(row, 11)?;
                 Ok((block, page))
             })?
             .collect::<Result<Vec<_>, _>>()?;

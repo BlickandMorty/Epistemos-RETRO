@@ -95,6 +95,8 @@ pub fn reconcile(
             if existing_block.content == parsed_block.content
                 && existing_block.depth == parsed_block.depth
                 && existing_block.order == block_order
+                && existing_block.block_type == parsed_block.block_type
+                && existing_block.is_checked == parsed_block.is_checked
             {
                 unchanged += 1;
             } else {
@@ -103,11 +105,16 @@ pub fn reconcile(
                     &parsed_block.content,
                     parsed_block.depth,
                     block_order,
+                    parsed_block.block_type.as_str(),
+                    parsed_block.is_checked,
                 )?;
                 updated += 1;
             }
         } else {
-            let block = Block::new(page_id, parsed_block.content.clone(), block_order, parsed_block.depth);
+            let block = Block::with_type(
+                page_id, parsed_block.content.clone(), block_order,
+                parsed_block.depth, parsed_block.block_type,
+            );
             let block_id_str = block.id.to_string();
             db.insert_block(&block)?;
             index_to_block_id[parsed_idx] = Some(block_id_str);
@@ -161,7 +168,8 @@ pub fn initial_populate(
     let mut index_to_block_id: Vec<String> = Vec::with_capacity(parsed.len());
 
     for p in &parsed {
-        let block = Block::new(page_id, p.content.clone(), p.order * 1000, p.depth);
+        let mut block = Block::with_type(page_id, p.content.clone(), p.order * 1000, p.depth, p.block_type);
+        block.is_checked = p.is_checked;
         let block_id_str = block.id.to_string();
         db.insert_block(&block)?;
         index_to_block_id.push(block_id_str);

@@ -188,12 +188,9 @@ pub async fn submit_query(
     let provider_type = LlmProviderType::from_settings_name(&provider_name);
     let model_name = {
         let db = state.lock_db()?;
-        db.get_setting("inference_config")
-            .ok()
-            .flatten()
-            .and_then(|s| serde_json::from_str::<storage::types::InferenceConfig>(&s).ok())
+        db.load_inference_config()
             .map(|c| c.model)
-            .unwrap_or_else(|| "unknown".into())
+            .unwrap_or_else(|_| "unknown".into())
     };
 
     // Run query analysis (pure Rust, no LLM)

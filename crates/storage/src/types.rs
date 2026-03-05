@@ -63,6 +63,67 @@ pub struct Page {
 
 // ---- Block ----
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
+pub enum BlockType {
+    Paragraph,
+    Heading1,
+    Heading2,
+    Heading3,
+    Code,
+    Quote,
+    Callout,
+    BulletList,
+    NumberedList,
+    Todo,
+    Divider,
+    Toggle,
+    Math,
+}
+
+impl BlockType {
+    pub fn from_str_or_default(s: &str) -> Self {
+        match s {
+            "heading1" => Self::Heading1,
+            "heading2" => Self::Heading2,
+            "heading3" => Self::Heading3,
+            "code" => Self::Code,
+            "quote" => Self::Quote,
+            "callout" => Self::Callout,
+            "bullet" => Self::BulletList,
+            "numbered" => Self::NumberedList,
+            "todo" => Self::Todo,
+            "divider" => Self::Divider,
+            "toggle" => Self::Toggle,
+            "math" => Self::Math,
+            _ => Self::Paragraph,
+        }
+    }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Paragraph => "paragraph",
+            Self::Heading1 => "heading1",
+            Self::Heading2 => "heading2",
+            Self::Heading3 => "heading3",
+            Self::Code => "code",
+            Self::Quote => "quote",
+            Self::Callout => "callout",
+            Self::BulletList => "bullet",
+            Self::NumberedList => "numbered",
+            Self::Todo => "todo",
+            Self::Divider => "divider",
+            Self::Toggle => "toggle",
+            Self::Math => "math",
+        }
+    }
+}
+
+impl Default for BlockType {
+    fn default() -> Self {
+        Self::Paragraph
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct Block {
     pub id: BlockId,
@@ -70,8 +131,10 @@ pub struct Block {
     pub parent_block_id: Option<BlockId>,
     pub order: i32,
     pub depth: i32,
+    pub block_type: BlockType,
     pub content: String,
     pub is_collapsed: bool,
+    pub is_checked: bool,
     pub created_at: i64,
     pub updated_at: i64,
 }
@@ -246,8 +309,24 @@ pub struct WordDiffResult {
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct InferenceConfig {
     pub api_provider: String,
+    pub api_key: String,
     pub model: String,
-    pub ollama_base_url: Option<String>,
+    pub ollama_base_url: String,
+    pub token_cap: u32,
+    pub daily_budget_cents: u32,
+}
+
+impl Default for InferenceConfig {
+    fn default() -> Self {
+        Self {
+            api_provider: "anthropic".into(),
+            api_key: String::new(),
+            model: "claude-sonnet-4-6".into(),
+            ollama_base_url: "http://localhost:11434".into(),
+            token_cap: 0,
+            daily_budget_cents: 0,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
@@ -349,7 +428,18 @@ impl Block {
         let now = now_ms();
         Self {
             id: BlockId::new(), page_id, parent_block_id: None,
-            order, depth, content, is_collapsed: false,
+            order, depth, block_type: BlockType::Paragraph,
+            content, is_collapsed: false, is_checked: false,
+            created_at: now, updated_at: now,
+        }
+    }
+
+    pub fn with_type(page_id: PageId, content: String, order: i32, depth: i32, block_type: BlockType) -> Self {
+        let now = now_ms();
+        Self {
+            id: BlockId::new(), page_id, parent_block_id: None,
+            order, depth, block_type,
+            content, is_collapsed: false, is_checked: false,
             created_at: now, updated_at: now,
         }
     }
@@ -380,6 +470,18 @@ impl Message {
             dual_message_data: None, truth_assessment_data: None,
             confidence_score: None, evidence_grade: None, inference_mode: None,
             is_streaming: false, created_at: now_ms(),
+        }
+    }
+
+    pub fn new_with_enrichment(
+        chat_id: ChatId, role: String, content: String,
+        confidence: Option<f64>, grade: Option<String>, mode: Option<String>,
+    ) -> Self {
+        Self {
+            id: MessageId::new(), chat_id, role, content,
+            dual_message_data: None, truth_assessment_data: None,
+            confidence_score: confidence, evidence_grade: grade,
+            inference_mode: mode, is_streaming: false, created_at: now_ms(),
         }
     }
 }

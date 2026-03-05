@@ -98,41 +98,17 @@ pub fn build_provider_from_settings(
     state: &AppState,
 ) -> Result<(Arc<dyn llm::LlmProvider>, String), AppError> {
     let db = state.lock_db()?;
-    let config_json = db.get_setting("inference_config")
+    let config = db.load_inference_config()
         .map_err(|e| AppError::Internal(format!("{e}")))?;
-    let config: storage::types::InferenceConfig = config_json
-        .and_then(|s| serde_json::from_str(&s).ok())
-        .unwrap_or(storage::types::InferenceConfig {
-            api_provider: "anthropic".into(),
-            model: "claude-sonnet-4-20250514".into(),
-            ollama_base_url: None,
-        });
 
-    let api_key = db.get_setting(&format!("{}_api_key", config.api_provider))
-        .map_err(|e| AppError::Internal(format!("{e}")))?
-        .unwrap_or_default();
+    let provider = llm::factory::create_provider(
+        &config.api_provider,
+        &config.api_key,
+        &config.model,
+        &config.ollama_base_url,
+    );
 
-    // Destructure to avoid cloning — each field is moved exactly once
-    let storage::types::InferenceConfig { api_provider, model, ollama_base_url } = config;
-
-    let provider: Arc<dyn llm::LlmProvider> = match api_provider.as_str() {
-        "openai" => Arc::new(llm::openai::OpenAiProvider::new(api_key, model)),
-        "google" => Arc::new(llm::google::GoogleProvider::new(api_key, model)),
-        "ollama" => Arc::new(llm::ollama::OllamaProvider::new(model, ollama_base_url)),
-        "kimi" => Arc::new(llm::openai::OpenAiProvider::with_base_url(
-            api_key, model,
-            "https://api.moonshot.ai/v1/chat/completions".into(),
-            "kimi",
-        )),
-        "foundry" => Arc::new(llm::openai::OpenAiProvider::with_base_url(
-            String::new(), model,
-            ollama_base_url.unwrap_or_else(|| "http://localhost:5272/v1/chat/completions".into()),
-            "foundry",
-        )),
-        _ => Arc::new(llm::anthropic::AnthropicProvider::new(api_key, model)),
-    };
-
-    Ok((provider, api_provider))
+    Ok((provider, config.api_provider))
 }
 
 /// Build an LLM provider based on triage routing.

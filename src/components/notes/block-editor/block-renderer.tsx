@@ -302,9 +302,9 @@ export const BlockItem = memo(function BlockItem({
 
   // (( transclusion autocomplete state
   const [transclusionOpen, setTransclusionOpen] = useState(false);
-  const [transclusionQuery, setTransclusionQuery] = useState('');
-  const [transclusionPos, setTransclusionPos] = useState({ top: 0, left: 0 });
-  const [transclusionIdx, setTransclusionIdx] = useState(0);
+  const [transclusionQuery, _setTransclusionQuery] = useState('');
+  const [transclusionPos, _setTransclusionPos] = useState({ top: 0, left: 0 });
+  const [transclusionIdx, _setTransclusionIdx] = useState(0);
   const transclusionStartRef = useRef<number>(-1);
 
   // (( block reference autocomplete state (inline link, no transclusion storage)

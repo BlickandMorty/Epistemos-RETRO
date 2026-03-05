@@ -172,19 +172,6 @@ async deleteVersion(versionId: string) : Promise<Result<null, any>> {
     else return { status: "error", error: e  as any };
 }
 },
-/**
- * Search blocks for block reference autocomplete.
- * Triggered when user types `((` in the block editor.
- * Returns fuzzy search results with block preview and page context.
- */
-async searchBlocks(query: string, limit: number | null) : Promise<Result<BlockSearchResult[], any>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("search_blocks", { query, limit }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
 async createChat(title: string | null) : Promise<Result<Chat, any>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("create_chat", { title }) };
@@ -416,6 +403,130 @@ async rebuildSearchIndex() : Promise<Result<number, any>> {
 async searchHybrid(query: string, limit: number | null) : Promise<Result<HybridSearchResult[], any>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("search_hybrid", { query, limit }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Execute a structured search query with the advanced query language.
+ * 
+ * Query syntax:
+ * - Field filters: `tag:work`, `created:>2024-01-01`, `title:"hello world"`
+ * - Boolean operators: `AND`, `OR`, `NOT`
+ * - Comparison: `=`, `!=`, `<`, `>`, `<=`, `>=`, `~` (contains)
+ * - Grouping: `(tag:work OR tag:urgent) AND created:>2024-01-01`
+ * - Tag shorthand: `#work` is equivalent to `tag:work`
+ * 
+ * # Examples
+ * - `tag:work AND created:>2024-01-01`
+ * - `(title:"Project" OR tag:urgent) AND NOT is_archived:true`
+ * - `word_count:>500 AND updated:>last_week`
+ */
+async structuredSearch(query: string, limit: number | null) : Promise<Result<Page[], any>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("structured_search", { query, limit }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Validate a structured query without executing it.
+ * Returns Ok if valid, or an error with position info.
+ */
+async validateQuery(query: string) : Promise<Result<null, QueryError>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("validate_query", { query }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Get all saved queries.
+ */
+async getSavedQueries() : Promise<Result<SavedQuery[], any>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_saved_queries") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Save a query with a name.
+ */
+async saveQuery(name: string, queryStr: string) : Promise<Result<SavedQuery, any>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("save_query", { name, queryStr }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Delete a saved query by name.
+ */
+async deleteQuery(name: string) : Promise<Result<null, any>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("delete_query", { name }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Execute a saved query by name.
+ * Increments the use count and updates last_used_at.
+ */
+async executeSavedQuery(name: string, limit: number | null) : Promise<Result<Page[], any>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("execute_saved_query", { name, limit }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Rename a saved query.
+ */
+async renameQuery(oldName: string, newName: string) : Promise<Result<SavedQuery, any>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("rename_query", { oldName, newName }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Get the most frequently used queries.
+ */
+async getPopularQueries(limit: number | null) : Promise<Result<SavedQuery[], any>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_popular_queries", { limit }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Get recently used queries.
+ */
+async getRecentQueries(limit: number | null) : Promise<Result<SavedQuery[], any>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_recent_queries", { limit }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Execute a structured search and return detailed results including metadata.
+ */
+async structuredSearchDetailed(query: string, limit: number | null) : Promise<Result<StructuredSearchResult, any>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("structured_search_detailed", { query, limit }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -810,13 +921,9 @@ async getResearchStatus(pageId: string) : Promise<Result<ResearchStatus, any>> {
 
 /** user-defined types **/
 
-export type Block = { id: BlockId; page_id: PageId; parent_block_id: BlockId | null; order: number; depth: number; content: string; is_collapsed: boolean; created_at: number; updated_at: number }
+export type Block = { id: BlockId; page_id: PageId; parent_block_id: BlockId | null; order: number; depth: number; block_type: BlockType; content: string; is_collapsed: boolean; is_checked: boolean; created_at: number; updated_at: number }
 export type BlockId = string
-/**
- * Result type for block reference autocomplete
- * Triggered by typing `((` in the block editor
- */
-export type BlockSearchResult = { block_id: string; preview_text: string; page_title: string; page_id: string }
+export type BlockType = "Paragraph" | "Heading1" | "Heading2" | "Heading3" | "Code" | "Quote" | "Callout" | "BulletList" | "NumberedList" | "Todo" | "Divider" | "Toggle" | "Math"
 export type Chat = { id: ChatId; title: string; chat_type: string; page_context_id: PageId | null; created_at: number; updated_at: number }
 export type ChatId = string
 export type ConnectionTestResult = { success: boolean; message: string; latency_ms: number | null }
@@ -885,7 +992,7 @@ source: string }
  */
 export type ImportResult = { imported: number; updated: number; skipped: number; errors: number }
 export type IndexedLine = ({ kind: "Unchanged"; content: string } | { kind: "Added"; content: string } | { kind: "Removed"; content: string } | { kind: "Modified"; content: { old: string; new: string } }) & { index: number }
-export type InferenceConfig = { api_provider: string; model: string; ollama_base_url: string | null }
+export type InferenceConfig = { api_provider: string; api_key: string; model: string; ollama_base_url: string; token_cap: number; daily_budget_cents: number }
 export type JsonValue = null | boolean | number | string | JsonValue[] | Partial<{ [key in string]: JsonValue }>
 export type LineDiff = { lines: DiffLineKind[]; stats: DiffStats }
 /**
@@ -930,7 +1037,19 @@ export type PageVersion = { id: string; page_id: PageId; title: string; body: st
  * Per-provider cost breakdown.
  */
 export type ProviderCost = { provider: string; call_count: number; cost_usd: number }
+/**
+ * Query parsing error
+ */
+export type QueryError = { message: string; position: number | null; kind: QueryErrorKind }
+/**
+ * Types of query errors
+ */
+export type QueryErrorKind = "Generic" | "UnexpectedToken" | "UnclosedQuote" | "UnclosedParen" | "InvalidOperator" | "InvalidField" | "InvalidValue" | "EmptyQuery"
 export type ResearchStatus = { page_id: string; stage: number; stage_name: string; title: string }
+/**
+ * Saved query struct for persistence
+ */
+export type SavedQuery = { name: string; query: string; created_at: number; last_used_at: number | null; use_count: number }
 export type SearchResult = { page_id: PageId; title: string; snippet: string; score: number }
 /**
  * A semantic neighbor hit (cosine similarity above threshold).
@@ -940,6 +1059,10 @@ export type SemanticHit = { node_id: string; label: string; node_type: GraphNode
  * Semantic search result with node metadata.
  */
 export type SimilarNode = { node_id: string; label: string; node_type: GraphNodeType; similarity: number }
+/**
+ * Search result from structured query execution.
+ */
+export type StructuredSearchResult = { pages: Page[]; total_count: number; execution_time_ms: number }
 
 /** tauri-specta globals **/
 

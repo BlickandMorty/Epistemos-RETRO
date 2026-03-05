@@ -14,6 +14,7 @@
 //! Performance: O(n) single-pass parsing where n = character count.
 
 use std::ops::Range;
+use storage::types::BlockType;
 
 /// A parsed block from markdown text.
 #[derive(Debug, Clone, PartialEq)]
@@ -28,6 +29,10 @@ pub struct ParsedBlock {
     pub order: i32,
     /// Byte range in the original markdown for O(1) mapping back to source.
     pub byte_range: Range<usize>,
+    /// Semantic type inferred from markdown syntax.
+    pub block_type: BlockType,
+    /// Whether a todo block is checked (- [x]).
+    pub is_checked: bool,
 }
 
 /// Parse markdown into a flat, ordered list of blocks.
@@ -84,6 +89,8 @@ pub fn parse(markdown: &str) -> Vec<ParsedBlock> {
                 depth: 0,
                 order: block_order,
                 byte_range: fence_start..end,
+                block_type: BlockType::Code,
+                is_checked: false,
             });
             block_order += 1;
             continue;
@@ -172,12 +179,15 @@ pub fn parse(markdown: &str) -> Vec<ParsedBlock> {
         }
 
         let end = byte_offset.saturating_sub(1).min(markdown.len());
+        let (block_type, is_checked) = infer_block_type(stripped, is_list_item, is_heading, &full_content);
         blocks.push(ParsedBlock {
             content: full_content,
             raw_content: full_raw,
             depth,
             order: block_order,
             byte_range: start_byte..end,
+            block_type,
+            is_checked,
         });
         block_order += 1;
     }
@@ -225,6 +235,61 @@ pub fn compute_parent_indices(blocks: &[ParsedBlock]) -> Vec<Option<usize>> {
     }
 
     parents
+}
+
+/// Infer block type from markdown syntax.
+fn infer_block_type(stripped: &str, is_list_item: bool, is_heading: bool, content: &str) -> (BlockType, bool) {
+    // Headings: # / ## / ###
+    if is_heading {
+        if stripped.starts_with("### ") {
+            return (BlockType::Heading3, false);
+        } else if stripped.starts_with("## ") {
+            return (BlockType::Heading2, false);
+        } else if stripped.starts_with("# ") {
+            return (BlockType::Heading1, false);
+        }
+    }
+
+    // Divider: ---, ***, ___
+    let trimmed = stripped.trim();
+    if trimmed == "---" || trimmed == "***" || trimmed == "___" {
+        return (BlockType::Divider, false);
+    }
+
+    // Math block: $$ ... $$
+    if trimmed.starts_with("$$") {
+        return (BlockType::Math, false);
+    }
+
+    // Blockquote: > ...
+    if trimmed.starts_with("> ") || trimmed == ">" {
+        // Callout: > [!tip], > [!note], > [!warning], etc.
+        if trimmed.len() > 2 && trimmed[2..].trim_start().starts_with("[!") {
+            return (BlockType::Callout, false);
+        }
+        return (BlockType::Quote, false);
+    }
+
+    // Todo: - [ ] or - [x]
+    if is_list_item {
+        if content.starts_with("[ ] ") || content.starts_with("[ ]") {
+            return (BlockType::Todo, false);
+        }
+        if content.starts_with("[x] ") || content.starts_with("[x]")
+            || content.starts_with("[X] ") || content.starts_with("[X]")
+        {
+            return (BlockType::Todo, true);
+        }
+
+        // Ordered list: content_after_marker comes from strip_list_marker,
+        // but we check `stripped` which still has the marker
+        if stripped.chars().next().map(|c| c.is_ascii_digit()).unwrap_or(false) {
+            return (BlockType::NumberedList, false);
+        }
+        return (BlockType::BulletList, false);
+    }
+
+    (BlockType::Paragraph, false)
 }
 
 /// Measure indent depth: each tab = +1, each 2 spaces = +1.

@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { useTheme } from '@/hooks/use-theme';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import type { NoteBlock } from '@/lib/notes/types';
 import { FrameIcon, Loader2Icon } from 'lucide-react';
 
 // ═══════════════════════════════════════════════════════════════════
